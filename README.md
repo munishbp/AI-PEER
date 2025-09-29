@@ -14,8 +14,6 @@ This is a 2025-2026 UCF Senior Design Project led by CS students in collaboratio
    cp .env.example .env
 
    #Edit with your own MongoDB credentials
-   #Then
-   npx expo start
    ```
 
 2. Start the app
