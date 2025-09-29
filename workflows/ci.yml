@@ -19,7 +19,7 @@ jobs:
         node-version: '18'
     
     - name: Install packages
-      run: npm install
+      run: npm ci
     
-    - name: Check if it builds
-      run: npx expo export --platform web
+    - name: Run linter
+      run: npm run lint
