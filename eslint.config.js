@@ -1,21 +1,26 @@
 // https://docs.expo.dev/guides/using-eslint/
-const { defineConfig } = require('eslint/config');
-const expoConfig = require('eslint-config-expo/flat');
-
 module.exports = {
   root: true,
   extends: ['expo'],
   settings: {
     'import/resolver': {
       typescript: {
-        project: './tsconfig.json'
+        project: './tsconfig.json',
+        alwaysTryTypes: true
       },
       node: {
-        extensions: ['.js', '.jsx', '.ts', '.tsx']
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        paths: ['./']
+      },
+      alias: {
+        map: [
+          ['@', './']
+        ],
+        extensions: ['.ts', '.tsx', '.js', '.jsx']
       }
     }
   },
   rules: {
-    'import/no-unresolved': 'off'  
+    'import/no-unresolved': 'off'
   }
 };
