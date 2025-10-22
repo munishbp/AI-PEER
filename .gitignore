@@ -1,0 +1,55 @@
+# ===== Node / Expo / React Native =====
+node_modules/
+.expo/
+.expo-shared/
+dist/
+build/
+web-build/
+
+# React Native (Android/iOS build artifacts)
+android/.gradle/
+android/build/
+android/app/build/
+ios/build/
+ios/DerivedData/
+ios/Pods/
+
+# ===== Caches & Temp =====
+.metro-cache/
+.cache/
+tmp/
+*.tmp
+
+# ===== Logs =====
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# ===== OS / IDE =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+
+# ===== Env & Secrets =====
+.env
+.env.*
+!.env.example
+*.keystore
+*.p12
+*.mobileprovision
+*.pem
+
+# ===== Tests =====
+coverage/
+.jest/
+*.coverage
+
+# ===== TypeScript =====
+*.tsbuildinfo
+
+# ===== Packages (keep your chosen lockfile committed) =====
+# (Do NOT ignore package-lock.json / yarn.lock / pnpm-lock.yaml)
