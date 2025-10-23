@@ -313,4 +313,4 @@ For questions or issues, please contact the development team or open an issue in
 
 ---
 
-**Last Updated:** January 2025
+**Last Updated:** October 2025
