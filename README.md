@@ -258,17 +258,23 @@ npm test
 
 ### Phase 3 (Planned)
 - [ ] Patient progress tracking
-- [ ] Provider dashboard
-- [ ] Analytics and reporting
 - [ ] Push notifications for exercise reminders
+- [ ] PEER Framework Intervention
+- [ ] CV Exercise Assessment 
 
 ### Phase 4 (Future)
 - [ ] AI-powered fall risk prediction
-- [ ] Real-time exercise form analysis
-- [ ] Telehealth integration
+- [ ] Sit to stand test
 - [ ] Multi-language support
+- [ ] Gameification Process to Incentivize
+- [ ] Speech to Speech functionality
 
 ## 👥 Team
+- Arthur Lookshin
+- Beile Han
+- Pramodh Miryala
+- Santiago Echeverry
+- Munish Persaud
 
 UCF Senior Design Project 2025-2026
 - Computer Science Students
