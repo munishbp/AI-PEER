@@ -2,17 +2,17 @@
 
 A 2025-2026 UCF Senior Design Project led by CS students in collaboration with UCF's College of Medicine to design an app that assesses patients' fall risk and guides them toward safer intervention through the PEER intervention method.
 
-## 📋 Project Overview
+## Project Overview
 
 AIPEER is a HIPAA-compliant mobile application that helps healthcare providers assess fall risk in patients and deliver personalized exercise interventions through video guidance.
 
 ### Key Features
-- 🏥 **HIPAA Compliant** - Secure video delivery with time-limited access
-- 📱 **Mobile First** - Built with React Native/Expo for iOS and Android
-- 🎥 **Video Exercises** - Guided physical therapy exercises
-- 🔐 **Secure Backend** - Node.js API with Google Cloud Storage integration
+- **HIPAA Compliant** - Secure video delivery with time-limited access
+- **Mobile First** - Built with React Native/Expo for iOS and Android
+- **Video Exercises** - Guided physical therapy exercises
+- **Secure Backend** - Node.js API with Google Cloud Storage integration
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 AIPEER/
@@ -34,7 +34,7 @@ AIPEER/
 └── README.md             # This file
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -76,7 +76,7 @@ npx expo start
 
 The Expo dev server will start. Use the Expo Go app to test on your device.
 
-## 📁 Component Breakdown
+## Component Breakdown
 
 ### Backend (API/)
 
@@ -111,14 +111,14 @@ The Expo dev server will start. Use the Expo Go app to test on your device.
 - Fall risk assessment forms
 - Patient progress tracking
 
-## 🔐 Security & HIPAA Compliance
+## Security & HIPAA Compliance
 
 ### Backend Security
-- ✅ Time-limited signed URLs (1 hour expiration)
-- ✅ Environment variables for credential management
-- ✅ `.gitignore` prevents credential leaks
-- ✅ CORS configuration for authorized origins only
-- ✅ HTTPS required in production
+- Time-limited signed URLs (1 hour expiration)
+- Environment variables for credential management
+- `.gitignore` prevents credential leaks
+- CORS configuration for authorized origins only
+- HTTPS required in production
 
 ### Data Protection
 - All videos encrypted at rest (GCS)
@@ -131,7 +131,7 @@ The Expo dev server will start. Use the Expo Go app to test on your device.
 - Regular security audits
 - Access control and authentication (future enhancement)
 
-## 🎥 Video Management Workflow
+## Video Management Workflow
 
 ### Adding a New Exercise Video
 
@@ -166,7 +166,7 @@ The Expo dev server will start. Use the Expo Go app to test on your device.
    />
    ```
 
-## 🛠️ Development
+## Development
 
 ### Running the Full Stack
 
@@ -199,7 +199,7 @@ NODE_ENV=development
 EXPO_PUBLIC_API_URL=http://localhost:3000
 ```
 
-## 📱 Mobile App Development
+## Mobile App Development
 
 ### Testing
 
@@ -215,7 +215,7 @@ eas build --platform ios
 eas build --platform android
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Backend API Tests
 
@@ -236,15 +236,15 @@ cd front-end/AI-PEER
 npm test
 ```
 
-## 📚 Documentation
+## Documentation
 
 - [Backend API Documentation](./API/README.md) - Detailed API setup and usage
 - [Expo Documentation](https://docs.expo.dev/) - React Native development
 - [Google Cloud Storage](https://cloud.google.com/storage/docs) - Video hosting
 
-## 🗺️ Roadmap
+## Roadmap
 
-### Current Status (Phase 1) ✅
+### Current Status (Phase 1)
 - [x] Backend API structure with video template
 - [x] GCS integration with signed URLs
 - [x] HIPAA-compliant security setup
@@ -269,7 +269,7 @@ npm test
 - [ ] Gameification Process to Incentivize
 - [ ] Speech to Speech functionality
 
-## 👥 Team
+## Team
 - Arthur Lookshin
 - Beile Han
 - Pramodh Miryala
@@ -280,11 +280,11 @@ UCF Senior Design Project 2025-2026
 - Computer Science Students
 - UCF College of Medicine (Collaboration)
 
-## 📝 License
+## License
 
 [Add license information]
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Backend won't start
 - Check if port 3000 is in use: `lsof -i :3000` (Mac/Linux) or `netstat -ano | findstr :3000` (Windows)
@@ -305,7 +305,7 @@ UCF Senior Design Project 2025-2026
 - Ensure `app.use(cors())` is in `server.js`
 - Check API URL matches in frontend config
 
-## 🔗 Useful Links
+## Useful Links
 
 - [Node.js Documentation](https://nodejs.org/)
 - [Express.js Guide](https://expressjs.com/)
@@ -313,7 +313,7 @@ UCF Senior Design Project 2025-2026
 - [Expo Documentation](https://docs.expo.dev/)
 - [Google Cloud Storage](https://cloud.google.com/storage)
 
-## 📧 Contact
+## Contact
 
 For questions or issues, please contact the development team or open an issue in the repository.
 
