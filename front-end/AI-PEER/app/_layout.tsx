@@ -1,19 +1,24 @@
-// app/_layout.tsx
-import { Stack } from "expo-router";
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import 'react-native-reanimated';
+
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export const unstable_settings = {
+  anchor: '(tabs)',
+};
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
   return (
-    <Stack>
-      {/* Landing (Login) */}
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-
-      {/* Tabs group (Home/Activity/Contacts/Settings) */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
-      {/* Optional routes from the Expo template */}
-      <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
-      <Stack.Screen name="+not-found" options={{ title: "Not found" }} />
-    </Stack>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
   );
 }
-
