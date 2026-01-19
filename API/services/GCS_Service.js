@@ -37,7 +37,8 @@ async function generateSignedUrl(videoFileName){
         //generate and return the signed URL
         const[signedURL]=await file.getSignedUrl(options);
         return signedURL;
-    }catch(error){
+    }
+    catch(error){
         console.error('Error generating signed URL:',error);
         throw new Error('Cannot generate the video URL');
     }
