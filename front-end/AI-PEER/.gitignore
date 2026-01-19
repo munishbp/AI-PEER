@@ -1,3 +1,5 @@
+CLAUDE.md
+
 # ===== Node / Expo / React Native =====
 node_modules/
 .expo/
@@ -19,6 +21,7 @@ ios/Pods/
 .cache/
 tmp/
 *.tmp
+
 
 # ===== Logs =====
 npm-debug.log*
