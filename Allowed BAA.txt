@@ -1,0 +1,139 @@
+Access Approval
+Access Context Manager
+Access Transparency
+Agentspace
+AI Platform Training and Prediction
+AlloyDB for PostgreSQL
+API Gateway
+Apigee
+App Engine
+Application Integration
+Artifact Registry
+Assured Workloads
+AutoML Natural Language
+AutoML Tables
+AutoML Translation
+AutoML Video
+AutoML Vision
+Backup for GKE
+Bare Metal Solution
+Batch
+BigQuery
+BigQuery Data Transfer Service
+BigQuery Omni
+Bigtable
+Binary Authorization
+Certificate Authority Service
+Certificate Manager
+Cloud Asset Inventory
+Cloud Backup and DR
+Cloud Build
+Cloud CDN
+Cloud Composer
+Cloud Data Fusion
+Cloud Deploy
+Cloud Deployment Manager
+Cloud DNS
+Cloud Endpoints
+Cloud Filestore
+Cloud Functions
+Cloud Healthcare API
+Cloud HSM
+Cloud Identity
+Cloud IDS
+Cloud Interconnect
+Cloud Key Management Service
+Cloud Life Sciences (formerly Google Genomics)
+Cloud Load Balancing
+Cloud Logging
+Cloud Monitoring
+Cloud NAT (Network Address Translation)
+Cloud Natural Language API
+Cloud Profiler
+Cloud Router
+Cloud Run
+Cloud Scheduler
+Cloud Shell
+Cloud Source Repositories
+Cloud SQL
+Cloud Storage
+Cloud Tasks
+Cloud Trace
+Cloud Translation
+Cloud Vision
+Cloud VPN
+Colab Enterprise
+Compute Engine
+Connect
+Contact Center AI
+Contact Center AI Agent Assist
+Contact Center AI Insights
+Contact Center AI Platform
+Container Registry
+Cyber Insurance Hub
+Database Migration Service
+Data Catalog
+Dataflow
+Dataform
+Dataplex
+Dataproc
+Datastore
+Datastream
+Dialogflow
+Document AI
+Document AI Warehouse
+Eventarc
+Firestore
+Generative AI on Vertex AI
+GKE Enterprise Config Management
+GKE Hub
+Gemini Code Assist
+Gemini in BigQuery
+Gemini in Colab Enterprise
+Google Agentspace Enterprise
+Google Cloud Armor
+Google Cloud console
+Google Cloud Identity-Aware Proxy
+Google Cloud Managed Service for Apache Kafka
+Google Cloud NetApp Volumes
+Google Cloud VMware Engine (GCVE)
+Google Distributed Cloud connected
+Google Kubernetes Engine
+Healthcare Data Engine
+Looker (Google Cloud core)
+Looker Studio*
+Identity & Access Management (IAM)
+Identity Platform
+Integration Connectors
+Key Access Justifications (KAJ)
+Knative serving
+Managed Service for Microsoft Active Directory (AD)
+Memorystore
+Model Armor
+Network Connectivity Center
+Network Service Tiers
+NotebookLM Enterprise
+Persistent Disk
+Pub/Sub
+reCAPTCHA Enterprise
+Resource Manager API
+Secret Manager
+Secure Source Manager
+Security Command Center
+Sensitive Data Protection
+Service Directory
+Service Mesh
+Spanner
+Speech-to-Text
+Storage Transfer Service
+Text-to-Speech
+Traffic Director
+Transfer Appliance
+Vertex AI Platform (formerly Vertex AI)
+Vertex AI Search
+Video Intelligence API
+Virtual Private Cloud
+VPC Service Controls
+Web Security Scanner
+Vertex AI Workbench instances
+Workflows
