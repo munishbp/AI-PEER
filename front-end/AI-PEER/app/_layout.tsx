@@ -7,9 +7,12 @@ export default function RootLayout() {
       {/* Landing (Login) */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
 
-      {/* Landing (Login) */}
+      {/* Welcome - Accessibility Changes */}
       <Stack.Screen name="welcome" options={{ headerShown: false }} />
-      
+
+      {/* Verify - 2FA */}
+      <Stack.Screen name="verify" options={{ headerShown: false }} />
+
       {/* Tabs group (Home/Activity/Contacts/Settings) */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 

@@ -11,6 +11,7 @@ import {
   Vibration,
   Alert,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -37,6 +38,7 @@ const beigeTile = "#F4E3D6";
 const warmRed = "#D84535";
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
   const [prefs, setPrefs] = useState<AccessibilityPrefs>(DEFAULT_PREFS);
   const [notifications, setNotifications] = useState({
@@ -117,7 +119,7 @@ export default function SettingsScreen() {
   function handleLogout() {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", onPress: () => {}, style: "cancel" },
-      { text: "Logout", onPress: () => {}, style: "destructive" },
+      { text: "Logout", onPress: () => {router.replace("/")}, style: "destructive" },
     ]);
   }
 

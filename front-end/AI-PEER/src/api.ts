@@ -33,6 +33,24 @@ export const api = {
       "/auth/login",
       { method: "POST", body: JSON.stringify({ phone, password }) }
     ),
+
+  createAccount: (phone: string, password: string) =>
+    requestJSON<{ token: string; user?: { id: string; name?: string } }>(
+      "/auth/create",
+      { method: "POST", body: JSON.stringify({ phone, password }) }
+    ),
+
+  sendCode: (phone: string) =>
+    requestJSON<{ success: boolean }>("/auth/send-code", {
+      method: "POST",
+      body: JSON.stringify({ phone }),
+    }),
+
+  verify: (phone: string, code: string) =>
+    requestJSON<{ token: string; user?: { id: string; name?: string } }>(
+      "/auth/verify",
+      { method: "POST", body: JSON.stringify({ phone, code }) }
+    ),
 };
 
 export { BASE };
