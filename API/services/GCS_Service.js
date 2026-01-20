@@ -4,15 +4,21 @@
 //imports the installed google library
 const{Storage}=require('@google-cloud/storage')
 
-//initialize GCS client with credentials from .env
+//initialize GCS client
+//uses explicit credentials locally (from .env), or default credentials on Cloud Run
+const storageConfig = {
+    projectId: process.env.GCS_PROJECT_ID
+};
 
-const storage=new Storage({
-    projectId: process.env.GCS_PROJECT_ID,
-    credentials: {
+//only add explicit credentials if running locally with env vars
+if (process.env.GCS_PRIVATE_KEY) {
+    storageConfig.credentials = {
         client_email: process.env.GCS_CLIENT_EMAIL,
-        private_key: process.env.GCS_PRIVATE_KEY?.replace(/\\n/g,'\n')
-    }
-});
+        private_key: process.env.GCS_PRIVATE_KEY.replace(/\\n/g, '\n')
+    };
+}
+
+const storage = new Storage(storageConfig);
 
 //get the bucket where videos are stored-where videos are actually stored
 const bucketName=process.env.GCS_BUCKET_NAME;
