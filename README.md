@@ -270,11 +270,11 @@ npm test
 - [ ] Speech to Speech functionality
 
 ## Team
-- Arthur Lookshin
+- Arthur Lookshin- https://www.linkedin.com/in/arthur-lookshin-54ba951b5/
 - Beile Han
-- Pramodh Miryala
+- Pramodh Miryala- https://www.linkedin.com/in/pramodh-miryala-82ab28292/
 - Santiago Echeverry
-- Munish Persaud
+- Munish Persaud- www.linkedin.com/in/munish-persaud
 
 UCF Senior Design Project 2025-2026
 - Computer Science Students
