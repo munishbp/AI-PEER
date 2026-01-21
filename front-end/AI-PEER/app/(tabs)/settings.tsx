@@ -116,12 +116,31 @@ export default function SettingsScreen() {
     }
   }
 
-  function handleLogout() {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", onPress: () => {}, style: "cancel" },
-      { text: "Logout", onPress: () => {router.replace("/")}, style: "destructive" },
-    ]);
-  }
+ function handleLogout() {
+  // Change this if your login route is not app/index.tsx
+  const LOGIN_ROUTE = "/";
+
+  Alert.alert("Logout", "Are you sure you want to logout?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Logout",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          const mod = await import("@react-native-async-storage/async-storage");
+          await mod.default.removeItem("token");
+          await mod.default.removeItem("user");
+        } catch {
+          // no-op (no backend/auth yet)
+        }
+
+        // Prevent back-navigation into tabs
+        router.replace(LOGIN_ROUTE);
+      },
+    },
+  ]);
+}
+
 
   return (
     <SafeAreaView style={styles.safe}>
