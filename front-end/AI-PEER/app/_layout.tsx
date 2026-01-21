@@ -13,8 +13,11 @@ export default function RootLayout() {
       {/* Verify - 2FA */}
       <Stack.Screen name="verify" options={{ headerShown: false }} />
 
-      {/* Tabs group (Home/Activity/Contacts/Settings) */}
+      {/* Tabs group (Home/AI Chat/Activity/Contacts/Settings) */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+      {/* Questionnaire */}
+      <Stack.Screen name="questionnaire" options={{ headerShown: false }} />
 
       {/* Optional routes from the Expo template */}
       <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
