@@ -114,8 +114,16 @@ class LLMService {
       const elapsed = Date.now() - startTime;
       console.log(`Generated ${result.text.length} chars in ${elapsed}ms`);
 
-      // Clean up the response (remove any trailing markers)
+      // Clean up the response
       let text = result.text.trim();
+
+      // Remove Qwen3 thinking tags (model outputs <think>reasoning</think> before response)
+      const thinkEndIndex = text.indexOf('</think>');
+      if (thinkEndIndex !== -1) {
+        text = text.slice(thinkEndIndex + 8).trim();
+      }
+
+      // Remove any trailing chat markers
       if (text.endsWith('<|im_end|>')) {
         text = text.slice(0, -10).trim();
       }
