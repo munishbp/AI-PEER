@@ -1,50 +1,72 @@
-# Welcome to your Expo app 👋
+# AI-PEER Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native / Expo app for fall risk assessment and exercise interventions. Built for UCF Senior Design 2025-2026 in collaboration with UCF College of Medicine.
 
-## Get started
+## Requirements
 
-1. Install dependencies
+- Node.js 18+
+- Android Studio (for Android builds)
+- Xcode (for iOS builds, macOS only)
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Running the App
 
-## Learn more
+This is a bare workflow project (ejected from Expo managed). Expo Go will not work.
 
-To learn more about developing your project with Expo, look at the following resources:
+**Android:**
+```bash
+# Terminal 1: Start Metro bundler
+npx expo start
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+# Terminal 2: Build and run (or use Android Studio)
+npx expo run:android
+```
 
-## Join the community
+**iOS (macOS only):**
+```bash
+npx expo start
+npx expo run:ios
+```
 
-Join our community of developers creating universal apps.
+**Or open `android/` or `ios/` folder directly in Android Studio / Xcode.**
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Features
+
+- Fall risk assessment with FRA matrix visualization
+- On-device AI chat powered by Qwen3-0.6B (no data leaves phone)
+- Conversation history with 24-hour auto-archive
+- Activity tracking and weekly summaries
+- HIPAA-compliant design
+
+## Project Structure
+
+```
+app/                  # Expo Router screens
+  (tabs)/             # Bottom tab navigation
+    index.tsx         # Home - risk score, activity
+    ai-chat.tsx       # AI chat interface
+    activity.tsx      # Activity tracking
+    contacts.tsx      # Contacts
+    settings.tsx      # Settings
+  chat-history.tsx    # Conversation history
+src/
+  llm/                # On-device LLM module
+    LLMContext.tsx    # React context for state
+    LLMService.ts     # llama.rn wrapper
+    useLLM.ts         # Hook for components
+components/           # Reusable UI components
+```
+
+## On-Device LLM
+
+The AI chat uses Qwen3-0.6B running locally via llama.rn. On first launch, users download the model (~378MB). All inference happens on-device for HIPAA compliance.
+
+Configuration in `src/llm/config.ts`:
+- Max tokens: 512
+- Context size: 8192
+- Conversation TTL: 24 hours
