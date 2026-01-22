@@ -1,3 +1,16 @@
+/**
+ * ai-chat.tsx - AI Chat screen with on-device LLM
+ *
+ * This screen provides a chat interface powered by Qwen3-0.6B running locally.
+ * All processing happens on-device - no patient data leaves the phone.
+ *
+ * Features:
+ * - Model download prompt for first-time users
+ * - Real-time chat with typing indicators
+ * - Conversation persistence (24-hour TTL)
+ * - Clear conversation option
+ */
+
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
@@ -8,57 +21,105 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useLLM } from "@/src/llm";
+import ModelDownloadModal from "@/components/ModelDownloadModal";
 
+// App color scheme
 const beige = "#F7EDE4";
 const beigeTile = "#F4E3D6";
 const warmRed = "#D84535";
-
-type ChatMessage = {
-  id: string;
-  from: "user" | "ai";
-  text: string;
-};
+const darkText = "#3F2F25";
+const subtleText = "#7A6659";
 
 export default function AiChatScreen() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "1",
-      from: "ai",
-      text: "Hi, I’m AI-Peer. How can I help you with fall risk or daily activity today?",
-    },
-  ]);
-  const [input, setInput] = useState("");  const scrollViewRef = useRef<ScrollView>(null);
+  const router = useRouter();
+  const {
+    needsDownload,
+    needsInit,
+    isReady,
+    isGenerating,
+    downloadProgress,
+    error,
+    messages,
+    send,
+    downloadAndInit,
+    startDownload,
+    initializeModel,
+    clear,
+  } = useLLM();
 
+  const [input, setInput] = useState("");
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Show download modal if model not downloaded
+  useEffect(() => {
+    if (needsDownload) {
+      setShowDownloadModal(true);
+    }
+  }, [needsDownload]);
+
+  // Auto-initialize model after download
+  useEffect(() => {
+    if (needsInit && !isDownloading) {
+      initializeModel().catch(console.error);
+    }
+  }, [needsInit, isDownloading, initializeModel]);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
-  function handleSend() {
+
+  // Handle download start
+  async function handleStartDownload() {
+    setIsDownloading(true);
+    try {
+      await downloadAndInit();
+      setShowDownloadModal(false);
+    } catch (err) {
+      console.error("Download failed:", err);
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  // Handle send message
+  async function handleSend() {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || !isReady || isGenerating) return;
 
-    const userMsg: ChatMessage = {
-      id: String(Date.now()),
-      from: "user",
-      text: trimmed,
-    };
-
-    // simple local “dummy AI” reply
-    const aiMsg: ChatMessage = {
-      id: String(Date.now() + 1),
-      from: "ai",
-      text:
-        "Thanks for your message. In the real app, this is where the AI model would respond with guidance.",
-    };
-
-    setMessages((prev) => [...prev, userMsg, aiMsg]);
     setInput("");
+    try {
+      await send(trimmed);
+    } catch (err) {
+      console.error("Send failed:", err);
+    }
+  }
+
+  // Handle clear conversation
+  function handleClear() {
+    clear();
   }
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Download Modal */}
+      <ModelDownloadModal
+        visible={showDownloadModal}
+        downloadProgress={downloadProgress}
+        isDownloading={isDownloading}
+        error={error}
+        onStartDownload={handleStartDownload}
+        onCancel={() => setShowDownloadModal(false)}
+      />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -66,13 +127,39 @@ export default function AiChatScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={warmRed} />
             <View>
               <Text style={styles.title}>AI PEER</Text>
-              <Text style={styles.subtitle}>Ask about fall risk, activity, or tips</Text>
+              <Text style={styles.subtitle}>
+                {!isReady
+                  ? needsDownload
+                    ? "Download required"
+                    : "Loading model..."
+                  : "Ask AI Chat about fall risk, activity, or tips"}
+              </Text>
             </View>
           </View>
+
+          {/* History button - navigate to conversation list */}
+          <TouchableOpacity
+            onPress={() => router.push("/chat-history" as any)}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="time-outline" size={18} color={subtleText} />
+          </TouchableOpacity>
+
+          {/* Clear button */}
+          {messages.length > 1 && (
+            <TouchableOpacity
+              onPress={handleClear}
+              style={styles.headerButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={18} color={subtleText} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Chat area */}
@@ -87,10 +174,10 @@ export default function AiChatScreen() {
                 key={m.id}
                 style={[
                   styles.bubbleRow,
-                  m.from === "user" ? styles.bubbleRowUser : styles.bubbleRowAi,
+                  m.role === "user" ? styles.bubbleRowUser : styles.bubbleRowAi,
                 ]}
               >
-                {m.from === "ai" && (
+                {m.role === "assistant" && (
                   <View style={styles.avatar}>
                     <Ionicons name="sparkles-outline" size={16} color={warmRed} />
                   </View>
@@ -99,26 +186,38 @@ export default function AiChatScreen() {
                 <View
                   style={[
                     styles.bubble,
-                    m.from === "user" ? styles.bubbleUser : styles.bubbleAi,
+                    m.role === "user" ? styles.bubbleUser : styles.bubbleAi,
                   ]}
                 >
                   <Text
                     style={[
                       styles.bubbleText,
-                      m.from === "user" && { color: "#FFFFFF" },
+                      m.role === "user" && { color: "#FFFFFF" },
                     ]}
                   >
-                    {m.text}
+                    {m.content}
                   </Text>
                 </View>
 
-                {m.from === "user" && (
+                {m.role === "user" && (
                   <View style={styles.avatarUser}>
                     <Ionicons name="person-outline" size={16} color="#5B4636" />
                   </View>
                 )}
               </View>
             ))}
+
+            {/* Typing indicator */}
+            {isGenerating && (
+              <View style={[styles.bubbleRow, styles.bubbleRowAi]}>
+                <View style={styles.avatar}>
+                  <Ionicons name="sparkles-outline" size={16} color={warmRed} />
+                </View>
+                <View style={[styles.bubble, styles.bubbleAi]}>
+                  <ActivityIndicator size="small" color={warmRed} />
+                </View>
+              </View>
+            )}
           </ScrollView>
         </View>
 
@@ -127,19 +226,32 @@ export default function AiChatScreen() {
           <View style={styles.inputBox}>
             <TextInput
               style={styles.input}
-              placeholder="Type your question..."
+              placeholder={
+                !isReady
+                  ? "Model loading..."
+                  : "Type your question..."
+              }
               placeholderTextColor="#A58D7B"
               value={input}
               onChangeText={setInput}
               multiline
+              editable={isReady && !isGenerating}
             />
           </View>
           <TouchableOpacity
             onPress={handleSend}
             activeOpacity={0.85}
-            style={styles.sendBtn}
+            style={[
+              styles.sendBtn,
+              (!isReady || isGenerating || !input.trim()) && styles.sendBtnDisabled,
+            ]}
+            disabled={!isReady || isGenerating || !input.trim()}
           >
-            <Ionicons name="send" size={18} color="#FFFFFF" />
+            {isGenerating ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="send" size={18} color="#FFFFFF" />
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -150,12 +262,19 @@ export default function AiChatScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 6,
     gap:14
   },
-  title: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#3F2F25" },
-  subtitle: { marginTop: 3, marginBottom: 4, fontSize: 11, color: "#7A6659" },
+  title: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: darkText },
+  subtitle: { marginTop: 3, marginBottom: 4, fontSize: 11, color: subtleText },
+  headerButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: beigeTile,
+  },
 
   chatCard: {
     flex: 1,
@@ -223,7 +342,7 @@ const styles = StyleSheet.create({
   },
   bubbleText: {
     fontSize: 14,
-    color: "#3F2F25",
+    color: darkText,
   },
 
   inputRow: {
@@ -245,7 +364,7 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 14,
-    color: "#3F2F25",
+    color: darkText,
   },
   sendBtn: {
     width: 40,
@@ -254,5 +373,8 @@ const styles = StyleSheet.create({
     backgroundColor: warmRed,
     alignItems: "center",
     justifyContent: "center",
+  },
+  sendBtnDisabled: {
+    opacity: 0.5,
   },
 });
