@@ -129,14 +129,14 @@ export default function AiChatScreen() {
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={warmRed} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>AI Chat</Text>
+            <View>
+              <Text style={styles.title}>AI PEER</Text>
               <Text style={styles.subtitle}>
                 {!isReady
                   ? needsDownload
                     ? "Download required"
                     : "Loading model..."
-                  : "Ask about fall risk, activity, or tips"}
+                  : "Ask AI Chat about fall risk, activity, or tips"}
               </Text>
             </View>
           </View>
@@ -265,12 +265,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-    gap: 8,
+    paddingTop: 6,
+    gap:14
   },
-  title: { fontSize: 18, fontWeight: "800", color: darkText },
-  subtitle: { fontSize: 12, color: subtleText, marginTop: 2 },
+  title: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: darkText },
+  subtitle: { marginTop: 3, marginBottom: 4, fontSize: 11, color: subtleText },
   headerButton: {
     padding: 8,
     borderRadius: 8,
@@ -281,7 +280,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
-    marginTop: 8,
+    marginTop: 10,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 10,

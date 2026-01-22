@@ -15,8 +15,11 @@ export default function RootLayout() {
         {/* Verify - 2FA */}
         <Stack.Screen name="verify" options={{ headerShown: false }} />
 
-        {/* Tabs group (Home/Activity/Contacts/Settings) */}
+        {/* Tabs group (Home/AI Chat/Activity/Contacts/Settings) */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+        {/* Questionnaire */}
+        <Stack.Screen name="questionnaire" options={{ headerShown: false }} />
 
         {/* Chat History - accessible from AI Chat */}
         <Stack.Screen name="chat-history" options={{ headerShown: false }} />
