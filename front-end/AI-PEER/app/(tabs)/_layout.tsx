@@ -2,8 +2,6 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-const beige = "#F7EDE4";
-
 export default function TabsLayout() {
   return (
     <Tabs
@@ -30,15 +28,21 @@ export default function TabsLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="ai-chat"
         options={{
           title: "AI Chat",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
+
       <Tabs.Screen
         name="activity"
         options={{
@@ -48,6 +52,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="contacts"
         options={{
@@ -57,6 +62,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="settings"
         options={{
@@ -64,6 +70,20 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),
+        }}
+      />
+
+      {/* ✅ Hidden tab routes (screens that keep the tab bar visible) */}
+      <Tabs.Screen
+        name="exercise"
+        options={{
+          href: null, // hides it from the tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="exercise-session"
+        options={{
+          href: null, // hides it from the tab bar
         }}
       />
     </Tabs>
