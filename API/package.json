@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google-cloud/iam-credentials": "^4.2.1",
     "@google-cloud/storage": "^7.17.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
