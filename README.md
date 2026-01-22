@@ -99,11 +99,15 @@ cd front-end/AI-PEER && npm run lint
 
 ## Team
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 - Arthur Lookshin
 =======
 - Arthur Lookshin- https://www.linkedin.com/in/arthur-lookshin-54ba951b5/
 >>>>>>> origin/main
+=======
+- Arthur Lookshin
+>>>>>>> bad5cd6b8a944421db9477460d81ea454c2f2686
 - Beile Han
 - Pramodh Miryala- https://www.linkedin.com/in/pramodh-miryala-82ab28292/
 - Santiago Echeverry
