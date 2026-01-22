@@ -98,12 +98,16 @@ cd front-end/AI-PEER && npm run lint
 ```
 
 ## Team
+<<<<<<< HEAD
 
 - Arthur Lookshin
+=======
+- Arthur Lookshin- https://www.linkedin.com/in/arthur-lookshin-54ba951b5/
+>>>>>>> origin/main
 - Beile Han
-- Pramodh Miryala
+- Pramodh Miryala- https://www.linkedin.com/in/pramodh-miryala-82ab28292/
 - Santiago Echeverry
-- Munish Persaud
+- Munish Persaud- www.linkedin.com/in/munish-persaud
 
 UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
 
