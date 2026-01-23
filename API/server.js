@@ -21,7 +21,11 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/health',(req,res)=>{
+<<<<<<< HEAD
     res.json({status:'OK',message:'AIPEER API is running'});
+=======
+    res.json({status:'OK',message:'Server is not running yet but the code is working?'});
+>>>>>>> c802f177aa84764abed56c352fa36fe947070702
 });
 
 app.use(verification);

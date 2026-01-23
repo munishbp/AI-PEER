@@ -129,14 +129,23 @@ export default function AiChatScreen() {
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={warmRed} />
+<<<<<<< HEAD
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>AI Chat</Text>
+=======
+            <View>
+              <Text style={styles.title}>AI PEER</Text>
+>>>>>>> c802f177aa84764abed56c352fa36fe947070702
               <Text style={styles.subtitle}>
                 {!isReady
                   ? needsDownload
                     ? "Download required"
                     : "Loading model..."
+<<<<<<< HEAD
                   : "Ask about fall risk, activity, or tips"}
+=======
+                  : "Ask AI Chat about fall risk, activity, or tips"}
+>>>>>>> c802f177aa84764abed56c352fa36fe947070702
               </Text>
             </View>
           </View>
@@ -265,12 +274,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
+<<<<<<< HEAD
     paddingTop: 10,
     paddingBottom: 8,
     gap: 8,
   },
   title: { fontSize: 18, fontWeight: "800", color: darkText },
   subtitle: { fontSize: 12, color: subtleText, marginTop: 2 },
+=======
+    paddingTop: 6,
+    gap:14
+  },
+  title: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: darkText },
+  subtitle: { marginTop: 3, marginBottom: 4, fontSize: 11, color: subtleText },
+>>>>>>> c802f177aa84764abed56c352fa36fe947070702
   headerButton: {
     padding: 8,
     borderRadius: 8,
@@ -281,7 +298,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
+<<<<<<< HEAD
     marginTop: 8,
+=======
+    marginTop: 10,
+>>>>>>> c802f177aa84764abed56c352fa36fe947070702
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 10,
