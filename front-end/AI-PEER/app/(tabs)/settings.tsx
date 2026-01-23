@@ -148,19 +148,6 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-<<<<<<< HEAD
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={20}
-              color="#2E5AAC"
-            />
-            <Text style={styles.brand}>AI PEER</Text>
-          </View>
-          <View style={{ flex: 1 }} />
-          <Ionicons name="settings-outline" size={18} color="#555" />
-        </View>
-        <Text style={styles.subtitle}>Settings & Preferences</Text>
-=======
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC"/>
             <View>
               <Text style={styles.brand}>AI PEER</Text>
@@ -171,7 +158,8 @@ export default function SettingsScreen() {
             <Ionicons name="settings-outline" size={18} color="#555" />
           </View>
         </View>
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
+
 
         {/* Segmented Control */}
         <View style={styles.segmentOuter}>
@@ -576,16 +564,11 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     flexDirection: "row",
     alignItems: "center",
-<<<<<<< HEAD
-  },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 4, marginBottom: 6, color: "#6B5E55", fontSize: 13 },
-=======
     justifyContent: "space-between",
   },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
   subtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#6B5E55" },
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
 
   segmentOuter: {
     backgroundColor: "#F4E3D6",
@@ -603,11 +586,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-<<<<<<< HEAD
-  segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 11 },
-=======
   segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 13 },
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
+  segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 13 },
+
 
   card: {
     backgroundColor: "#FFF",

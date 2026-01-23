@@ -7,10 +7,10 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-<<<<<<< HEAD
-=======
 import { useRouter } from "expo-router";
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
+import { useRouter } from "expo-router";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import FRAMatrixGraph from "../../components/graphs/FRAMatrixGraph";
@@ -18,10 +18,10 @@ import LineGraph from "../../components/graphs/LineGraph";
 
 export default function Home() {
   // demo data to match your mock
-<<<<<<< HEAD
-=======
   const router = useRouter();
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
+  const router = useRouter();
+
   const [riskPercent] = useState(85);
   const riskLevel = "Low Risk";
 
@@ -48,15 +48,6 @@ export default function Home() {
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
-<<<<<<< HEAD
-            <Text style={styles.brand}>AI PEER</Text>
-          </View>
-          <View style={{ flex: 1 }} />
-          <Ionicons name="moon-outline" size={18} color="#555" />
-          <Ionicons name="notifications-outline" size={18} color="#555" style={{ marginLeft: 12 }} />
-        </View>
-        <Text style={styles.subtitle}>Fall Risk Assessment</Text>
-=======
             <View>
               <Text style={styles.brand}>AI PEER</Text>
               <Text style={styles.subtitle}>Fall Risk Assessment</Text>
@@ -68,45 +59,10 @@ export default function Home() {
           </View>
         </View>
         
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
-
-        {/* Segmented (Overview | Exercise) */}
-        <View style={styles.segmentOuter}>
-          <TouchableOpacity style={[styles.segmentBtn, styles.segmentActive]}>
-            <Ionicons name="home-outline" size={14} />
-            <Text style={[styles.segmentText, styles.segmentTextActive]}>Overview</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.segmentBtn} disabled>
-            <Ionicons name="barbell-outline" size={14} />
-            <Text style={styles.segmentText}>Exercise</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Today’s Risk Score (CHANGED to FRA matrix graph) */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Today’s Risk Score</Text>
-
-          {/* keep your % display (still useful), but add FRA matrix per PM */}
-          <View style={styles.scoreWrap}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#3BAA56" />
-            <Text style={styles.scorePct}>{riskPercent}%</Text>
-          </View>
-
-          <View style={{ marginTop: 12 }}>
-            <FRAMatrixGraph riskPercent={riskPercent} caption="FRA Risk Matrix" />
-          </View>
-
-          <Text style={styles.scoreCaption}>{riskLevel}</Text>
-        </View>
-
-        {/* Action Row 1: Balance Test | Assessment */}
-        <View style={styles.rowTwo}>
-          <PillButton icon="pulse-outline" label="Balance Test" onPress={() => {}} />
-<<<<<<< HEAD
-          <PillButton icon="clipboard-outline" label="Assessment" onPress={() => {}} />
-=======
           <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} />
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
+          <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} />
+
         </View>
 
         {/* Action Row 2: Exercise Mode (full width) */}
@@ -166,16 +122,11 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     flexDirection: "row",
     alignItems: "center",
-<<<<<<< HEAD
-  },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 4, marginBottom: 6, color: "#6B5E55" },
-=======
     justifyContent: "space-between",
   },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
   subtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#6B5E55" },
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
 
   segmentOuter: {
     backgroundColor: "#F4E3D6",

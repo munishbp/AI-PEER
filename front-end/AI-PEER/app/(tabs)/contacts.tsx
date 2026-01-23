@@ -68,11 +68,10 @@ export default function ContactsScreen() {
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
               <Text style={styles.brand}>AI PEER</Text>
-<<<<<<< HEAD
-              <Text style={styles.headerSubtitle}>Fall Risk Assessment</Text>
-=======
               <Text style={styles.headerSubtitle}>Contact Lists</Text>
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
+              <Text style={styles.headerSubtitle}>Contact Lists</Text>
+
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -209,18 +208,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-<<<<<<< HEAD
-  brand: { fontSize: 16, fontWeight: "800", color: "#3F2F25" },
-  headerSubtitle: { fontSize: 11, color: "#7A6659" },
-
-  segmentOuter: {
-    marginTop: 8,
-=======
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#3F2F25" },
   headerSubtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#7A6659" },
 
   segmentOuter: {
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
     backgroundColor: beigeTile,
     borderRadius: 999,
     padding: 4,

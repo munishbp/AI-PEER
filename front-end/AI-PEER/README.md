@@ -10,7 +10,6 @@ React Native / Expo app for fall risk assessment and exercise interventions. Bui
 
 ## Setup
 
-<<<<<<< HEAD
 **First time setup or after pulling changes with new native modules:**
 
 ```bash
@@ -28,13 +27,10 @@ The `--clean` flag is important - it regenerates the `android/` and `ios/` folde
 
 **Quick setup (no native module changes):**
 
-=======
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
 ```bash
 npm install
 ```
 
-<<<<<<< HEAD
 ### Troubleshooting
 
 **"Cannot read property 'install' of null" or similar native module errors:**
@@ -50,8 +46,6 @@ Then rebuild the app in Android Studio or Xcode.
 
 Open the `android/` folder directly as a project, then let Gradle sync complete before running.
 
-=======
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
 ## Running the App
 
 This is a bare workflow project (ejected from Expo managed). Expo Go will not work.

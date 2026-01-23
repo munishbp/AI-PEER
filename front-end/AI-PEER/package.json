@@ -22,10 +22,9 @@
     "expo-router": "~6.0.14",
     "expo-splash-screen": "~31.0.10",
     "expo-status-bar": "~3.0.8",
-<<<<<<< HEAD
-=======
+
     "expo-symbols": "^1.0.8",
->>>>>>> c802f177aa84764abed56c352fa36fe947070702
+
     "expo-web-browser": "~15.0.9",
     "llama.rn": "^0.11.0-rc.0",
     "react": "19.1.0",
