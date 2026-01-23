@@ -10,9 +10,41 @@ React Native / Expo app for fall risk assessment and exercise interventions. Bui
 
 ## Setup
 
+**First time setup or after pulling changes with new native modules:**
+
+```bash
+# 1. Install JS dependencies
+npm install
+
+# 2. Regenerate native folders with native modules linked
+npx expo prebuild --clean
+
+# 3. For iOS only: Install CocoaPods
+cd ios && pod install && cd ..
+```
+
+The `--clean` flag is important - it regenerates the `android/` and `ios/` folders from scratch, ensuring all native modules (like `llama.rn` for the AI chat) are properly linked.
+
+**Quick setup (no native module changes):**
+
 ```bash
 npm install
 ```
+
+### Troubleshooting
+
+**"Cannot read property 'install' of null" or similar native module errors:**
+
+This means native modules aren't linked. Run:
+```bash
+npx expo prebuild --clean
+```
+
+Then rebuild the app in Android Studio or Xcode.
+
+**Android Studio not finding the project:**
+
+Open the `android/` folder directly as a project, then let Gradle sync complete before running.
 
 ## Running the App
 

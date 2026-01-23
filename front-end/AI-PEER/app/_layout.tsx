@@ -21,6 +21,7 @@ export default function RootLayout() {
         {/* Questionnaire */}
         <Stack.Screen name="questionnaire" options={{ headerShown: false }} />
 
+
         {/* Chat History - accessible from AI Chat */}
         <Stack.Screen name="chat-history" options={{ headerShown: false }} />
 

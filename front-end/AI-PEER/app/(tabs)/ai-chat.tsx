@@ -131,6 +131,8 @@ export default function AiChatScreen() {
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={warmRed} />
             <View>
               <Text style={styles.title}>AI PEER</Text>
+            <View>
+              <Text style={styles.title}>AI PEER</Text>
               <Text style={styles.subtitle}>
                 {!isReady
                   ? needsDownload
@@ -270,16 +272,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: darkText },
   subtitle: { marginTop: 3, marginBottom: 4, fontSize: 11, color: subtleText },
-  headerButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: beigeTile,
-  },
-
-  chatCard: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 16,
+    marginTop: 10,
     marginTop: 10,
     borderRadius: 14,
     paddingVertical: 12,

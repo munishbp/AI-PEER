@@ -8,6 +8,9 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
+
+import { useRouter } from "expo-router";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import FRAMatrixGraph from "../../components/graphs/FRAMatrixGraph";
@@ -16,6 +19,9 @@ import LineGraph from "../../components/graphs/LineGraph";
 export default function Home() {
   // demo data to match your mock
   const router = useRouter();
+
+  const router = useRouter();
+
   const [riskPercent] = useState(85);
   const riskLevel = "Low Risk";
 
@@ -53,40 +59,10 @@ export default function Home() {
           </View>
         </View>
         
-
-        {/* Segmented (Overview | Exercise) */}
-        <View style={styles.segmentOuter}>
-          <TouchableOpacity style={[styles.segmentBtn, styles.segmentActive]}>
-            <Ionicons name="home-outline" size={14} />
-            <Text style={[styles.segmentText, styles.segmentTextActive]}>Overview</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.segmentBtn} disabled>
-            <Ionicons name="barbell-outline" size={14} />
-            <Text style={styles.segmentText}>Exercise</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Today’s Risk Score (CHANGED to FRA matrix graph) */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Today’s Risk Score</Text>
-
-          {/* keep your % display (still useful), but add FRA matrix per PM */}
-          <View style={styles.scoreWrap}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#3BAA56" />
-            <Text style={styles.scorePct}>{riskPercent}%</Text>
-          </View>
-
-          <View style={{ marginTop: 12 }}>
-            <FRAMatrixGraph riskPercent={riskPercent} caption="FRA Risk Matrix" />
-          </View>
-
-          <Text style={styles.scoreCaption}>{riskLevel}</Text>
-        </View>
-
-        {/* Action Row 1: Balance Test | Assessment */}
-        <View style={styles.rowTwo}>
-          <PillButton icon="pulse-outline" label="Balance Test" onPress={() => {}} />
           <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} />
+
+          <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} />
+
         </View>
 
         {/* Action Row 2: Exercise Mode (full width) */}
@@ -150,6 +126,7 @@ const styles = StyleSheet.create({
   },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
   subtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#6B5E55" },
+
 
   segmentOuter: {
     backgroundColor: "#F4E3D6",

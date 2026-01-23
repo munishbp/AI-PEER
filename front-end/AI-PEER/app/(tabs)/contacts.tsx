@@ -69,6 +69,9 @@ export default function ContactsScreen() {
             <View>
               <Text style={styles.brand}>AI PEER</Text>
               <Text style={styles.headerSubtitle}>Contact Lists</Text>
+
+              <Text style={styles.headerSubtitle}>Contact Lists</Text>
+
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -209,6 +212,7 @@ const styles = StyleSheet.create({
   headerSubtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#7A6659" },
 
   segmentOuter: {
+
     backgroundColor: beigeTile,
     borderRadius: 999,
     padding: 4,

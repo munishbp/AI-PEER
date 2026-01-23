@@ -159,6 +159,8 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+
+
         {/* Segmented Control */}
         <View style={styles.segmentOuter}>
           <SegmentButton
@@ -567,6 +569,7 @@ const styles = StyleSheet.create({
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
   subtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#6B5E55" },
 
+
   segmentOuter: {
     backgroundColor: "#F4E3D6",
     borderRadius: 999,
@@ -584,6 +587,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 13 },
+
+  segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 13 },
+
 
   card: {
     backgroundColor: "#FFF",

@@ -45,6 +45,7 @@ export default function ActivityScreen() {
             <View>
               <Text style={styles.brand}>AI PEER</Text>
               <Text style={styles.headerSubtitle}>Activity summaries and insights</Text>
+              <Text style={styles.headerSubtitle}>Activity summaries and insights</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
