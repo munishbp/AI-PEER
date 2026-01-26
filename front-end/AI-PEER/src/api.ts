@@ -1,7 +1,7 @@
 // src/api.ts
 
-// Base URL (from .env or fallback)
-const BASE = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
+// Base URL (from .env or fallback to Cloud Run production)
+const BASE = process.env.EXPO_PUBLIC_API_BASE_URL || "https://aipeer-api-596437694331.us-central1.run.app";
 
 // Reusable JSON fetch helper (single definition)
 async function requestJSON<T>(path: string, init?: RequestInit): Promise<T> {

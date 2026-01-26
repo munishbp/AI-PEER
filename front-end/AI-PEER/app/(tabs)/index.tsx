@@ -8,9 +8,6 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-
-import { useRouter } from "expo-router";
-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import FRAMatrixGraph from "../../components/graphs/FRAMatrixGraph";
@@ -18,8 +15,6 @@ import LineGraph from "../../components/graphs/LineGraph";
 
 export default function Home() {
   // demo data to match your mock
-  const router = useRouter();
-
   const router = useRouter();
 
   const [riskPercent] = useState(85);
@@ -58,11 +53,10 @@ export default function Home() {
             <Ionicons name="notifications-outline" size={18} color="#555" />
           </View>
         </View>
-        
-          <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} />
 
-          <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} />
-
+        {/* Action Row 1: Questionnaire */}
+        <View style={styles.rowOne}>
+          <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} full />
         </View>
 
         {/* Action Row 2: Exercise Mode (full width) */}
