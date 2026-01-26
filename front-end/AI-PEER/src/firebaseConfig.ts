@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAxp17YFsqRsejIUWB6MSzUSAqAuBHfy_E",
+    apiKey: "AIzaSyBEHWrttEtA0xPom4pwt2GkVjXh0OV50yY",
     authDomain: "research-ai-peer-dev.firebaseapp.com",
     projectId: "research-ai-peer-dev",
     storageBucket: "research-ai-peer-dev.firebasestorage.app",
