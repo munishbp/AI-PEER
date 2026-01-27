@@ -28,7 +28,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="ai-chat"
         options={{
@@ -42,7 +41,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="activity"
         options={{
@@ -52,7 +50,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="contacts"
         options={{
@@ -62,7 +59,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="settings"
         options={{
@@ -73,20 +69,9 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* ✅ Hidden tab routes (screens that keep the tab bar visible) */}
-      <Tabs.Screen
-        name="exercise"
-        options={{
-          href: null, // hides it from the tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="exercise-session"
-        options={{
-          href: null, // hides it from the tab bar
-        }}
-      />
+      {/* Hidden routes that still keep the tab bar visible */}
+      <Tabs.Screen name="exercise" options={{ href: null }} />
+      <Tabs.Screen name="exercise-session" options={{ href: null }} />
     </Tabs>
   );
 }
-

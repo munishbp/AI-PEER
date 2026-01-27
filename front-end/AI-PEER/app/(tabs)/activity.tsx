@@ -44,8 +44,7 @@ export default function ActivityScreen() {
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
               <Text style={styles.brand}>AI PEER</Text>
-              <Text style={styles.headerSubtitle}>Activity summaries and insights</Text>
-              <Text style={styles.headerSubtitle}>Activity summaries and insights</Text>
+              <Text style={styles.headerSubtitle}>Fall Risk Assessment</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -302,10 +301,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#3F2F25" },
-  headerSubtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#7A6659" },
+  brand: { fontSize: 16, fontWeight: "800", color: "#3F2F25" },
+  headerSubtitle: { fontSize: 11, color: "#7A6659" },
 
   segmentOuter: {
+    marginTop: 8,
     backgroundColor: "#F4E3D6",
     borderRadius: 999,
     padding: 4,
