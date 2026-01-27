@@ -98,7 +98,7 @@ cd front-end/AI-PEER && npm run lint
 ```
 
 ## Team
-- Arthur Lookshin
+- Arthur Lookshin- https://www.linkedin.com/in/arthur-lookshin-54ba951b5/
 - Beile Han
 - Pramodh Miryala- https://www.linkedin.com/in/pramodh-miryala-82ab28292/
 - Santiago Echeverry
