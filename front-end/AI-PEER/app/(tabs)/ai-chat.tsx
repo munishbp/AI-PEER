@@ -283,6 +283,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 14,
+    backgroundColor: "#FFFFFF",
     paddingVertical: 12,
     paddingHorizontal: 10,
     ...Platform.select({
