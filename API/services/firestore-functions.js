@@ -1,5 +1,8 @@
 const {db} = require("../config/firebaseConfig");
 const { registerUser } = require("../controllers/userController");
+const admin = require("firebase-admin");
+const fdb = admin.firestore();
+
 
 module.exports = {
     //firebase functions to call in routes
@@ -70,6 +73,23 @@ module.exports = {
     console.error("Firestore ReadUser Error:", error);
     throw error;
     }
+  },
+
+  async getUsersforSync(){
+    const snapshot = await fdb.collection("users").get();
+    const records=[];
+
+    snapshot.forEach(doc=>{
+      const data = doc.data();
+      records.push({
+        userID: doc.id,
+        phonenum: String(data.phonenum || ""),
+        balanceTrackScore: Number.isInteger(data.balanceTrackScore) ? data.balanceTrackScore : 0,
+        fallFearScore: Number.isInteger(data.fallFearScore) ? data.fallFearScore : 0,
+        updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null
+      });
+    });
+    return records;
   }
   
 }
