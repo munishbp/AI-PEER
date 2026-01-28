@@ -1,6 +1,12 @@
-// app/exercise-session.tsx
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -20,15 +26,14 @@ export default function ExerciseSessionPage() {
   const title = useMemo(() => prettyCat(params.cat), [params.cat]);
 
   // Placeholder states for future vision model integration
-  const [trackingState, setTrackingState] = useState<"idle" | "calibrating" | "tracking" | "lost">("idle");
+  const [trackingState, setTrackingState] = useState<
+    "idle" | "calibrating" | "tracking" | "lost"
+  >("idle");
   const [score, setScore] = useState<number | null>(null);
 
   const startTracking = () => {
-    // later: request camera permission + start frame pipeline
     setTrackingState("calibrating");
     setScore(null);
-
-    // quick fake transition so UI is wired (replace with real AI later)
     setTimeout(() => {
       setTrackingState("tracking");
       setScore(90);
@@ -43,9 +48,12 @@ export default function ExerciseSessionPage() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.85}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            activeOpacity={0.85}
+          >
             <Ionicons name="chevron-back" size={18} color="#3D2F27" />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
@@ -59,7 +67,6 @@ export default function ExerciseSessionPage() {
           This screen is where the Vision AI monitoring will be integrated.
         </Text>
 
-        {/* Camera preview placeholder */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Camera View</Text>
           <View style={styles.cameraBox}>
@@ -71,7 +78,6 @@ export default function ExerciseSessionPage() {
           </View>
         </View>
 
-        {/* Live feedback panel */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Live Feedback</Text>
 
@@ -83,28 +89,37 @@ export default function ExerciseSessionPage() {
           </View>
 
           <View style={styles.feedbackRow}>
-            <Text style={styles.feedbackLabel}>Score:</Text>
-            <Text style={styles.feedbackValue}>{score === null ? "—" : `${score} / 100`}</Text>
+            {/* ✅ Changed label */}
+            <Text style={styles.feedbackLabel}>Confidence Score:</Text>
+            <Text style={styles.feedbackValue}>
+              {score === null ? "—" : `${score} / 100`}
+            </Text>
           </View>
 
           <View style={styles.tipBox}>
             <Text style={styles.tipTitle}>Tips</Text>
             <Text style={styles.tipText}>
-              • Place your phone so your full body is visible{"\n"}
-              • Use good lighting{"\n"}
-              • Stand ~6–8 feet away
+              • Place your phone so your full body is visible{"\n"}• Use good
+              lighting{"\n"}• Stand ~6–8 feet away
             </Text>
           </View>
         </View>
 
-        {/* Controls */}
         <View style={styles.controlsRow}>
-          <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.9} onPress={stopTracking}>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            activeOpacity={0.9}
+            onPress={stopTracking}
+          >
             <Ionicons name="square" size={16} color="#5B4636" />
             <Text style={styles.secondaryText}>Stop</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.9} onPress={startTracking}>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            activeOpacity={0.9}
+            onPress={startTracking}
+          >
             <Ionicons name="play" size={16} color="#FFF" />
             <Text style={styles.primaryText}>Start Monitoring</Text>
           </TouchableOpacity>
@@ -125,7 +140,13 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: 16, paddingBottom: 12, gap: 14 },
 
   header: { paddingTop: 6, flexDirection: "row", alignItems: "center" },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 6 },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+  },
   backText: { fontWeight: "900", color: "#3D2F27" },
 
   pageTitle: { fontSize: 18, fontWeight: "900", color: "#222", marginTop: 4 },
@@ -136,7 +157,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      },
       android: { elevation: 1.5 },
     }),
   },
@@ -157,7 +183,7 @@ const styles = StyleSheet.create({
   cameraSmall: { color: "#8C7A6C", fontWeight: "700", textAlign: "center" },
 
   feedbackRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
-  feedbackLabel: { width: 90, fontWeight: "900", color: "#3D2F27" },
+  feedbackLabel: { width: 130, fontWeight: "900", color: "#3D2F27" },
   feedbackValue: { fontWeight: "900", color: "#1E7A3A" },
 
   badge: {

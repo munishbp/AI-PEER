@@ -38,8 +38,7 @@ npx expo start          # Start Metro bundler
 npx expo run:android    # Build and run (or use Android Studio)
 ```
 
-Note: This is a bare workflow project. Expo Go will not work due to native modules.
-
+Note: This is a bare workflow project. 
 ## Features
 
 **Implemented:**
@@ -71,32 +70,6 @@ Note: This is a bare workflow project. Expo Go will not work due to native modul
 - Environment variables for credential management
 - HTTPS required in production
 
-## Environment Variables
-
-**Backend (API/.env):**
-```
-GCS_PROJECT_ID=your-project-id
-GCS_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
-GCS_PRIVATE_KEY=your-private-key
-GCS_BUCKET_NAME=your-bucket-name
-PORT=3000
-```
-
-**Frontend (.env):**
-```
-EXPO_PUBLIC_API_URL=http://localhost:3000
-```
-
-## Testing
-
-```bash
-# Backend health check
-curl http://localhost:3000/health
-
-# Frontend lint
-cd front-end/AI-PEER && npm run lint
-```
-
 ## Team
 - Arthur Lookshin- https://www.linkedin.com/in/arthur-lookshin-54ba951b5/
 - Beile Han
@@ -106,6 +79,3 @@ cd front-end/AI-PEER && npm run lint
 
 UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
 
-## Documentation
-
-- [API Documentation](./API/README.md)
