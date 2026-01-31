@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { scaleFontSizes } from "../../src/theme";
+import { usePrefs } from "../../src/prefs-context";
 
 const beige = "#F7EDE4";
 const beigeTile = "#F4E3D6";
@@ -39,6 +41,7 @@ const MEDICAL: Contact[] = [
 
 export default function ContactsScreen() {
   const [tab, setTab] = useState<ContactTab>("emergency");
+  const { scaled, colors } = usePrefs();
 
   const currentList =
     tab === "emergency" ? EMERGENCY : tab === "family" ? FAMILY : MEDICAL;
@@ -67,8 +70,8 @@ export default function ContactsScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
-              <Text style={styles.brand}>AI PEER</Text>
-              <Text style={styles.headerSubtitle}>Contact Lists</Text>
+              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>Contact Lists</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -84,18 +87,21 @@ export default function ContactsScreen() {
             icon="warning-outline"
             active={tab === "emergency"}
             onPress={() => setTab("emergency")}
+            scaled={scaled}
           />
           <SegmentButton
             label="Family"
             icon="people-outline"
             active={tab === "family"}
             onPress={() => setTab("family")}
+            scaled={scaled}
           />
           <SegmentButton
             label="Medical"
             icon="medkit-outline"
             active={tab === "medical"}
             onPress={() => setTab("medical")}
+            scaled={scaled}
           />
         </View>
 
@@ -104,7 +110,7 @@ export default function ContactsScreen() {
           <View style={styles.cardHeaderRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name={titleIconName} size={18} color={titleIconColor} />
-              <Text style={styles.cardTitle}>{title}</Text>
+              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{title}</Text>
             </View>
           </View>
 
@@ -122,8 +128,8 @@ export default function ContactsScreen() {
                   <Ionicons name="person-outline" size={18} color="#D97A4A" />
                 </View>
                 <View>
-                  <Text style={styles.contactName}>{c.name}</Text>
-                  <Text style={styles.contactSubtitle}>{c.subtitle}</Text>
+                  <Text style={[styles.contactName, { fontSize: scaled.h1/2 }]}>{c.name}</Text>
+                  <Text style={[styles.contactSubtitle, { fontSize: scaled.small }]}>{c.subtitle}</Text>
                 </View>
               </View>
 
@@ -161,11 +167,13 @@ function SegmentButton({
   icon,
   active,
   onPress,
+  scaled,
 }: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   active: boolean;
   onPress: () => void;
+  scaled: ReturnType<typeof scaleFontSizes>;
 }) {
   return (
     <TouchableOpacity
@@ -181,10 +189,11 @@ function SegmentButton({
         size={14}
         color={active ? "#FFF" : "#7A6659"}
       />
-      <Text
+      <Text 
         style={[
-          styles.segmentText,
-          active && { color: "#FFF" },
+          styles.segmentText, 
+          active && { color: "#FFF" }, 
+          { fontSize: scaled.small },
         ]}
       >
         {label}
@@ -277,7 +286,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   contactName: {
-    fontWeight: "800",
+    fontWeight: "600",
     fontSize: 14,
     color: "#3F2F25",
   },

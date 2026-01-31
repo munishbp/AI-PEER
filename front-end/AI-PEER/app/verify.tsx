@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-//import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from "../src/api";
 import { colors, spacing, radii, fontSizes } from "../src/theme";
 

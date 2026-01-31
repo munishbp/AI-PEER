@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { usePrefs } from "../src/prefs-context";
 import { useLLM } from "@/src/llm";
 import { Conversation } from "@/src/llm/types";
 
@@ -41,6 +42,8 @@ export default function ChatHistoryScreen() {
     remove,
     getPreview,
   } = useLLM();
+
+  const { scaled, colors } = usePrefs();
 
   // Handle selecting a conversation
   function handleSelect(id: string) {
@@ -83,8 +86,8 @@ export default function ChatHistoryScreen() {
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Chat History</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { fontSize: scaled.h3 }]}>Chat History</Text>
+          <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
             {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
           </Text>
         </View>
@@ -110,11 +113,11 @@ export default function ChatHistoryScreen() {
             onDelete={() => handleDelete(convo.id)}
           />
         ))}
-
+        {/* Isn't necessary; LLMContext.tsx makes sure there's always >0 */}
         {conversations.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="chatbubbles-outline" size={48} color={subtleText} />
-            <Text style={styles.emptyText}>No conversations yet</Text>
+            <Text style={[styles.emptyText, { fontSize: scaled.base }]}>No conversations yet</Text>
             <TouchableOpacity
               onPress={handleNewConversation}
               style={styles.emptyButton}
@@ -152,6 +155,8 @@ function ConversationCard({
 }) {
   // Format timestamp as relative time ("2 hours ago", "Yesterday", etc.)
   const timeAgo = formatTimeAgo(conversation.lastMessageAt);
+  const { scaled } = usePrefs();
+
 
   // Count messages (excluding system messages)
   const messageCount = conversation.messages.filter(
@@ -175,13 +180,13 @@ function ConversationCard({
 
       {/* Middle: Content */}
       <View style={styles.cardContent}>
-        <Text style={styles.cardPreview} numberOfLines={2}>
+        <Text style={[styles.cardPreview, { fontSize: scaled.h1/2 }]} numberOfLines={2}>
           {preview}
         </Text>
         <View style={styles.cardMeta}>
-          <Text style={styles.cardTime}>{timeAgo}</Text>
-          <Text style={styles.cardDot}>•</Text>
-          <Text style={styles.cardCount}>
+          <Text style={[styles.cardTime, { fontSize: scaled.base*0.75 }]}>{timeAgo}</Text>
+          <Text style={[styles.cardDot, { fontSize: scaled.base*0.75 }]}>•</Text>
+          <Text style={[styles.cardCount, { fontSize: scaled.base*0.75 }]}>
             {messageCount} message{messageCount !== 1 ? "s" : ""}
           </Text>
         </View>
