@@ -129,7 +129,7 @@ export default function AiChatScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={warmRed} />
             <View>
               <Text style={[styles.title, { fontSize: scaled.h3 }]}>AI PEER</Text>
@@ -138,30 +138,32 @@ export default function AiChatScreen() {
                   ? needsDownload
                     ? "Download required"
                     : "Loading model..."
-                  : "Ask AI Chat about fall risk, activity, or tips"}
+                  : "Ask about fall risk, activity, or tips"}
               </Text>
             </View>
           </View>
 
-          {/* History button - navigate to conversation list */}
-          <TouchableOpacity
-            onPress={() => router.push("/chat-history" as any)}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="time-outline" size={18} color={subtleText} />
-          </TouchableOpacity>
-
-          {/* Clear button */}
-          {messages.length > 1 && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            {/* History button - navigate to conversation list */}
             <TouchableOpacity
-              onPress={handleClear}
+              onPress={() => router.push("/chat-history" as any)}
               style={styles.headerButton}
               activeOpacity={0.7}
             >
-              <Ionicons name="trash-outline" size={18} color={subtleText} />
+              <Ionicons name="time-outline" size={18} color={subtleText} />
             </TouchableOpacity>
-          )}
+
+            {/* Clear button */}
+            {messages.length > 1 && (
+              <TouchableOpacity
+                onPress={handleClear}
+                style={styles.headerButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={18} color={subtleText} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Chat area */}
@@ -267,12 +269,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 6,
-    gap:14,
+    paddingBottom: 8,
+    gap: 8,
   },
-  title: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: darkText },
-  subtitle: { marginTop: 3, marginBottom: 4, fontSize: 11, color: subtleText },
+  title: { fontSize: 18, fontWeight: "800", color: darkText },
+  subtitle: { fontSize: 12, color: subtleText, marginTop: 2 },
   headerButton: {
     padding: 8,
     borderRadius: 8,
@@ -283,8 +287,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
-    marginTop: 10,
+    marginTop: 8,
     borderRadius: 14,
+    backgroundColor: "#FFFFFF",
     paddingVertical: 12,
     paddingHorizontal: 10,
     ...Platform.select({

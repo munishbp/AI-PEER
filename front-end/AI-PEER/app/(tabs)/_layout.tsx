@@ -40,7 +40,11 @@ export default function TabsLayout() {
         options={{
           title: "AI Chat",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -71,7 +75,10 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      {/* Hidden routes that still keep the tab bar visible */}
+      <Tabs.Screen name="exercise" options={{ href: null }} />
+      <Tabs.Screen name="exercise-session" options={{ href: null }} />
     </Tabs>
   );
 }
-

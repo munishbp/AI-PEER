@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { signInWithCustomToken } from "firebase/auth";
+import { auth } from "../src/firebaseConfig";
 import { api } from "../src/api";
 import { colors, spacing, radii, fontSizes } from "../src/theme";
 
@@ -23,39 +25,38 @@ export default function Verify() {
   const onVerify = async () => {
     if (code.length !== 6) return setErr("Enter a 6-digit code.");
     setErr(null);
-    
 
-    if (mode === 'create') {
-        router.replace("/welcome");
-    } else {
-        router.replace("/(tabs)");
-    }
-    
-    /*try {
+    try {
       setLoading(true);
       const res = await api.verify(phone as string, code);
-      await AsyncStorage.setItem("token", res.token);
-      if (mode === 'create') {
+
+      // Sign in with the custom token from the backend
+      await signInWithCustomToken(auth, res.customToken);
+
+      // Navigate based on mode
+      if (res.isNewUser || mode === 'create') {
         router.replace("/welcome");
       } else {
         router.replace("/(tabs)");
       }
     } catch (e: any) {
-      setErr("Invalid code. Please try again.");
+      setErr(e.message || "Invalid code. Please try again.");
     } finally {
       setLoading(false);
-    }*/
+    }
   };
 
   const onResend = async () => {
     if (cooldown > 0) return;
-    try {
-      //await api.sendCode(phone as string);
-      setCooldown(10);
-      setErr(null);
-    } catch (e: any) {
-      setErr("Failed to resend code.");
-    }
+    // Resend requires re-entering credentials, navigate back
+    Alert.alert(
+      "Request New Code",
+      "To request a new code, please go back and enter your credentials again.",
+      [
+        { text: "Go Back", onPress: () => router.replace("/") },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
   };
 
   const onBack = () => {

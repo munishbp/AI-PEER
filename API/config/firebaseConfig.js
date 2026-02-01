@@ -1,21 +1,26 @@
-const admin = require("API\config\firebaseConfig.js");
-//just set up admin and connect to database
-if(process.env.GCLOUD_PROJECT){
-  //running on google cloud server
-  initializeApp({
-  credential: applicationDefault()
-});
+// config/firebaseConfig.js
+// Single source of truth for Firebase Admin initialization
 
+const admin = require("firebase-admin");
+
+// Initialize Firebase Admin only once
+if (!admin.apps.length) {
+    if (process.env.GCS_PRIVATE_KEY) {
+        // Local development - use env vars
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: process.env.GCS_PROJECT_ID,
+                clientEmail: process.env.GCS_CLIENT_EMAIL,
+                privateKey: process.env.GCS_PRIVATE_KEY.replace(/\\n/g, '\n')
+            })
+        });
+    } else {
+        // Cloud Run - uses Application Default Credentials
+        admin.initializeApp();
+    }
 }
-else{
-  const path = require("path");
 
-  const serviceAccount = require(path.resolve("./firebase/serviceAccountKey.json"));
+const { getFirestore } = require('firebase-admin/firestore');
+const db = getFirestore('ai-peer');
 
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount),});
-
-}
-
-const db = getFirestore();
-module.exports = {admin, db};
-
+module.exports = { admin, db };
