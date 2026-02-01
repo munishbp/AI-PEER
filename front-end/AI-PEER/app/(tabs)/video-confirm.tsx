@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -20,40 +20,37 @@ function prettyCat(cat?: string) {
   return "Exercise";
 }
 
-export default function ExerciseSessionPage() {
+export default function VideoConfirmPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{
-  cat?: CatKey;
-  video?: string;
-  label?: string;
-  duration?: string;
-}>();
+    cat?: CatKey;
+    video?: string;
+    label?: string;
+    duration?: string;
+  }>();
 
-  const title = useMemo(() => prettyCat(params.cat), [params.cat]);
+  const catTitle = useMemo(() => prettyCat(params.cat), [params.cat]);
 
-  // Placeholder states for future vision model integration
-  const [trackingState, setTrackingState] = useState<
-    "idle" | "calibrating" | "tracking" | "lost"
-  >("idle");
-  const [score, setScore] = useState<number | null>(null);
+  const exerciseLabel = params.label ?? "Video placeholder";
+  const duration = params.duration ?? "—";
 
-  const startTracking = () => {
-    setTrackingState("calibrating");
-    setScore(null);
-    setTimeout(() => {
-      setTrackingState("tracking");
-      setScore(90);
-    }, 900);
-  };
-
-  const stopTracking = () => {
-    setTrackingState("idle");
-    setScore(null);
+  const onConfirm = () => {
+    // ✅ Pass the selected exercise info forward so Vision/Monitoring knows exactly what to track
+    router.push({
+      pathname: "/(tabs)/exercise-session",
+      params: {
+        cat: params.cat,
+        video: params.video,
+        label: exerciseLabel,
+        duration,
+      },
+    });
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -68,65 +65,50 @@ export default function ExerciseSessionPage() {
           <Ionicons name="shield-checkmark-outline" size={18} color="#2E5AAC" />
         </View>
 
-        <Text style={styles.pageTitle}>{title} Session</Text>
+        <Text style={styles.pageTitle}>Confirm Video</Text>
         <Text style={styles.pageSub}>
-          This screen is where the Vision AI monitoring will be integrated.
+          This confirmation step ensures the Vision model knows exactly which
+          exercise you’re performing.
         </Text>
 
+        {/* Video preview placeholder */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Camera View</Text>
-          <View style={styles.cameraBox}>
-            <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
-            <Text style={styles.cameraHint}>Camera preview placeholder</Text>
-            <Text style={styles.cameraSmall}>
-              Later: live preview + pose/keypoint overlay
+          <Text style={styles.cardTitle}>Selected Exercise</Text>
+
+          <View style={styles.previewBox}>
+            <Ionicons name="play-circle-outline" size={44} color="#8C7A6C" />
+            <Text style={styles.previewTitle}>{exerciseLabel}</Text>
+            <Text style={styles.previewMeta}>
+              {catTitle} • {duration}
             </Text>
+            <Text style={styles.previewHint}>
+              Video player will be connected when backend/media is ready.
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <InfoPill label="Category" value={catTitle} />
+            <InfoPill label="Duration" value={duration} />
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Live Feedback</Text>
-
-          <View style={styles.feedbackRow}>
-            <Text style={styles.feedbackLabel}>Tracking:</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{trackingState.toUpperCase()}</Text>
-            </View>
-          </View>
-
-          <View style={styles.feedbackRow}>
-            {/* ✅ Changed label */}
-            <Text style={styles.feedbackLabel}>Confidence Score:</Text>
-            <Text style={styles.feedbackValue}>
-              {score === null ? "—" : `${score} / 100`}
-            </Text>
-          </View>
-
-          <View style={styles.tipBox}>
-            <Text style={styles.tipTitle}>Tips</Text>
-            <Text style={styles.tipText}>
-              • Place your phone so your full body is visible{"\n"}• Use good
-              lighting{"\n"}• Stand ~6–8 feet away
-            </Text>
-          </View>
-        </View>
-
+        {/* Actions */}
         <View style={styles.controlsRow}>
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.9}
-            onPress={stopTracking}
+            onPress={() => router.back()}
           >
-            <Ionicons name="square" size={16} color="#5B4636" />
-            <Text style={styles.secondaryText}>Stop</Text>
+            <Ionicons name="refresh-outline" size={16} color="#5B4636" />
+            <Text style={styles.secondaryText}>Choose Different</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.9}
-            onPress={startTracking}
+            onPress={onConfirm}
           >
-            <Ionicons name="play" size={16} color="#FFF" />
+            <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" />
             <Text style={styles.primaryText}>Start Monitoring</Text>
           </TouchableOpacity>
         </View>
@@ -134,6 +116,15 @@ export default function ExerciseSessionPage() {
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function InfoPill({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.pill}>
+      <Text style={styles.pillLabel}>{label}</Text>
+      <Text style={styles.pillValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -174,40 +165,36 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontWeight: "900", color: "#222" },
 
-  cameraBox: {
+  previewBox: {
     marginTop: 10,
-    height: 240,
+    height: 220,
     borderRadius: 12,
     backgroundColor: "#FFF7F1",
     borderWidth: 1,
     borderColor: "#F0E0D4",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    paddingHorizontal: 12,
   },
-  cameraHint: { color: "#6B5E55", fontWeight: "800" },
-  cameraSmall: { color: "#8C7A6C", fontWeight: "700", textAlign: "center" },
-
-  feedbackRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
-  feedbackLabel: { width: 130, fontWeight: "900", color: "#3D2F27" },
-  feedbackValue: { fontWeight: "900", color: "#1E7A3A" },
-
-  badge: {
-    backgroundColor: beigeStrip,
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+  previewTitle: { marginTop: 10, fontWeight: "900", fontSize: 16, color: "#222" },
+  previewMeta: { marginTop: 4, fontWeight: "800", color: "#6B5E55" },
+  previewHint: {
+    marginTop: 10,
+    color: "#8C7A6C",
+    fontWeight: "700",
+    textAlign: "center",
+    lineHeight: 18,
   },
-  badgeText: { fontWeight: "900", color: "#5B4636" },
 
-  tipBox: {
-    marginTop: 12,
+  infoRow: { flexDirection: "row", gap: 10, marginTop: 12 },
+  pill: {
+    flex: 1,
     backgroundColor: beigeStrip,
     borderRadius: 12,
     padding: 12,
   },
-  tipTitle: { fontWeight: "900", color: "#3D2F27", marginBottom: 6 },
-  tipText: { color: "#5B4636", fontWeight: "700", lineHeight: 18 },
+  pillLabel: { fontSize: 11, fontWeight: "900", color: "#3D2F27" },
+  pillValue: { marginTop: 4, fontWeight: "900", color: "#222" },
 
   controlsRow: { flexDirection: "row", gap: 10 },
   secondaryBtn: {
@@ -223,7 +210,7 @@ const styles = StyleSheet.create({
   secondaryText: { fontWeight: "900", color: "#5B4636" },
 
   primaryBtn: {
-    flex: 1.4,
+    flex: 1.2,
     backgroundColor: warmRed,
     borderRadius: 12,
     paddingVertical: 14,

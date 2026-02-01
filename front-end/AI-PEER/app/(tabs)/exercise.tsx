@@ -96,13 +96,18 @@ export default function ExercisePage() {
     setOpenFolders((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const openVideo = (cat: CategoryKey, videoId: string) => {
-    // ✅ For now: route to the session screen (or replace later with a video player screen)
-    router.push({
-      pathname: "/(tabs)/exercise-session",
-      params: { cat, video: videoId },
-    });
-  };
+  const openVideo = (cat: CategoryKey, videoId: string, duration: string) => {
+  router.push({
+    pathname: "/(tabs)/video-confirm",
+    params: {
+      cat,
+      video: videoId,
+      label: "Video placeholder",
+      duration,
+    },
+  });
+};
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -228,7 +233,7 @@ export default function ExercisePage() {
                         <TouchableOpacity
                           key={v.id}
                           activeOpacity={0.85}
-                          onPress={() => openVideo(c.key, v.id)}
+                          onPress={() => openVideo(c.key, v.id, v.duration)}
                           style={styles.videoRow}
                         >
                           <View style={styles.videoPlaceholderIcon}>

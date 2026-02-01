@@ -11,7 +11,7 @@
  * - Clear conversation option
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLLM } from "@/src/llm";
 import ModelDownloadModal from "@/components/ModelDownloadModal";
+import { usePrefs } from "../../src/prefs-context";
 
 // App color scheme
 const beige = "#F7EDE4";
@@ -56,7 +57,8 @@ export default function AiChatScreen() {
   const [input, setInput] = useState("");
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const { scaled, colors } = usePrefs();
 
   // Show download modal if model not downloaded
   useEffect(() => {
@@ -127,11 +129,11 @@ export default function AiChatScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={warmRed} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>AI Chat</Text>
-              <Text style={styles.subtitle}>
+            <View>
+              <Text style={[styles.title, { fontSize: scaled.h3 }]}>AI PEER</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}> 
                 {!isReady
                   ? needsDownload
                     ? "Download required"
@@ -141,25 +143,27 @@ export default function AiChatScreen() {
             </View>
           </View>
 
-          {/* History button - navigate to conversation list */}
-          <TouchableOpacity
-            onPress={() => router.push("/chat-history" as any)}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="time-outline" size={18} color={subtleText} />
-          </TouchableOpacity>
-
-          {/* Clear button */}
-          {messages.length > 1 && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            {/* History button - navigate to conversation list */}
             <TouchableOpacity
-              onPress={handleClear}
+              onPress={() => router.push("/chat-history" as any)}
               style={styles.headerButton}
               activeOpacity={0.7}
             >
-              <Ionicons name="trash-outline" size={18} color={subtleText} />
+              <Ionicons name="time-outline" size={18} color={subtleText} />
             </TouchableOpacity>
-          )}
+
+            {/* Clear button */}
+            {messages.length > 1 && (
+              <TouchableOpacity
+                onPress={handleClear}
+                style={styles.headerButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={18} color={subtleText} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Chat area */}
@@ -193,6 +197,7 @@ export default function AiChatScreen() {
                     style={[
                       styles.bubbleText,
                       m.role === "user" && { color: "#FFFFFF" },
+                      { fontSize: scaled.h1/2 },
                     ]}
                   >
                     {m.content}
@@ -225,7 +230,7 @@ export default function AiChatScreen() {
         <View style={styles.inputRow}>
           <View style={styles.inputBox}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { fontSize: scaled.h1/2 }]}
               placeholder={
                 !isReady
                   ? "Model loading..."
@@ -260,12 +265,13 @@ export default function AiChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: beige },
+  safe: { flex: 1, backgroundColor: beige, paddingBottom: 30 },
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 6,
     paddingBottom: 8,
     gap: 8,
   },
@@ -356,10 +362,10 @@ const styles = StyleSheet.create({
   },
   inputBox: {
     flex: 1,
-    borderRadius: 999,
+    borderRadius: 25,
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 13,
-    paddingVertical: 7,
+    paddingVertical: 5,
     maxHeight: 90,
     borderWidth: 1,
     borderColor: "#E4D4C8",

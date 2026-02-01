@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import LineGraph from "../../components/graphs/LineGraph";
+import { scaleFontSizes } from "../../src/theme";
+import { usePrefs } from "../../src/prefs-context";
 
 const beige = "#F7EDE4";
 const beigeTile = "#F4E3D6";
@@ -19,6 +21,8 @@ type ActivityTab = "today" | "weekly" | "trends";
 
 export default function ActivityScreen() {
   const [tab, setTab] = useState<ActivityTab>("today");
+
+  const { scaled, colors } = usePrefs();
 
   const week = [
     { label: "Mon", steps: 4250, ex: 2 },
@@ -36,15 +40,15 @@ export default function ActivityScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* Header (like Figma) */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
-              <Text style={styles.brand}>AI PEER</Text>
-              <Text style={styles.headerSubtitle}>Fall Risk Assessment</Text>
+              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>Activity summaries and insights</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -60,25 +64,28 @@ export default function ActivityScreen() {
             icon="time-outline"
             active={tab === "today"}
             onPress={() => setTab("today")}
+            scaled={scaled}
           />
           <SegmentButton
             label="Weekly"
             icon="stats-chart-outline"
             active={tab === "weekly"}
             onPress={() => setTab("weekly")}
+            scaled={scaled}
           />
           <SegmentButton
             label="Trends"
             icon="trending-up-outline"
             active={tab === "trends"}
             onPress={() => setTab("trends")}
+            scaled={scaled}
           />
         </View>
 
         {/* Content per tab */}
-        {tab === "today" && <TodayView />}
-        {tab === "weekly" && <WeeklyView week={week} maxSteps={maxSteps} />}
-        {tab === "trends" && <TrendsView />}
+        {tab === "today" && <TodayView scaled={scaled} />}
+        {tab === "weekly" && <WeeklyView week={week} maxSteps={maxSteps} scaled={scaled} />}
+        {tab === "trends" && <TrendsView scaled={scaled} />}
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
@@ -87,22 +94,22 @@ export default function ActivityScreen() {
 
 /* ------------------------ TODAY VIEW ------------------------ */
 
-function TodayView() {
+function TodayView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes>; }) {
   return (
     <>
       {/* Today’s Activity */}
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="pulse-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Today’s Activity</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Today's Activity</Text>
         </View>
 
         {/* Grid of tiles like the Figma */}
         <View style={styles.todayGrid}>
           {/* Steps (big tile with bar) */}
           <View style={[styles.todayTileLarge, { marginRight: 8 }]}>
-            <Text style={styles.todayValue}>3,272</Text>
-            <Text style={styles.todayLabel}>Steps</Text>
+            <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>3,272</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>Steps</Text>
             <View style={styles.progressOuter}>
               <View style={[styles.progressInner, { width: "65%" }]} />
             </View>
@@ -110,46 +117,46 @@ function TodayView() {
 
           {/* BPM */}
           <View style={styles.todayTileSmall}>
-            <Text style={styles.todayValue}>79</Text>
-            <Text style={styles.todayLabel}>BPM</Text>
-            <Text style={styles.todaySubStatus}>Normal</Text>
+            <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>79</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>BPM</Text>
+            <Text style={[styles.todaySubStatus, { fontSize: scaled.base*0.75 }]}>Normal</Text>
           </View>
         </View>
 
         <View style={styles.todayGrid}>
           {/* CHANGED: Calories -> Activities Done */}
           <View style={[styles.todayTileSmall, { marginRight: 8 }]}>
-            <Text style={styles.todayValue}>4</Text>
-            <Text style={styles.todayLabel}>Activities Done</Text>
-            <Text style={styles.todaySubText}>Goal: 5</Text>
+            <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>4</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>Activities Done</Text>
+            <Text style={[styles.todaySubText, { fontSize: scaled.base*0.75 }]}>Goal: 5</Text>
           </View>
 
           {/* Sleep */}
           <View style={styles.todayTileSmall}>
-            <Text style={styles.todayValue}>7.2h</Text>
-            <Text style={styles.todayLabel}>Sleep</Text>
-            <Text style={styles.todaySubStatus}>Good</Text>
+            <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>7.2h</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>Sleep</Text>
+            <Text style={[styles.todaySubStatus, { fontSize: scaled.base*0.75 }]}>Good</Text>
           </View>
         </View>
       </View>
 
       {/* Movement Timeline */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Movement Timeline</Text>
+        <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Movement Timeline</Text>
 
         <View style={styles.timelineItem}>
           <View style={[styles.timelineDot, { backgroundColor: "#F6B800" }]} />
-          <Text style={styles.timelineText}>Walking detected - 0m ago</Text>
+          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>Walking detected - 0m ago</Text>
         </View>
 
         <View style={styles.timelineItem}>
           <View style={[styles.timelineDot, { backgroundColor: warmRed }]} />
-          <Text style={styles.timelineText}>Exercise session - 45 minutes ago</Text>
+          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>Exercise session - 45 minutes ago</Text>
         </View>
 
         <View style={styles.timelineItem}>
           <View style={[styles.timelineDot, { backgroundColor: "#4B3A30" }]} />
-          <Text style={styles.timelineText}>Resting period - 2 hours ago</Text>
+          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>Resting period - 2 hours ago</Text>
         </View>
       </View>
     </>
@@ -161,9 +168,11 @@ function TodayView() {
 function WeeklyView({
   week,
   maxSteps,
+  scaled,
 }: {
   week: { label: string; steps: number; ex: number }[];
   maxSteps: number;
+  scaled: ReturnType<typeof scaleFontSizes>;
 }) {
   // CHANGED: weekly chart should show activities (ex), not steps
   const lineData = useMemo(
@@ -176,7 +185,7 @@ function WeeklyView({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="stats-chart-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Weekly Summary</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Weekly Summary</Text>
         </View>
 
         <View style={{ marginTop: 12 }}>
@@ -196,9 +205,9 @@ function WeeklyView({
                 <View style={styles.weekCard}>
                   <View style={[styles.weekBar, { height: h }]} />
                 </View>
-                <Text style={styles.weekSteps}>{d.steps}</Text>
-                <Text style={styles.weekEx}>{d.ex} activities</Text>
-                <Text style={styles.weekLabel}>{d.label}</Text>
+                <Text style={[styles.weekSteps, { fontSize: scaled.small }]}>{d.steps}</Text>
+                <Text style={[styles.weekEx, { fontSize: scaled.h2/2 }]}>{d.ex} activities</Text>
+                <Text style={[styles.weekLabel, { fontSize: scaled.small }]}>{d.label}</Text>
               </View>
             );
           })}
@@ -210,40 +219,40 @@ function WeeklyView({
 
 /* ------------------------ TRENDS VIEW ------------------------ */
 
-function TrendsView() {
+function TrendsView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes> }) {
   return (
     <>
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="trending-up-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Activity Trends</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Activity Trends</Text>
         </View>
 
         {/* Steps */}
         <View style={styles.trendRow}>
           <View style={styles.trendLeft}>
             <Ionicons name="walk-outline" size={18} color="#5B4636" />
-            <Text style={styles.trendLabel}>Steps</Text>
+            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>Steps</Text>
           </View>
-          <Text style={styles.trendDeltaPositive}>+12% this week</Text>
+          <Text style={[styles.trendDeltaPositive, { fontSize: scaled.small }]}>+12% this week</Text>
         </View>
 
         {/* Heart rate (pink row) */}
         <View style={[styles.trendRow, styles.trendRowHeart]}>
           <View style={styles.trendLeft}>
             <Ionicons name="heart-outline" size={18} color={warmRed} />
-            <Text style={styles.trendLabel}>Heart Rate</Text>
+            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>Heart Rate</Text>
           </View>
-          <Text style={styles.trendStatus}>Stable</Text>
+          <Text style={[styles.trendStatus, { fontSize: scaled.small }]}>Stable</Text>
         </View>
 
         {/* Sleep quality */}
         <View style={styles.trendRow}>
           <View style={styles.trendLeft}>
             <Ionicons name="bed-outline" size={18} color="#5B4636" />
-            <Text style={styles.trendLabel}>Sleep Quality</Text>
+            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>Sleep Quality</Text>
           </View>
-          <Text style={styles.trendDeltaNegative}>-5% this week</Text>
+          <Text style={[styles.trendDeltaNegative, { fontSize: scaled.small }]}>-5% this week</Text>
         </View>
       </View>
     </>
@@ -257,11 +266,13 @@ function SegmentButton({
   icon,
   active,
   onPress,
+  scaled,
 }: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   active: boolean;
   onPress: () => void;
+  scaled: ReturnType<typeof scaleFontSizes>;
 }) {
   return (
     <TouchableOpacity
@@ -277,10 +288,11 @@ function SegmentButton({
         size={14}
         color={active ? "#FFF" : "#7A6659"}
       />
-      <Text
+      <Text 
         style={[
           styles.segmentText,
           active && { color: "#FFF" },
+          { fontSize: scaled.small },
         ]}
       >
         {label}
@@ -449,4 +461,3 @@ const styles = StyleSheet.create({
   trendDeltaNegative: { fontSize: 12, fontWeight: "700", color: "#C62828" },
   trendStatus: { fontSize: 12, fontWeight: "700", color: "#C75B5B" },
 });
-
