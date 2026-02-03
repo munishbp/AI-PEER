@@ -6,8 +6,9 @@
 require('dotenv').config();
 
 const express=require('express');
-const cors=require('cors')
-const verification=require('./middleware/authMiddleware')
+const cors=require('cors');
+const verification=require('./middleware/authMiddleware');
+
 
 
 
@@ -32,16 +33,14 @@ app.use(verification);
 //req what client sends
 //response is what you send back
 
-//imports function from video_template.js
-const video_template=require('./routes/video_template');
+const videoRoutes = require('./routes/videosRoutes');
+app.use("/video", videoRoutes);
 
 // Routes
-app.use("/users", userRoutes);
 const userRoutes = require("./routes/userRoutes");
+app.use("/users", userRoutes);
 
 
-//runs the function above and sends back the json response
-app.get('/api/video/test-video',video_template);
 
 const PORT=process.env.PORT||3000;
 
@@ -50,6 +49,3 @@ const PORT=process.env.PORT||3000;
 app.listen(PORT, ()=>{
     console.log('Server is still waiting to be setup but this works!')
 });
-
-
-//routes holds all the video scripts to access them

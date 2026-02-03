@@ -6,7 +6,6 @@ const userController = require("../controllers/userController");
 
 router.post("/register", userController.registerUser);
 
-//google identity is called here as middleware
 router.get("/get", userController.getUser);
 
 router.post("/delete", userController.deleteUser);
