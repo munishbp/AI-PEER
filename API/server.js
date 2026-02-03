@@ -7,26 +7,30 @@ require('dotenv').config();
 
 const express=require('express');
 const cors=require('cors')
+const verification=require('./middleware/authMiddleware')
 
 
 
 const app=express();
+
+
 
 //cors (cross origin resource sharing)
 //json parser to convert text to objects
 app.use(cors());
 app.use(express.json());
 
+app.get('/health',(req,res)=>{
+    res.json({status:'OK',message:'Server is not running yet but the code is working?'});
+});
 
+app.use(verification);
 
 
 //handles get request
 //health is the URL path
 //req what client sends
 //response is what you send back
-app.get('/health',(req,res)=>{
-    res.json({status:'OK',message:'Server is not running yet but the code is working?'});
-});
 
 //imports function from video_template.js
 const video_template=require('./routes/video_template');
