@@ -31,6 +31,11 @@ app.get('/health',(req,res)=>{
 //imports function from video_template.js
 const video_template=require('./routes/video_template');
 
+// Routes
+app.use("/users", userRoutes);
+const userRoutes = require("./routes/userRoutes");
+
+
 //runs the function above and sends back the json response
 app.get('/api/video/test-video',video_template);
 
