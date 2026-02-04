@@ -5,9 +5,18 @@
 //loads .env specific from user account
 require('dotenv').config();
 
+
+console.log('GCS_PROJECT_ID:', process.env.GCS_PROJECT_ID);
+console.log('GCS_CLIENT_EMAIL:', process.env.GCS_CLIENT_EMAIL);
+console.log('GCS_PRIVATE_KEY exists:', !!process.env.GCS_PRIVATE_KEY);
+console.log('GCS_PRIVATE_KEY length:', process.env.GCS_PRIVATE_KEY?.length);
+
 const express=require('express');
 const cors=require('cors');
 const verification=require('./middleware/authMiddleware');
+
+
+const authRoutes = require('./routes/authRoutes');
 
 
 
@@ -22,8 +31,11 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/health',(req,res)=>{
-    res.json({status:'OK',message:'Server is not running yet but the code is working?'});
+    res.json({status:'OK',message:'AI PEER API is running'});
 });
+
+app.use('/auth', authRoutes);
+
 
 app.use(verification);
 
@@ -47,5 +59,8 @@ const PORT=process.env.PORT||3000;
 
 //app listens at this port
 app.listen(PORT, ()=>{
-    console.log('Server is still waiting to be setup but this works!')
+    console.log('Server running!')
 });
+
+
+//routes holds all the video scripts to access them

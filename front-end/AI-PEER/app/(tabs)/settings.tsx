@@ -1,5 +1,5 @@
 // app/(tabs)/settings.tsx
-import React, { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -10,28 +10,16 @@ import {
   Switch,
   Vibration,
   Alert,
+  TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { scaleFontSizes } from "../../src/theme";
+import type { Prefs } from "../../src/prefs-context";
+import { usePrefs } from "../../src/prefs-context";
 
 type SettingsTab = "accessibility" | "devices" | "notifications";
-type Language = "en" | "es" | "fr";
-type Contrast = "light" | "dark" | "high";
-
-type AccessibilityPrefs = {
-  fontScale: number;
-  contrast: Contrast;
-  language: Language;
-  soundAlerts: boolean;
-};
-
-const DEFAULT_PREFS: AccessibilityPrefs = {
-  fontScale: 1,
-  contrast: "light",
-  language: "en",
-  soundAlerts: true,
-};
 
 const beige = "#F7EDE4";
 const beigeTile = "#F4E3D6";
@@ -40,13 +28,11 @@ const warmRed = "#D84535";
 export default function SettingsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
-  const [prefs, setPrefs] = useState<AccessibilityPrefs>(DEFAULT_PREFS);
-  const [notifications, setNotifications] = useState({
-    activityAlerts: true,
-    fallRiskAlerts: true,
-    weeklyReport: true,
-    deviceNotifications: true,
-  });
+  const { prefs, updatePrefs, scaled, colors } = usePrefs();
+  const [reminders, setReminders] = useState<Array<{ id: string; title: string; time?: string; enabled: boolean }>>([
+    { id: "1", title: "Morning walk", time: "8:00 AM", enabled: true },
+    { id: "2", title: "Take meds", time: "9:00 PM", enabled: true },
+  ]);
 
   // Mock connected devices
   const devices = [
@@ -76,15 +62,17 @@ export default function SettingsScreen() {
     },
   ];
 
-  function updatePrefs<K extends keyof AccessibilityPrefs>(
-    key: K,
-    value: AccessibilityPrefs[K]
-  ) {
-    setPrefs((p) => ({ ...p, [key]: value }));
+  function addReminder(title: string, time?: string) {
+    const id = Date.now().toString();
+    setReminders((r) => [{ id, title, time, enabled: true }, ...r]);
   }
 
-  function toggleNotification<K extends keyof typeof notifications>(key: K) {
-    setNotifications((n) => ({ ...n, [key]: !n[key] }));
+  function deleteReminder(id: string) {
+    setReminders((r) => r.filter((x) => x.id !== id));
+  }
+
+  function toggleReminder(id: string) {
+    setReminders((r) => r.map((x) => (x.id === id ? { ...x, enabled: !x.enabled } : x)));
   }
 
   function playAlertPreview() {
@@ -116,42 +104,42 @@ export default function SettingsScreen() {
     }
   }
 
- function handleLogout() {
-  // Change this if your login route is not app/index.tsx
-  const LOGIN_ROUTE = "/";
+  function handleLogout() {
+    // Change this if your login route is not app/index.tsx
+    const LOGIN_ROUTE = "/";
 
-  Alert.alert("Logout", "Are you sure you want to logout?", [
-    { text: "Cancel", style: "cancel" },
-    {
-      text: "Logout",
-      style: "destructive",
-      onPress: async () => {
-        try {
-          const mod = await import("@react-native-async-storage/async-storage");
-          await mod.default.removeItem("token");
-          await mod.default.removeItem("user");
-        } catch {
-          // no-op (no backend/auth yet)
-        }
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const mod = await import("@react-native-async-storage/async-storage");
+            await mod.default.removeItem("token");
+            await mod.default.removeItem("user");
+          } catch {
+            // no-op (no backend/auth yet)
+          }
 
-        // Prevent back-navigation into tabs
-        router.replace(LOGIN_ROUTE);
+          // Prevent back-navigation into tabs
+          router.replace(LOGIN_ROUTE);
+        },
       },
-    },
-  ]);
-}
+    ]);
+  }
 
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC"/>
             <View>
-              <Text style={styles.brand}>AI PEER</Text>
-              <Text style={styles.subtitle}>Settings & Preferences</Text>
+              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>Settings & Preferences</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -166,31 +154,37 @@ export default function SettingsScreen() {
             icon="accessibility-outline"
             active={tab === "accessibility"}
             onPress={() => setTab("accessibility")}
+            scaled={scaled}
           />
           <SegmentButton
             label="Devices"
             icon="bluetooth-outline"
             active={tab === "devices"}
             onPress={() => setTab("devices")}
+            scaled={scaled}
           />
           <SegmentButton
             label="Alerts"
-            icon="notifications-outline"
+            icon="alarm-outline"
             active={tab === "notifications"}
             onPress={() => setTab("notifications")}
+            scaled={scaled}
           />
         </View>
 
         {/* Tab Content */}
         {tab === "accessibility" && (
-          <AccessibilityTab prefs={prefs} updatePrefs={updatePrefs} playAlert={playAlertPreview} />
+          <AccessibilityTab prefs={prefs} updatePrefs={updatePrefs} playAlert={playAlertPreview} scaled={scaled} />
         )}
-        {tab === "devices" && <DevicesTab devices={devices} />}
+        {tab === "devices" && <DevicesTab devices={devices} scaled={scaled}/>}
         {tab === "notifications" && (
           <NotificationsTab
-            notifications={notifications}
-            toggleNotification={toggleNotification}
+            reminders={reminders}
+            addReminder={addReminder}
+            deleteReminder={deleteReminder}
+            toggleReminder={toggleReminder}
             onLogout={handleLogout}
+            scaled={scaled}
           />
         )}
 
@@ -206,15 +200,14 @@ function AccessibilityTab({
   prefs,
   updatePrefs,
   playAlert,
+  scaled,
 }: {
-  prefs: AccessibilityPrefs;
-  updatePrefs: <K extends keyof AccessibilityPrefs>(
-    key: K,
-    value: AccessibilityPrefs[K]
-  ) => void;
+  prefs: Prefs;
+  updatePrefs: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
   playAlert: () => void;
+  scaled: ReturnType<typeof scaleFontSizes>;
 }) {
-  const fontSizes = ["Small (90%)", "Normal (100%)", "Large (120%)"];
+  const fontSizesLabels = ["Small (90%)", "Normal (100%)", "Large (120%)"];
   const contrastOptions = ["Light", "Dark", "High Contrast"];
   const languages = ["English", "Español", "Français"];
 
@@ -224,13 +217,13 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="text-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Text Size</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Text Size</Text>
         </View>
-        <Text style={styles.settingDescription}>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
           Choose a comfortable reading size
         </Text>
         <View style={styles.optionsRow}>
-          {fontSizes.map((size, i) => (
+          {fontSizesLabels.map((size, i) => (
             <TouchableOpacity
               key={i}
               onPress={() => updatePrefs("fontScale", 0.9 + i * 0.1)}
@@ -239,16 +232,15 @@ function AccessibilityTab({
                 prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonActive,
               ]}
             >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  prefs.fontScale === 0.9 + i * 0.1 &&
-                    styles.optionButtonTextActive,
-                  { fontSize: 12 + i * 1.5 },
-                ]}
-              >
-                {size.split(" ")[0]}
-              </Text>
+                <Text
+                  style={[
+                    styles.optionButtonText,
+                    prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonTextActive,
+                    { fontSize: scaled.base*0.75 },
+                  ]}
+                >
+                  {size.split(" ")[0]}
+                </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -258,9 +250,9 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="contrast-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Display Contrast</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Display Contrast</Text>
         </View>
-        <Text style={styles.settingDescription}>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
           Choose colors that are easy on your eyes
         </Text>
         <View style={styles.optionsRow}>
@@ -277,10 +269,10 @@ function AccessibilityTab({
                 style={[
                   styles.optionButtonText,
                   prefs.contrast === contrast && styles.optionButtonTextActive,
-                ]}
-              >
-                {contrastOptions[i]}
-              </Text>
+                  { fontSize: scaled.base*0.75 },
+                ]}>
+                  {contrastOptions[i]}
+                </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -290,9 +282,9 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="globe-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Language</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Language</Text>
         </View>
-        <Text style={styles.settingDescription}>Select your preferred language</Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>Select your preferred language</Text>
         <View style={styles.optionsRow}>
           {(["en", "es", "fr"] as const).map((lang, i) => (
             <TouchableOpacity
@@ -307,7 +299,8 @@ function AccessibilityTab({
                 style={[
                   styles.optionButtonText,
                   prefs.language === lang && styles.optionButtonTextActive,
-                ]}
+                  { fontSize: scaled.base*0.75 },
+              ]}
               >
                 {languages[i]}
               </Text>
@@ -328,9 +321,9 @@ function AccessibilityTab({
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Ionicons name="volume-high-outline" size={16} color={warmRed} />
-              <Text style={styles.cardTitle}>Sound Alerts</Text>
+              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Sound Alerts</Text>
             </View>
-            <Text style={styles.settingDescription}>
+            <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
               Enable notification sounds
             </Text>
           </View>
@@ -347,7 +340,7 @@ function AccessibilityTab({
             activeOpacity={0.85}
           >
             <Ionicons name="play-outline" size={14} color={warmRed} />
-            <Text style={[styles.secondaryButtonText, { color: warmRed }]}>
+            <Text style={[styles.secondaryButtonText, { color: warmRed, fontSize: scaled.small }]}> 
               Play Preview
             </Text>
           </TouchableOpacity>
@@ -359,15 +352,15 @@ function AccessibilityTab({
 
 /* ===================== DEVICES TAB ===================== */
 
-function DevicesTab({ devices }: { devices: any[] }) {
+function DevicesTab({ devices, scaled }: { devices: any[]; scaled: ReturnType<typeof scaleFontSizes>; }) {
   return (
     <>
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="bluetooth-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Connected Devices</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Connected Devices</Text>
         </View>
-        <Text style={styles.settingDescription}>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
           Manage your paired health devices
         </Text>
 
@@ -387,8 +380,8 @@ function DevicesTab({ devices }: { devices: any[] }) {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.deviceName}>{device.name}</Text>
-              <Text style={styles.deviceStatus}>
+              <Text style={[styles.deviceName, { fontSize: scaled.small }]}>{device.name}</Text>
+              <Text style={[styles.deviceStatus, { fontSize: scaled.h2/2 }]}> 
                 {device.connected ? (
                   <>
                     <Ionicons name="checkmark-circle" size={12} color="#3BAA56" />
@@ -406,7 +399,7 @@ function DevicesTab({ devices }: { devices: any[] }) {
                   </>
                 )}
               </Text>
-              <Text style={styles.deviceSync}>Last sync: {device.lastSync}</Text>
+              <Text style={[styles.deviceSync, { fontSize: scaled.h2/2 }]}>Last sync: {device.lastSync}</Text>
             </View>
             <TouchableOpacity style={styles.deviceButton}>
               <Ionicons name="chevron-forward" size={18} color="#999" />
@@ -421,7 +414,7 @@ function DevicesTab({ devices }: { devices: any[] }) {
           activeOpacity={0.85}
         >
           <Ionicons name="add-circle-outline" size={16} color="#fff" />
-          <Text style={styles.primaryButtonText}>Add New Device</Text>
+          <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>Add New Device</Text>
         </TouchableOpacity>
       </View>
     </>
@@ -431,85 +424,90 @@ function DevicesTab({ devices }: { devices: any[] }) {
 /* ===================== NOTIFICATIONS TAB ===================== */
 
 function NotificationsTab({
-  notifications,
-  toggleNotification,
+  reminders,
+  addReminder,
+  deleteReminder,
+  toggleReminder,
   onLogout,
+  scaled,
 }: {
-  notifications: any;
-  toggleNotification: (key: any) => void;
+  reminders: Array<{ id: string; title: string; time?: string; enabled: boolean }>;
+  addReminder: (title: string, time?: string) => void;
+  deleteReminder: (id: string) => void;
+  toggleReminder: (id: string) => void;
   onLogout: () => void;
+  scaled: ReturnType<typeof scaleFontSizes>;
 }) {
-  const notificationOptions = [
-    {
-      key: "activityAlerts",
-      icon: "pulse-outline",
-      label: "Activity Alerts",
-      description: "Get notified about activity milestones",
-    },
-    {
-      key: "fallRiskAlerts",
-      icon: "shield-checkmark-outline",
-      label: "Fall Risk Alerts",
-      description: "Critical fall risk notifications",
-    },
-    {
-      key: "weeklyReport",
-      icon: "stats-chart-outline",
-      label: "Weekly Report",
-      description: "Receive your weekly activity summary",
-    },
-    {
-      key: "deviceNotifications",
-      icon: "bluetooth-outline",
-      label: "Device Updates",
-      description: "Device sync and battery alerts",
-    },
-  ];
+  const [title, setTitle] = useState("");
+  const [time, setTime] = useState("");
+
+  function handleAdd() {
+    if (!title.trim()) return;
+    addReminder(title.trim(), time.trim() || undefined);
+    setTitle("");
+    setTime("");
+  }
 
   return (
     <>
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Ionicons name="notifications-outline" size={16} color={warmRed} />
-          <Text style={styles.cardTitle}>Notification Preferences</Text>
-        </View>
-        <Text style={styles.settingDescription}>
-          Control what notifications you receive
-        </Text>
+          <Ionicons name="alarm-outline" size={16} color={warmRed} />
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Reminders</Text>
+          </View>
+          <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
+            Create and manage personal reminders
+          </Text>
 
-        {notificationOptions.map((option) => (
-          <View key={option.key} style={styles.notificationRow}>
+        {reminders.map((rem) => (
+          <View key={rem.id} style={styles.notificationRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons
-                name={option.icon as any}
-                size={16}
-                color={warmRed}
-              />
+              <Ionicons name="time-outline" size={16} color={warmRed} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.notificationLabel}>{option.label}</Text>
-                <Text style={styles.notificationDescription}>
-                  {option.description}
-                </Text>
+                <Text style={[styles.notificationLabel, { fontSize: scaled.small }]}>{rem.title}</Text>
+                <Text style={[styles.notificationDescription, { fontSize: scaled.h2/2 }]}>{rem.time || ""}</Text>
               </View>
             <Switch
-              value={notifications[option.key]}
-              onValueChange={() => toggleNotification(option.key)}
+              value={rem.enabled}
+              onValueChange={() => toggleReminder(rem.id)}
               trackColor={{ true: warmRed, false: "#ccc" }}
             />
+            <TouchableOpacity onPress={() => deleteReminder(rem.id)} style={{ marginLeft: 8 }}>
+              <Ionicons name="trash-outline" size={16} color="#C0392B" />
+            </TouchableOpacity>
             </View>
           </View>
         ))}
+
+        <View style={styles.inputRow}>
+          <TextInput
+            placeholder="Reminder title"
+            value={title}
+            onChangeText={setTitle}
+            style={[styles.input, { fontSize: scaled.small }]}
+          />
+          <TextInput
+            placeholder="Time (optional)"
+            value={time}
+            onChangeText={setTime}
+            style={[styles.input, { fontSize: scaled.small, width: 110 }]}
+          />
+          <TouchableOpacity style={[styles.primaryButton, { paddingHorizontal: 12 }]} onPress={handleAdd} activeOpacity={0.85}>
+            <Ionicons name="add-circle-outline" size={16} color="#fff" />
+            <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>Add</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, { marginBottom: 8 }]}>Account</Text>
+        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>Account</Text>
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={onLogout}
           activeOpacity={0.85}
         >
           <Ionicons name="log-out-outline" size={16} color="#fff" />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>Logout</Text>
         </TouchableOpacity>
       </View>
     </>
@@ -523,11 +521,13 @@ function SegmentButton({
   icon,
   active,
   onPress,
+  scaled,
 }: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   active: boolean;
   onPress: () => void;
+  scaled: ReturnType<typeof scaleFontSizes>;
 }) {
   return (
     <TouchableOpacity
@@ -544,6 +544,7 @@ function SegmentButton({
         style={[
           styles.segmentText,
           active && { color: "#FFF" },
+          { fontSize: scaled.small },
         ]}
       >
         {label}
@@ -611,7 +612,7 @@ const styles = StyleSheet.create({
   optionButtonActive: {
     backgroundColor: warmRed,
   },
-  optionButtonText: { fontWeight: "600", color: "#5B4636", fontSize: 12 },
+  optionButtonText: { fontWeight: "600", color: "#5B4636", fontSize: 12, textAlign: "center" },
   optionButtonTextActive: { color: "#FFF" },
 
   secondaryButton: {
@@ -669,6 +670,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   primaryButtonText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
+
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: beigeTile,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
 
   logoutButton: {
     backgroundColor: "#DC2626",

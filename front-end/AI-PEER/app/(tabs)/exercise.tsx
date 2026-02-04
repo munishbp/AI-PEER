@@ -1,5 +1,4 @@
-// app/exercise.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -12,14 +11,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+type CategoryKey = "warmup" | "strength" | "balance";
+
 type Category = {
-  key: "warmup" | "strength" | "balance";
+  key: CategoryKey;
   title: string;
   subtitle: string;
   purpose: string;
   score: number;
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
+};
+
+type VideoItem = {
+  id: string;
+  duration: string; // keep only what we can show without backend
 };
 
 const CATEGORIES: Category[] = [
@@ -52,21 +58,61 @@ const CATEGORIES: Category[] = [
   },
 ];
 
+// ✅ Mock video counts/rows (no thumbnails yet)
+const VIDEO_LIBRARY: Record<CategoryKey, VideoItem[]> = {
+  warmup: [
+    { id: "wu-1", duration: "2:10" },
+    { id: "wu-2", duration: "3:05" },
+    { id: "wu-3", duration: "2:45" },
+  ],
+  strength: [
+    { id: "st-1", duration: "4:20" },
+    { id: "st-2", duration: "3:30" },
+  ],
+  balance: [
+    { id: "ba-1", duration: "3:40" },
+    { id: "ba-2", duration: "3:15" },
+    { id: "ba-3", duration: "4:05" },
+  ],
+};
+
 export default function ExercisePage() {
   const router = useRouter();
 
-  const startCategory = (key: Category["key"]) => {
-    // NEW: go to the Session screen (where Vision AI will live later)
+  const [openFolders, setOpenFolders] = useState<Record<CategoryKey, boolean>>({
+    warmup: false,
+    strength: false,
+    balance: false,
+  });
+
+  const startCategory = (key: CategoryKey) => {
     router.push({
-      pathname: "/exercise-session",
+      pathname: "/(tabs)/exercise-session",
       params: { cat: key },
     });
   };
 
+  const toggleFolder = (key: CategoryKey) => {
+    setOpenFolders((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const openVideo = (cat: CategoryKey, videoId: string, duration: string) => {
+  router.push({
+    pathname: "/(tabs)/video-confirm",
+    params: {
+      cat,
+      video: videoId,
+      label: "Video placeholder",
+      duration,
+    },
+  });
+};
+
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Header: match dashboard vibe */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons
@@ -87,7 +133,7 @@ export default function ExercisePage() {
         </View>
         <Text style={styles.subtitle}>Exercise</Text>
 
-        {/* Segmented: Overview | Exercise */}
+        {/* Segmented */}
         <View style={styles.segmentOuter}>
           <TouchableOpacity
             style={styles.segmentBtn}
@@ -109,7 +155,7 @@ export default function ExercisePage() {
           </TouchableOpacity>
         </View>
 
-        {/* Center Title */}
+        {/* Center heading */}
         <View style={styles.centerHead}>
           <Text style={styles.centerTitle}>Exercise Categories</Text>
           <Text style={styles.centerSub}>
@@ -119,59 +165,115 @@ export default function ExercisePage() {
 
         {/* Category cards */}
         <View style={{ gap: 18 }}>
-          {CATEGORIES.map((c) => (
-            <View key={c.key} style={styles.categoryCard}>
-              {/* Top row: icon + title/subtitle */}
-              <View style={styles.catTopRow}>
-                <View style={[styles.iconCircle, { backgroundColor: c.iconBg }]}>
-                  <Ionicons name={c.icon} size={18} color="#8A5A3C" />
+          {CATEGORIES.map((c) => {
+            const videos = VIDEO_LIBRARY[c.key];
+            const isOpen = openFolders[c.key];
+
+            return (
+              <View key={c.key} style={styles.categoryCard}>
+                {/* Top row */}
+                <View style={styles.catTopRow}>
+                  <View style={[styles.iconCircle, { backgroundColor: c.iconBg }]}>
+                    <Ionicons name={c.icon} size={18} color="#8A5A3C" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.catTitle}>{c.title}</Text>
+                    <Text style={styles.catSubtitle}>{c.subtitle}</Text>
+                  </View>
                 </View>
 
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.catTitle}>{c.title}</Text>
-                  <Text style={styles.catSubtitle}>{c.subtitle}</Text>
+                {/* Info strip */}
+                <View style={styles.infoStrip}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoText}>
+                      <Text style={styles.infoLabel}>Purpose:</Text> {c.purpose}
+                    </Text>
+                    <Text style={styles.infoText}>
+                      <Text style={styles.infoLabel}>Recommendation Score</Text>
+                    </Text>
+                  </View>
+
+                  <View style={styles.scorePill}>
+                    <Text style={styles.scoreText}>{c.score} / 100</Text>
+                  </View>
                 </View>
+
+                {/* ✅ Folder tab (Videos) */}
+                <View style={{ marginTop: 12 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => toggleFolder(c.key)}
+                    style={styles.folderTab}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Ionicons
+                        name="folder-open-outline"
+                        size={18}
+                        color="#3D2F27"
+                      />
+                      <Text style={styles.folderTitle}>Videos</Text>
+                      <View style={styles.countPill}>
+                        <Text style={styles.countText}>{videos.length}</Text>
+                      </View>
+                    </View>
+
+                    <Ionicons
+                      name={
+                        isOpen ? "chevron-up-outline" : "chevron-down-outline"
+                      }
+                      size={18}
+                      color="#6B5E55"
+                    />
+                  </TouchableOpacity>
+
+                  {/* ✅ Placeholder-only list (no thumbnails yet) */}
+                  {isOpen && (
+                    <View style={styles.videoList}>
+                      {videos.map((v) => (
+                        <TouchableOpacity
+                          key={v.id}
+                          activeOpacity={0.85}
+                          onPress={() => openVideo(c.key, v.id, v.duration)}
+                          style={styles.videoRow}
+                        >
+                          <View style={styles.videoPlaceholderIcon}>
+                            <Ionicons
+                              name="play-circle-outline"
+                              size={26}
+                              color="#8C7A6C"
+                            />
+                          </View>
+
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.videoName}>
+                              Video placeholder
+                            </Text>
+                            <Text style={styles.videoMeta}>{v.duration}</Text>
+                          </View>
+
+                          <Ionicons
+                            name="chevron-forward-outline"
+                            size={18}
+                            color="#8C7A6C"
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Start button */}
+                <TouchableOpacity
+                  style={styles.startBtn}
+                  activeOpacity={0.9}
+                  onPress={() => startCategory(c.key)}
+                >
+                  <Ionicons name="play" size={16} color="#FFF" />
+                  <Text style={styles.startText}>Start {c.title}</Text>
+                </TouchableOpacity>
               </View>
-
-              {/* Beige info strip with score pill on right */}
-              <View style={styles.infoStrip}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.infoText}>
-                    <Text style={styles.infoLabel}>Purpose:</Text> {c.purpose}
-                  </Text>
-                  <Text style={styles.infoText}>
-                    <Text style={styles.infoLabel}>Recommendation Score</Text>
-                  </Text>
-                </View>
-
-                <View style={styles.scorePill}>
-                  <Text style={styles.scoreText}>{c.score} / 100</Text>
-                </View>
-              </View>
-
-              {/* NEW: Always-visible demo video placeholder */}
-              <View style={styles.videoPlaceholder}>
-                <View style={styles.videoTopRow}>
-                  <Ionicons name="videocam-outline" size={16} color="#6B5E55" />
-                  <Text style={styles.videoTitle}>Demo Video</Text>
-                </View>
-                <View style={styles.videoBox}>
-                  <Ionicons name="play-circle-outline" size={34} color="#8C7A6C" />
-                  <Text style={styles.videoHint}>Video placeholder</Text>
-                </View>
-              </View>
-
-              {/* Start button */}
-              <TouchableOpacity
-                style={styles.startBtn}
-                activeOpacity={0.9}
-                onPress={() => startCategory(c.key)}
-              >
-                <Ionicons name="play" size={16} color="#FFF" />
-                <Text style={styles.startText}>Start {c.title}</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         <View style={{ height: 28 }} />
@@ -183,6 +285,7 @@ export default function ExercisePage() {
 const beige = "#F7EDE4";
 const beigeTrack = "#F4E3D6";
 const beigeStrip = "#F3E7D9";
+const beigeDark = "#E6D4C6";
 const warmRed = "#D84535";
 
 const styles = StyleSheet.create({
@@ -193,7 +296,6 @@ const styles = StyleSheet.create({
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
   subtitle: { marginTop: 4, marginBottom: 10, color: "#6B5E55" },
 
-  // Segmented control
   segmentOuter: {
     backgroundColor: beigeTrack,
     borderRadius: 999,
@@ -269,21 +371,52 @@ const styles = StyleSheet.create({
   },
   scoreText: { fontWeight: "900", color: "#1E7A3A" },
 
-  // NEW: Demo video placeholder styles
-  videoPlaceholder: { marginTop: 12 },
-  videoTopRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-  videoTitle: { fontWeight: "900", color: "#3D2F27" },
-  videoBox: {
-    height: 170,
-    borderRadius: 12,
+  /** Folder tab + list */
+  folderTab: {
     backgroundColor: "#FFF7F1",
     borderWidth: 1,
     borderColor: "#F0E0D4",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  folderTitle: { fontWeight: "900", color: "#3D2F27" },
+  countPill: {
+    backgroundColor: "#EDE3D9",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#E0D3C7",
+  },
+  countText: { fontWeight: "900", color: "#6B5E55", fontSize: 12 },
+
+  videoList: { marginTop: 10, gap: 10 },
+  videoRow: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#EEE",
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  videoPlaceholderIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: beigeStrip,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    borderWidth: 1,
+    borderColor: beigeDark,
   },
-  videoHint: { color: "#6B5E55", fontWeight: "700" },
+  videoName: { fontWeight: "900", color: "#222" },
+  videoMeta: { marginTop: 2, color: "#6B5E55", fontWeight: "700", fontSize: 12 },
 
   startBtn: {
     marginTop: 12,

@@ -1,7 +1,7 @@
 // src/api.ts
 
-// Base URL (from .env or fallback)
-const BASE = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:4000";
+// Base URL (from .env or fallback to Cloud Run production)
+const BASE = process.env.EXPO_PUBLIC_API_BASE_URL || "https://aipeer-api-596437694331.us-central1.run.app";
 
 // Reusable JSON fetch helper (single definition)
 async function requestJSON<T>(path: string, init?: RequestInit): Promise<T> {
@@ -21,7 +21,7 @@ async function requestJSON<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// Public API your teammates can call
+
 export const api = {
   health: () => requestJSON<{ status: string; version?: string }>("/health"),
 
@@ -29,28 +29,36 @@ export const api = {
     requestJSON<{ score: number; level: string }>("/risk/summary"),
 
   login: (phone: string, password: string) =>
-    requestJSON<{ token: string; user?: { id: string; name?: string } }>(
+    requestJSON<{ customToken: string; user?: { id: string; name?: string } }>(
       "/auth/login",
       { method: "POST", body: JSON.stringify({ phone, password }) }
     ),
 
   createAccount: (phone: string, password: string) =>
-    requestJSON<{ token: string; user?: { id: string; name?: string } }>(
-      "/auth/create",
+    requestJSON<{ success: boolean; userId: string; message: string }>(
+      "/auth/register",
       { method: "POST", body: JSON.stringify({ phone, password }) }
     ),
 
-  sendCode: (phone: string) =>
-    requestJSON<{ success: boolean }>("/auth/send-code", {
-      method: "POST",
-      body: JSON.stringify({ phone }),
-    }),
+  sendCode: (phone: string, password: string, mode: "login" | "create") =>
+    requestJSON<{ success: boolean; message: string; expiresIn: number }>(
+      "/auth/send-code",
+      {
+        method: "POST",
+        body: JSON.stringify({ phone, password, mode }),
+      }
+    ),
 
   verify: (phone: string, code: string) =>
-    requestJSON<{ token: string; user?: { id: string; name?: string } }>(
-      "/auth/verify",
-      { method: "POST", body: JSON.stringify({ phone, code }) }
-    ),
+    requestJSON<{
+      success: boolean;
+      customToken: string;
+      userId: string;
+      isNewUser: boolean;
+    }>("/auth/verify", {
+      method: "POST",
+      body: JSON.stringify({ phone, code }),
+    }),
 };
 
 export { BASE };

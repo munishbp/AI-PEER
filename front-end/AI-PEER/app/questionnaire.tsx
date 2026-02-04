@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { colors, spacing, radii, fontSizes } from "../src/theme";
+import { fontSizes} from "../src/theme";
+import { usePrefs } from "../src/prefs-context";
 
 interface Question {
   id: number;
@@ -47,6 +48,8 @@ export default function Questionnaire() {
   const [view, setView] = useState<AssessmentView>("start");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+
+  const { scaled } = usePrefs();
 
   const handleStart = () => {
     setView("questions");
@@ -148,13 +151,13 @@ export default function Questionnaire() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
               <View>
-                <Text style={styles.brand}>AI PEER</Text>
-                <Text style={styles.subtitle}>Fall Risk Questionnaire</Text>
+                <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
+                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>Fall Risk Questionnaire</Text>
               </View>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <TouchableOpacity onPress={()=> {router.back()}} style={styles.backBtn}>
-                <Text style={styles.backText}>Quit</Text>
+              <TouchableOpacity onPress={() => { router.back(); }} style={styles.backBtn}>
+                <Text style={[styles.backText, { fontSize: scaled.h1/2 }]}>Quit</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -162,20 +165,17 @@ export default function Questionnaire() {
           <View style={styles.card}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <Ionicons name="clipboard-outline" size={24} color={warmRed} />
-              <Text style={styles.cardTitle}>Instructions</Text>
+              <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>Instructions</Text>
             </View>
             <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                There are 7 questions. Each question asks how concerned you are about the possibility of falling while performing an activity. Please reply thinking about how you usually do the activity. If you currently don't do the activity, please answer to show whether you think you would be concerned about falling IF you did the activity.
-              </Text>
-              <Text style={[styles.infoText, { marginTop: 12 }]}>
-                For each of the following activities, please tick the box which is closest to your own opinion to show how concerned you are that you might fall if you did this activity.
-              </Text>
+              <Text style={[styles.infoText, { marginTop: 22, fontSize: scaled.base }]}>• 7 quick questions</Text>
+              <Text style={[styles.infoText, { marginTop: 28, fontSize: scaled.base }]}>• Rate how concerned you'd be about falling during each activity</Text>
+              <Text style={[styles.infoText, { marginTop: 28, marginBottom: 22, fontSize: scaled.base }]}>• If you don't do an activity, answer how concerned you'd be if you did</Text>
             </View>
 
             <View style={{ marginTop: 10 }}>
               <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
-              <Text style={styles.primaryButtonText}>Begin Assessment</Text>
+              <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>Begin Assessment</Text>
             </TouchableOpacity>
             </View>
 
@@ -198,13 +198,13 @@ export default function Questionnaire() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
               <View>
-                <Text style={styles.brand}>AI PEER</Text>
-                <Text style={styles.subtitle}>Fall Risk Questionnaire</Text>
+                <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
+                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>Fall Risk Questionnaire</Text>
               </View>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <TouchableOpacity onPress={()=> {router.back()}} style={styles.backBtn}>
-                <Text style={styles.backText}>Quit</Text>
+                <Text style={[styles.backText, { fontSize: scaled.h1/2 }]}>Quit</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -212,7 +212,7 @@ export default function Questionnaire() {
           <View style={styles.card}>
             <View style={{ marginBottom: 16 }}>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>
+                <Text style={[styles.badgeText, { fontSize: scaled.small }]}> 
                   Question {currentQuestion + 1} of {questions.length}
                 </Text>
               </View>
@@ -220,8 +220,8 @@ export default function Questionnaire() {
             </View>
 
             <View style={styles.questionBox}>
-              <Text style={styles.questionLabel}>How concerned are you that you might fall:</Text>
-              <Text style={styles.questionText}>{currentQ.text}</Text>
+              <Text style={[styles.questionLabel, { fontSize: scaled.small }]}>How concerned are you that you might fall:</Text>
+              <Text style={[styles.questionText, { fontSize: scaled.h3 }]}>{currentQ.text}</Text>
             </View>
 
             <View style={{ gap: 8, marginTop: 16 }}>
@@ -239,8 +239,8 @@ export default function Questionnaire() {
                     size={20}
                     color={answers[currentQ.id] === option.score ? warmRed : "#666"}
                   />
-                  <Text style={styles.optionText}>{option.label}</Text>
-                  <Text style={styles.optionScore}>{option.score}</Text>
+                  <Text style={[styles.optionText, { fontSize: scaled.base }]}>{option.label}</Text>
+                  <Text style={[styles.optionScore, { fontSize: scaled.small }]}>{option.score}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -252,17 +252,17 @@ export default function Questionnaire() {
                 disabled={currentQuestion === 0}
               >
                 <Ionicons name="arrow-back" size={16} color="#666" />
-                <Text style={styles.secondaryButtonText}>Back</Text>
+                <Text style={[styles.secondaryButtonText, { fontSize: Math.round(scaled.h1 * 0.5) }]}>Back</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
-                <Text style={styles.primaryButtonText}>
+                <Text style={[styles.primaryButtonText, { fontSize: Math.round(scaled.h1 * 0.5) }]}>
                   {currentQuestion === questions.length - 1 ? "View Results" : "Next"}
                 </Text>
                 <Ionicons name="arrow-forward" size={16} color="#FFF" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.progressText}>
+            <Text style={[styles.progressText, { fontSize: scaled.small }]}> 
               {Object.keys(answers).length} of {questions.length} questions answered
             </Text>
           </View>
@@ -281,90 +281,70 @@ export default function Questionnaire() {
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
-            <Text style={styles.brand}>AI PEER</Text>
+            <View>
+              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.small }]}>Fall Risk Questionnaire</Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.subtitle}>Fall Risk Questionnaire</Text>
+        
 
         <View style={styles.card}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <Ionicons name="checkmark-circle" size={24} color="#38A169" />
-            <Text style={styles.cardTitle}>Assessment Complete</Text>
+            <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>Assessment Complete</Text>
           </View>
 
-          <Text style={styles.thankYouText}>Thank you for completing the assessment!</Text>
-          <Text style={styles.resultsText}>Here are your results:</Text>
+          <Text style={[styles.thankYouText, { fontSize: scaled.h3 }]}>Thank you for completing the assessment!</Text>
+          <Text style={[styles.resultsText, { fontSize: scaled.base }]}>Here are your results:</Text>
 
           <View style={[styles.scoreBox, { backgroundColor: interpretation.bgColor }]}>
-            <Text style={styles.scoreLabel}>Your Fear of Falling Score</Text>
-            <Text style={[styles.scoreValue, { color: interpretation.color }]}>{score}</Text>
-            <Text style={styles.scoreOutOf}>out of 28</Text>
+            <Text style={[styles.scoreLabel, { fontSize: scaled.base }]}>Your Fear of Falling Score</Text>
+            <Text style={[styles.scoreValue, { color: interpretation.color, fontSize: scaled.h1 }]}>{score}</Text>
+            <Text style={[styles.scoreOutOf, { fontSize: scaled.small }]}>out of 28</Text>
             <View style={[styles.levelBadge, { backgroundColor: interpretation.color }]}>
-              <Text style={styles.levelText}>{interpretation.level}</Text>
+              <Text style={[styles.levelText, { fontSize: scaled.base }]}>{interpretation.level}</Text>
             </View>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>What This Means:</Text>
-            <Text style={styles.sectionText}>{interpretation.description}</Text>
-          </View>
+<View style={styles.section}>
+  <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>What This Means:</Text>
+  <Text style={[styles.sectionText, { fontSize: scaled.base }]}>{interpretation.description}</Text>
+</View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recommendations:</Text>
-            {interpretation.recommendations.map((rec, index) => (
-              <View key={index} style={styles.recItem}>
-                <Ionicons name="checkmark-circle-outline" size={16} color={warmRed} />
-                <Text style={styles.recText}>{rec}</Text>
-              </View>
-            ))}
-          </View>
+<View style={styles.section}>
+  <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>Recommendations:</Text>
+  {interpretation.recommendations.map((rec, index) => (
+    <View key={index} style={styles.recItem}>
+      <Ionicons name="checkmark-circle-outline" size={16} color={warmRed} />
+      <Text style={[styles.recText, { fontSize: scaled.base }]}>{rec}</Text>
+    </View>
+  ))}
+</View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Responses:</Text>
-            {questions.map((q) => (
-              <View key={q.id} style={styles.responseItem}>
-                <Text style={styles.responseText}>{q.text}</Text>
-                <View style={styles.responseBadge}>
-                  <Text style={styles.responseBadgeText}>Score: {answers[q.id]}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+<View style={styles.section}>
+  <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>Your Responses:</Text>
+  {questions.map((q) => (
+    <View key={q.id} style={styles.responseItem}>
+      <Text style={[styles.responseText, { fontSize: scaled.base }]}>{q.text}</Text>
+      <View style={styles.responseBadge}>
+        <Text style={[styles.responseBadgeText, { fontSize: scaled.small }]}>Score: {answers[q.id]}</Text>
+      </View>
+    </View>
+  ))}
+</View>
 
-          <View style={{ alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 5, marginTop: 20 }}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleRestart}>
-              <Text style={styles.secondaryButtonText}>Take Again</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => {Alert.alert("Success", "Results saved to your profile"); router.back()}}
-            >
-              <Text style={styles.primaryButtonText}>Save Results</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const beige = "#F7EDE4";
-const beigeDark = "#E6D4C6";
-const warmRed = "#D84535";
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: beige },
-  container: { paddingHorizontal: 16, paddingBottom: 12, gap: 14 },
-  header: {
-    paddingTop: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#6B5E55" },
-  backBtn: { outlineWidth: 2, padding: 5, outlineOffset: 4, outlineColor: "#db0000ff", borderRadius: 10 },
-  backText: { color: "#db0000ff", fontSize: fontSizes.small, fontWeight: "600" },
+<View style={{ alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 5, marginTop: 20 }}>
+  <TouchableOpacity style={styles.secondaryButton} onPress={handleRestart}>
+    <Text style={[styles.secondaryButtonText, { fontSize: scaled.h1/2 }]}>Take Again</Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={styles.primaryButton}
+    onPress={() => {Alert.alert("Success", "Results saved to your profile"); router.back();}}
+  >
+    <Text style={[styles.primaryButtonText, { fontSize: scaled.h1/2 }]}>Save Results</Text>
+  </TouchableOpacity>
+</View>
   card: {
     backgroundColor: "#FFF",
     borderRadius: 12,
@@ -387,21 +367,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 20,
-    flexDirection: "row",
-    gap: 5,
-  },
-  primaryButtonText: { color: "#FFF", fontWeight: "800", fontSize: 14 },
-  badge: { backgroundColor: warmRed, borderRadius: 12, paddingVertical: 4, paddingHorizontal: 8, alignSelf: "flex-start", marginBottom: 8 },
-  badgeText: { color: "#FFF", fontWeight: "700", fontSize: 12 },
-  progressBar: { height: 4, backgroundColor: "#E0E0E0", borderRadius: 2 },
-  progressFill: { height: "100%", backgroundColor: warmRed, borderRadius: 2 },
-  questionBox: { backgroundColor: "#F4E3D6", borderColor: beigeDark, borderWidth: 1, borderRadius: 8, padding: 12 },
-  questionLabel: { fontSize: 12, color: "#666", marginBottom: 8 },
-  questionText: { fontSize: 18, fontWeight: "600", color: "#333" },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
+backBtn: {
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  backgroundColor: "transparent",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: "#ff9b9bff",
+},
+backText: { color: "#333", fontSize: fontSizes.small, fontWeight: "600" },
     borderWidth: 2,
     borderColor: "#E0E0E0",
     borderRadius: 8,

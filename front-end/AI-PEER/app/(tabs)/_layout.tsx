@@ -1,21 +1,28 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { usePrefs } from "../../src/prefs-context";
 
 export default function TabsLayout() {
+  const { scaled, colors } = usePrefs();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#E4D4C8",
-          height: 60,
+          position: "absolute",
+          backgroundColor: colors.tabs,
+          borderTopColor: colors.accent, //"#E4D4C8",
+          height: 63,
+          paddingHorizontal: 10,
+          paddingBottom: 24,
+          paddingTop: 3,
         },
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "#6B5E55",
+        tabBarActiveTintColor: colors.tabColor,
+        tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: scaled.h2/2,
         },
       }}
     >
@@ -28,7 +35,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="ai-chat"
         options={{
@@ -42,7 +48,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="activity"
         options={{
@@ -52,7 +57,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="contacts"
         options={{
@@ -62,7 +66,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="settings"
         options={{
@@ -73,20 +76,9 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* ✅ Hidden tab routes (screens that keep the tab bar visible) */}
-      <Tabs.Screen
-        name="exercise"
-        options={{
-          href: null, // hides it from the tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="exercise-session"
-        options={{
-          href: null, // hides it from the tab bar
-        }}
-      />
+      {/* Hidden routes that still keep the tab bar visible */}
+      <Tabs.Screen name="exercise" options={{ href: null }} />
+      <Tabs.Screen name="exercise-session" options={{ href: null }} />
     </Tabs>
   );
 }
-

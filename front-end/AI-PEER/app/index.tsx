@@ -45,17 +45,16 @@ const onLogin = async () => {
   const p = normalizePhone(phone);
   if (p.length < 10) return setErr("Enter a valid phone number (10+ digits).");
   if (password.length < 6) return setErr("Password must be at least 6 characters.");
-  /*
+
   try {
     setLoading(true);
-    const res = await api.login(p, password);
-    await api.sendCode(p);
+    await api.sendCode(p, password, "login");
     router.push(`/verify?phone=${p}&mode=login`);
   } catch (e: any) {
-    setErr("Invalid phone or password");
+    setErr(e.message || "Invalid phone or password");
   } finally {
     setLoading(false);
-  }*/return router.replace(`/verify?phone=${p}&mode=login`);
+  }
 };
 
 const onCreate = async () => {
@@ -64,17 +63,16 @@ const onCreate = async () => {
   if (p.length < 10) return setErr("Enter a valid phone number (10+ digits).");
   if (password.length < 6) return setErr("Password must be at least 6 characters.");
   if (password !== confirmPassword.trim()) return setErr("Passwords do not match.");
-  /*
+
   try {
     setLoading(true);
-    const res = await api.createAccount(p, password);
-    await api.sendCode(p);
+    await api.sendCode(p, password, "create");
     router.push(`/verify?phone=${p}&mode=create`);
   } catch (e: any) {
-    setErr("Failed to create account");
+    setErr(e.message || "Failed to create account");
   } finally {
     setLoading(false);
-  }*/return router.replace(`/verify?phone=${p}&mode=create`);
+  }
 };
 
 const switch_clearPages = async () => {
