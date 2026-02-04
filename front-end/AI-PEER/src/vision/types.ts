@@ -50,7 +50,7 @@ export type VisionConfig = {
     modelURL:string;
     modelFileName:string;
     modelSizeBytes:number;
-    minKeypointConfidence:number;
+    minKeyPointConfidence:number;
     minPoseConfidence:number;
     targetFPS:number;
     inputSize:number;
