@@ -9,7 +9,7 @@ import {VisionConfig} from './types';
 
 
 export const VISION_CONFIG:VisionConfig={
-    modelURL://python code- model_path = hf_hub_download(repo_id="openvision/yolo26-n-pose", filename="model.pt"),
+    modelURL: 'TBD', // TODO: set after converting model — hf_hub_download(repo_id="openvision/yolo26-n-pose", filename="model.pt")
     modelFileName: 'yolo26n-pose.tflite',
     modelSizeBytes:0,
     
