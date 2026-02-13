@@ -1,0 +1,104 @@
+/**
+ * Exercise Rules Registry
+ *
+ * Maps exercise IDs to their form-checking rules.
+ * Used by FormAnalyzer to look up rules for any exercise.
+ */
+
+import { ExerciseRule } from './types';
+
+// Assessment exercises
+import { chairRiseRules } from './assessment/chairRise';
+import { balanceTestRules } from './assessment/balanceTest';
+import { timedUpAndGoRules } from './assessment/timedUpAndGo';
+
+// Warm-up exercises
+import { headMovementsRules } from './warmup/headMovements';
+import { neckMovementsRules } from './warmup/neckMovements';
+import { backMovementsRules } from './warmup/backMovements';
+import { trunkMovementsRules } from './warmup/trunkMovements';
+import { ankleMovementsRules } from './warmup/ankleMovements';
+
+// Strength exercises
+import { kneeExtensorRules } from './strength/kneeExtensor';
+import { kneeFlexorRules } from './strength/kneeFlexor';
+import { hipAbductorRules } from './strength/hipAbductor';
+import { calfRaisesRules } from './strength/calfRaises';
+import { toeRaisesRules } from './strength/toeRaises';
+
+// Balance exercises
+import { kneeBendsRules } from './balance/kneeBends';
+import { sitToStandRules } from './balance/sitToStand';
+import { sidewaysWalkRules } from './balance/sidewaysWalk';
+import { backwardsWalkRules } from './balance/backwardsWalk';
+import { walkAndTurnRules } from './balance/walkAndTurn';
+import { oneLegStandRules } from './balance/oneLegStand';
+import { heelToeStandRules } from './balance/heelToeStand';
+import { heelToeWalkRules } from './balance/heelToeWalk';
+import { heelWalkingRules } from './balance/heelWalking';
+import { toeWalkingRules } from './balance/toeWalking';
+import { heelToeWalkBackwardsRules } from './balance/heelToeWalkBackwards';
+
+/**
+ * Registry mapping exercise ID to its rules.
+ * Use getExerciseRules(id) to look up rules for an exercise.
+ */
+export const exerciseRegistry: Record<string, ExerciseRule> = {
+  // Assessment (3)
+  'assessment-1': chairRiseRules,
+  'assessment-2': balanceTestRules,
+  'assessment-3': timedUpAndGoRules,
+
+  // Warm-up (5)
+  'warmup-1': headMovementsRules,
+  'warmup-2': neckMovementsRules,
+  'warmup-3': backMovementsRules,
+  'warmup-4': trunkMovementsRules,
+  'warmup-5': ankleMovementsRules,
+
+  // Strength (5)
+  'strength-1': kneeExtensorRules,
+  'strength-2': kneeFlexorRules,
+  'strength-3': hipAbductorRules,
+  'strength-4': calfRaisesRules,
+  'strength-5': toeRaisesRules,
+
+  // Balance (11)
+  'balance-1': kneeBendsRules,
+  'balance-2': sitToStandRules,
+  'balance-3': sidewaysWalkRules,
+  'balance-4': backwardsWalkRules,
+  'balance-5': walkAndTurnRules,
+  'balance-6': oneLegStandRules,
+  'balance-7': heelToeStandRules,
+  'balance-8': heelToeWalkRules,
+  'balance-9': heelWalkingRules,
+  'balance-10': toeWalkingRules,
+  'balance-11': heelToeWalkBackwardsRules,
+};
+
+/**
+ * Get exercise rules by ID.
+ * Returns undefined if exercise ID not found.
+ */
+export function getExerciseRules(exerciseId: string): ExerciseRule | undefined {
+  return exerciseRegistry[exerciseId];
+}
+
+/**
+ * Get all exercises in a category.
+ */
+export function getExercisesByCategory(category: ExerciseRule['category']): ExerciseRule[] {
+  return Object.values(exerciseRegistry).filter((rule) => rule.category === category);
+}
+
+/**
+ * Get all exercise IDs.
+ */
+export function getAllExerciseIds(): string[] {
+  return Object.keys(exerciseRegistry);
+}
+
+// Re-export types and utils
+export * from './types';
+export * from './utils';
