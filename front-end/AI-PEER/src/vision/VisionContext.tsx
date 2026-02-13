@@ -1,8 +1,8 @@
 //
 // VisionContext.tsx — react context for vision state management
 //
-// singleton (VisionService) holds the tflite model, survives unmounts
-// context (this file) provides react state that triggers re-renders
+// model loading is handled by useTensorflowModel hook in the component
+// context provides react state for tracking, form analysis, and re-renders
 //
 
 import React, {
@@ -16,15 +16,13 @@ import React, {
 } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { VisionState, Pose, FormFeedback } from './types';
-import VisionService from './VisionService';
 import { analyzePose } from './FormAnalyzer';
 
 type VisionContextValue = {
   state: VisionState;
-  initializeModel: () => Promise<void>;
+  setModelReady: (ready: boolean) => void;
   startTracking: (exerciseId: string) => void;
   stopTracking: () => void;
-  processFrame: (frameData: Float32Array, width: number, height: number) => void;
   // accepts an already-parsed pose from the frame processor worklet
   handlePoseResult: (pose: Pose | null) => void;
 };
@@ -47,41 +45,18 @@ const STATE_UPDATE_INTERVAL = 200;
 export function VisionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<VisionState>(initialState);
 
-  // refs for stable callback identity — avoids processFrame changing every render
+  // refs for stable callback identity
   const isTrackingRef = useRef(false);
   const exerciseIdRef = useRef<string | null>(null);
   const lastStateUpdateRef = useRef(0);
   const pendingPoseRef = useRef<Pose | null>(null);
   const pendingFeedbackRef = useRef<FormFeedback | null>(null);
 
-  const initializeModel = useCallback(async () => {
-    if (VisionService.isReady()) {
-      setState((s) => ({ ...s, isModelLoaded: true }));
-      return;
-    }
-
-    setState((s) => ({ ...s, error: null }));
-
-    try {
-      await VisionService.initialize();
-      setState((s) => ({ ...s, isModelLoaded: true }));
-    } catch (error) {
-      console.error('vision model initialization failed:', error);
-      setState((s) => ({
-        ...s,
-        error: `Failed to load vision model: ${error}`,
-        isModelLoaded: false,
-      }));
-      throw error;
-    }
+  const setModelReady = useCallback((ready: boolean) => {
+    setState((s) => ({ ...s, isModelLoaded: ready }));
   }, []);
 
   const startTracking = useCallback((exerciseId: string) => {
-    if (!VisionService.isReady()) {
-      if (__DEV__) console.warn('cannot start tracking: model not loaded');
-      return;
-    }
-
     exerciseIdRef.current = exerciseId;
     isTrackingRef.current = true;
     setState((s) => ({
@@ -103,36 +78,6 @@ export function VisionProvider({ children }: { children: ReactNode }) {
       currentFeedback: null,
     }));
   }, []);
-
-  // processFrame uses refs so its identity never changes
-  const processFrame = useCallback(
-    (frameData: Float32Array, width: number, height: number) => {
-      if (!isTrackingRef.current || !VisionService.isReady()) return;
-
-      const pose = VisionService.runInference(frameData, width, height);
-
-      let feedback: FormFeedback | null = null;
-      if (pose && exerciseIdRef.current) {
-        feedback = analyzePose(pose, exerciseIdRef.current);
-      }
-
-      // store latest in refs
-      pendingPoseRef.current = pose;
-      pendingFeedbackRef.current = feedback;
-
-      // throttle actual state updates
-      const now = Date.now();
-      if (now - lastStateUpdateRef.current >= STATE_UPDATE_INTERVAL) {
-        lastStateUpdateRef.current = now;
-        setState((s) => ({
-          ...s,
-          currentPose: pendingPoseRef.current,
-          currentFeedback: pendingFeedbackRef.current,
-        }));
-      }
-    },
-    []
-  );
 
   // handlePoseResult — takes a parsed pose from the frame processor
   // runs form analysis and throttles state updates
@@ -178,10 +123,9 @@ export function VisionProvider({ children }: { children: ReactNode }) {
     <VisionContext.Provider
       value={{
         state,
-        initializeModel,
+        setModelReady,
         startTracking,
         stopTracking,
-        processFrame,
         handlePoseResult,
       }}
     >

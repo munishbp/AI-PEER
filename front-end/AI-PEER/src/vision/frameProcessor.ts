@@ -1,11 +1,20 @@
 //
 // frameProcessor.ts — bridge between camera frames and vision pipeline
 //
-// uses vision-camera frame processor api to:
+// runs entirely on VisionCamera's worklet thread via useFrameProcessor:
 // 1. resize camera frame to 640x640 rgb float32
-// 2. run tflite inference on the worklet thread
-// 3. parse pose from output
-// 4. post result back to js thread
+// 2. run tflite inference via model.runSync
+// 3. parse pose keypoints from raw output (parsePoseFromOutput is a worklet)
+// 4. send parsed Pose object to JS thread via useRunOnJS
+//
+// important threading notes:
+// - useRunOnJS must come from react-native-worklets-core (not react-native-worklets).
+//   VisionCamera v4 decorates its frame processor runtime with worklets-core's
+//   native globals. the newer react-native-worklets package has its own serialization
+//   globals (_createSerializable) that are NOT installed on VisionCamera's runtime.
+// - ArrayBuffers cannot cross the thread boundary as shared values.
+//   pose parsing happens inside the worklet so only the plain Pose object
+//   (numbers + strings) gets serialized to JS.
 //
 // frame data is never persisted — keypoints are extracted and the frame reference is dropped
 //
@@ -14,8 +23,8 @@ import { useRef, useCallback } from 'react';
 import { useFrameProcessor } from 'react-native-vision-camera';
 import { useResizePlugin } from 'vision-camera-resize-plugin';
 import { useSharedValue } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
-import VisionService from './VisionService';
+import { useRunOnJS } from 'react-native-worklets-core';
+import { TensorflowModel } from 'react-native-fast-tflite';
 import { parsePoseFromOutput } from './VisionService';
 import { Pose } from './types';
 
@@ -24,18 +33,23 @@ type OnPoseDetected = (pose: Pose | null) => void;
 // throttle to every 3rd frame (~10fps at 30fps camera)
 const FRAME_SKIP = 3;
 
-export function useVisionFrameProcessor(onPoseDetected: OnPoseDetected) {
+export function useVisionFrameProcessor(
+  model: TensorflowModel | undefined,
+  onPoseDetected: OnPoseDetected
+) {
   const { resize } = useResizePlugin();
   const frameCount = useSharedValue(0);
   const onPoseRef = useRef(onPoseDetected);
   onPoseRef.current = onPoseDetected;
 
-  // bridge to post pose back to js thread
+  // callback runs on JS thread — receives the already-parsed Pose from the worklet
   const handlePose = useCallback((pose: Pose | null) => {
     onPoseRef.current(pose);
   }, []);
 
-  const handlePoseJS = runOnJS(handlePose);
+  // useRunOnJS (worklets-core) wraps handlePose as a shareable function callable
+  // from VisionCamera's frame processor runtime
+  const handleOnJS = useRunOnJS(handlePose, [handlePose]);
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
@@ -44,32 +58,23 @@ export function useVisionFrameProcessor(onPoseDetected: OnPoseDetected) {
     frameCount.value = frameCount.value + 1;
     if (frameCount.value % FRAME_SKIP !== 0) return;
 
-    // resize frame to 640x640 rgb float32 for yolo input
+    if (model == null) return;
+
     const resized = resize(frame, {
       scale: { width: 640, height: 640 },
       pixelFormat: 'rgb',
       dataType: 'float32',
     });
 
-    // get the interpreter and run inference on worklet thread
-    const interpreter = VisionService.getInterpreter();
-    if (!interpreter) return;
-
-    const outputs = interpreter.runSync([resized]);
+    const outputs = model.runSync([resized]);
     const output = outputs[0];
     if (!output) return;
 
-    // runSync returns TypedArray[] directly
-    const data = output instanceof Float32Array
-      ? output
-      : new Float32Array(output as ArrayLike<number>);
-
-    // parse pose from raw tensor output
-    const pose = parsePoseFromOutput(data);
-
-    // send back to js thread
-    handlePoseJS(pose);
-  }, [resize, handlePoseJS]);
+    // parse pose in the worklet — avoids passing ArrayBuffer across threads
+    const floats = new Float32Array(output.buffer);
+    const pose = parsePoseFromOutput(floats);
+    handleOnJS(pose);
+  }, [resize, model, handleOnJS]);
 
   return frameProcessor;
 }

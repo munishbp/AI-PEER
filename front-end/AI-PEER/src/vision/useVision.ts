@@ -10,10 +10,9 @@ import { Pose, FormFeedback } from './types';
 export function useVision() {
   const {
     state,
-    initializeModel,
+    setModelReady,
     startTracking,
     stopTracking,
-    processFrame,
     handlePoseResult,
   } = useVisionContext();
 
@@ -36,10 +35,9 @@ export function useVision() {
     isGoodForm,
 
     // actions
-    initializeModel,
+    setModelReady,
     startTracking,
     stopTracking,
-    processFrame,
     handlePoseResult,
   };
 }

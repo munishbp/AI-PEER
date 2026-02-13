@@ -15,7 +15,9 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
+import { useTensorflowModel } from "react-native-fast-tflite";
 import { useVision } from "@/src/vision";
+import { MODEL_ASSET } from "@/src/vision/config";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 
 type CatKey = "warmup" | "strength" | "balance";
@@ -60,24 +62,41 @@ export default function ExerciseSessionPage() {
     [params.cat, params.video]
   );
 
+  // "default" delegate = CPU. CoreML delegate fails to load this model
+  // on-device, so we fall back to CPU for reliable inference.
+  const plugin = useTensorflowModel(MODEL_ASSET, "default");
+  const model = plugin.state === "loaded" ? plugin.model : undefined;
+  const modelReady = plugin.state === "loaded";
+  const isModelLoading = plugin.state === "loading";
+  const modelError = plugin.state === "error" ? plugin.error : null;
+
   // vision hook
   const {
-    isReady: modelReady,
     isTracking,
     currentFeedback,
     error: visionError,
-    initializeModel,
+    setModelReady,
     startTracking,
     stopTracking,
     handlePoseResult,
   } = useVision();
 
+  // debug: log model plugin state changes
+  useEffect(() => {
+    console.log('[ExerciseSession] model plugin state:', plugin.state);
+    if (plugin.state === 'error') {
+      console.error('[ExerciseSession] model load error:', plugin.error);
+    }
+  }, [plugin.state]);
+
+  // sync model ready state into vision context
+  useEffect(() => {
+    setModelReady(modelReady);
+  }, [modelReady, setModelReady]);
+
   // camera
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("front");
-
-  // local state
-  const [isModelLoading, setIsModelLoading] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
 
   // session stats — use refs so we don't re-render on every frame
@@ -100,7 +119,7 @@ export default function ExerciseSessionPage() {
 
   // frame processor — runs inference on worklet, posts pose back to js
   // handlePoseResult runs form analysis and updates vision context state
-  const frameProcessor = useVisionFrameProcessor(handlePoseResult);
+  const frameProcessor = useVisionFrameProcessor(model, handlePoseResult);
 
   const handleStartMonitoring = async () => {
     // request camera permission on first tap
@@ -109,17 +128,8 @@ export default function ExerciseSessionPage() {
       if (!granted) return;
     }
 
-    // load model if needed
-    if (!modelReady) {
-      setIsModelLoading(true);
-      try {
-        await initializeModel();
-      } catch {
-        setIsModelLoading(false);
-        return;
-      }
-      setIsModelLoading(false);
-    }
+    // model loads automatically via useTensorflowModel hook
+    if (!modelReady) return;
 
     // reset session stats
     scoresRef.current = [];
@@ -212,6 +222,14 @@ export default function ExerciseSessionPage() {
                   <ActivityIndicator size="large" color={warmRed} />
                   <Text style={styles.cameraHint}>Loading model...</Text>
                 </>
+              ) : modelError ? (
+                <>
+                  <Ionicons name="alert-circle-outline" size={34} color={warmRed} />
+                  <Text style={[styles.cameraHint, { color: warmRed }]}>Model failed to load</Text>
+                  <Text style={styles.cameraSmall}>
+                    {modelError.message}
+                  </Text>
+                </>
               ) : !hasPermission ? (
                 <>
                   <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
@@ -261,6 +279,11 @@ export default function ExerciseSessionPage() {
         </View>
 
         {/* error display */}
+        {modelError && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>Model failed to load: {modelError.message}</Text>
+          </View>
+        )}
         {visionError && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{visionError}</Text>
