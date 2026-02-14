@@ -145,10 +145,7 @@ export default function SettingsScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Ionicons name="settings-outline" size={18} color="#555" />
           </View>
-          <View style={{ flex: 1 }} />
-          <Ionicons name="settings-outline" size={18} color="#555" />
         </View>
-        <Text style={styles.subtitle}>Settings & Preferences</Text>
 
         {/* Segmented Control */}
         <View style={styles.segmentOuter}>
@@ -566,9 +563,10 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 4, marginBottom: 6, color: "#6B5E55", fontSize: 13 },
+  subtitle: { marginTop: 3, marginBottom: 6, color: "#6B5E55", fontSize: 13 },
 
   segmentOuter: {
     backgroundColor: "#F4E3D6",
