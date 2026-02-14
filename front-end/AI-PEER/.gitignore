@@ -38,6 +38,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+src/firebaseConfig.ts
 *.keystore
 *.p12
 *.mobileprovision
