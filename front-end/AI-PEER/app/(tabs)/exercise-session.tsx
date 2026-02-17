@@ -234,9 +234,7 @@ export default function ExerciseSessionPage() {
                 <>
                   <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
                   <Text style={styles.cameraHint}>Camera access needed</Text>
-                  <Text style={styles.cameraSmall}>
-                    Tap "Start Monitoring" to enable camera
-                  </Text>
+                  <Text style={styles.cameraSmall}>Tap Start Monitoring to enable camera</Text>
                 </>
               ) : (
                 <>

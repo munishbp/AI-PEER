@@ -86,14 +86,14 @@ export default function Welcome({ onComplete }: WelcomeProps) {
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {step === 0 ? (
                 <View style={styles.card}>
-                    <Text style={[styles.mainTitle, { color: colors.text, fontSize: scaled.h1 }]}>Let's Get You Set Up!</Text>
-                    <Text style={[styles.lead, { color: colors.muted, fontSize: scaled.h1/2 }]}>Welcome to AI PEER. We'll help you personalize your experience in just a few simple steps.</Text>
+                    <Text style={[styles.mainTitle, { color: colors.text, fontSize: scaled.h1 }]}>Let&apos;s Get You Set Up!</Text>
+                    <Text style={[styles.lead, { color: colors.muted, fontSize: scaled.h1/2 }]}>Welcome to AI PEER. We&apos;ll help you personalize your experience in just a few simple steps.</Text>
                     <TouchableOpacity
-                        accessibilityLabel="Let's Begin"
+                        accessibilityLabel="Let&apos;s Begin"
                         style={[styles.primaryButton, { backgroundColor: colors.accent }]}
                         onPress={() => setStep(1)}
                     >
-                        <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>Let's Begin</Text>
+                        <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>Let&apos;s Begin</Text>
                     </TouchableOpacity>
                 </View>
             ) : (

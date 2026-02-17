@@ -1,6 +1,6 @@
 import {createContext, useContext, useEffect, useState} from "react";
 import {User, signOut, signInWithCustomToken, onAuthStateChanged} from "firebase/auth";
-import {auth} from '../firebaseConfig';
+import {auth} from '../firebaseClient';
 import {api} from '../api';
 
 type AuthContextType = {

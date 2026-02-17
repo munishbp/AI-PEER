@@ -28,9 +28,12 @@ function computeFRA(tandemSeconds: number, fesI: number) {
 }
 
 // Dot centered in the chosen quadrant (simple + clear for now)
-function dotPosition(physical: PhysicalRisk, perceived: PerceivedRisk) {
-  const x = physical === "High" ? "75%" : "25%";
-  const y = perceived === "High" ? "25%" : "75%"; // RN y grows downward
+function dotPosition(
+  physical: PhysicalRisk,
+  perceived: PerceivedRisk
+): { x: `${number}%`; y: `${number}%` } {
+  const x: `${number}%` = physical === "High" ? "75%" : "25%";
+  const y: `${number}%` = perceived === "High" ? "25%" : "75%"; // RN y grows downward
   return { x, y };
 }
 
