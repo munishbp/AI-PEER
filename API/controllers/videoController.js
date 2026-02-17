@@ -288,7 +288,7 @@ const getBWWalkURL=async(req,res)=>{
 
 const getHTStandURL=async(req,res)=>{
     //Replace these with the actual videoID we assign it and exercise name
-    const Vid_ID='balance/Heel_Toe_Stand.mp4';
+    const Vid_ID='Balance/Heel_Toe_Stand.mp4';
     const Exercise_Name='Heel Toe Stand';
 
     try{
