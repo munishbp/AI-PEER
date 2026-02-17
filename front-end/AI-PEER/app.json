@@ -44,7 +44,11 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      ["react-native-vision-camera", {
+        "cameraPermissionText": "AI PEER needs camera access to monitor your exercise form in real time.",
+        "enableMicrophonePermission": false
+      }]
     ],
     "experiments": {
       "typedRoutes": true

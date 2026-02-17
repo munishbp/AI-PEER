@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 3, marginBottom: 6, fontSize: 11, color: "#6B5E55" },
+  subtitle: { marginTop: 3, marginBottom: 6, color: "#6B5E55", fontSize: 13 },
 
   segmentOuter: {
     backgroundColor: "#F4E3D6",
