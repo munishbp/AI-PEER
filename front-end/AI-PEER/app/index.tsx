@@ -190,7 +190,7 @@ const switch_clearPages = async () => {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => switch_clearPages()} style={s.switchWrap}>
-              <Text style={s.switchText}>Don't have an account? Create an account</Text>
+              <Text style={s.switchText}>Don&apos;t have an account? Create an account</Text>
             </TouchableOpacity>
           </View>
         )}

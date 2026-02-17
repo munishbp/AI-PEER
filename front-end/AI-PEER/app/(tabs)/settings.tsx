@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 11 },
+  segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 13 },
 
   card: {
     backgroundColor: "#FFF",

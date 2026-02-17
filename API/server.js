@@ -12,8 +12,9 @@ console.log('GCS_PRIVATE_KEY exists:', !!process.env.GCS_PRIVATE_KEY);
 console.log('GCS_PRIVATE_KEY length:', process.env.GCS_PRIVATE_KEY?.length);
 
 const express=require('express');
-const cors=require('cors')
-const verification=require('./middleware/authMiddleware')
+const cors=require('cors');
+const verification=require('./middleware/authMiddleware');
+
 
 const authRoutes = require('./routes/authRoutes');
 
@@ -44,11 +45,14 @@ app.use(verification);
 //req what client sends
 //response is what you send back
 
-//imports function from video_template.js
-const video_template=require('./routes/video_template');
+const videoRoutes = require('./routes/videosRoutes');
+app.use("/video", videoRoutes);
 
-//runs the function above and sends back the json response
-app.get('/api/video/test-video',video_template);
+// Routes
+const userRoutes = require("./routes/userRoutes");
+app.use("/users", userRoutes);
+
+
 
 const PORT=process.env.PORT||3000;
 

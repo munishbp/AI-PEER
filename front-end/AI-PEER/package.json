@@ -14,11 +14,13 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-navigation/elements": "^2.7.2",
     "@react-navigation/native": "^7.1.8",
     "expo": "~54.0.23",
     "expo-constants": "~18.0.10",
     "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.8",
+    "expo-haptics": "~14.0.1",
     "expo-image": "~3.0.11",
     "expo-linking": "~8.0.8",
     "expo-router": "~6.0.14",
@@ -42,8 +44,12 @@
     "vision-camera-resize-plugin": "^3.2.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.36.0",
     "@types/react": "~19.1.0",
     "baseline-browser-mapping": "^2.9.16",
+    "eslint": "^9.36.0",
+    "eslint-config-expo": "^10.0.0",
     "react-test-renderer": "19.1.0",
     "typescript": "~5.9.2"
   }
