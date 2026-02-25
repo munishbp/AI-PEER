@@ -42,5 +42,21 @@ export const toeWalkingRules: ExerciseRule = {
       message: 'Keep your legs straight',
       severity: 'warning',
     },
+    {
+      type: 'alignment',
+      keypoints: ['left_shoulder', 'right_shoulder'],
+      direction: 'horizontal',
+      tolerance: 15,
+      message: 'Keep your shoulders level',
+      severity: 'warning',
+    },
+    {
+      type: 'position',
+      keypoint: 'nose',
+      reference: 'left_hip',
+      relation: 'above',
+      message: 'Keep your head up',
+      severity: 'warning',
+    },
   ],
 };

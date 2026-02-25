@@ -26,5 +26,21 @@ export const walkAndTurnRules: ExerciseRule = {
       message: 'Keep your hips stable during turns',
       severity: 'warning',
     },
+    {
+      type: 'alignment',
+      keypoints: ['left_shoulder', 'right_shoulder'],
+      direction: 'horizontal',
+      tolerance: 20,
+      message: 'Keep your shoulders level during turns',
+      severity: 'warning',
+    },
+    {
+      type: 'position',
+      keypoint: 'nose',
+      reference: 'left_hip',
+      relation: 'above',
+      message: 'Keep your head up',
+      severity: 'warning',
+    },
   ],
 };

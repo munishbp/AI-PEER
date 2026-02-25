@@ -10,12 +10,18 @@
 // across the thread boundary (ArrayBuffers are not serializable as shared values).
 //
 
+import { Platform } from 'react-native';
 import { Pose, Keypoint } from './types';
 import { keypoint_names } from './constants';
 
 const NUM_DETECTIONS = 8400;
 const VALUES_PER_DETECTION = 56;
 const MIN_DATA_LENGTH = NUM_DETECTIONS * VALUES_PER_DETECTION;
+
+// iOS camera hardware delivers frames in landscape orientation regardless of
+// device rotation, so the model's x/y axes are swapped relative to portrait
+// screen-space. Android frames are already oriented correctly.
+const SWAP_XY = Platform.OS === 'ios';
 
 export function parsePoseFromOutput(data: Float32Array): Pose | null {
   'worklet';
@@ -47,10 +53,13 @@ export function parsePoseFromOutput(data: Float32Array): Pose | null {
     // keypoints start at index 5, each has x,y,confidence
     const baseIndex = (5 + k * 3) * NUM_DETECTIONS + bestIndex;
 
+    const rawX = data[baseIndex];
+    const rawY = data[baseIndex + NUM_DETECTIONS];
+
     keypoints.push({
       name: keypoint_names[k],
-      x: data[baseIndex],
-      y: data[baseIndex + NUM_DETECTIONS],
+      x: SWAP_XY ? rawY : rawX,
+      y: SWAP_XY ? rawX : rawY,
       confidence: data[baseIndex + 2 * NUM_DETECTIONS],
     });
   }

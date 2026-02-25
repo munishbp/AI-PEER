@@ -34,5 +34,13 @@ export const timedUpAndGoRules: ExerciseRule = {
       message: 'Keep shoulders level during turns',
       severity: 'warning',
     },
+    {
+      type: 'alignment',
+      keypoints: ['left_hip', 'right_hip'],
+      direction: 'horizontal',
+      tolerance: 15,
+      message: 'Keep your hips level',
+      severity: 'warning',
+    },
   ],
 };
