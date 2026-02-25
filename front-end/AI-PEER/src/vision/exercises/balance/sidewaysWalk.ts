@@ -34,5 +34,13 @@ export const sidewaysWalkRules: ExerciseRule = {
       message: 'Keep your shoulders level',
       severity: 'warning',
     },
+    {
+      type: 'position',
+      keypoint: 'nose',
+      reference: 'left_hip',
+      relation: 'above',
+      message: 'Keep your head up — look forward',
+      severity: 'warning',
+    },
   ],
 };

@@ -42,5 +42,21 @@ export const chairRiseRules: ExerciseRule = {
       message: 'Keep your head up',
       severity: 'warning',
     },
+    {
+      type: 'alignment',
+      keypoints: ['left_shoulder', 'right_shoulder'],
+      direction: 'horizontal',
+      tolerance: 15,
+      message: 'Keep your shoulders level as you stand',
+      severity: 'warning',
+    },
+    {
+      type: 'alignment',
+      keypoints: ['left_hip', 'right_hip'],
+      direction: 'horizontal',
+      tolerance: 15,
+      message: 'Keep your hips level as you stand',
+      severity: 'warning',
+    },
   ],
 };

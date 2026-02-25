@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { getExerciseVideos } from "@/src/video";
 
 type CategoryKey = "warmup" | "strength" | "balance";
 
@@ -21,11 +22,6 @@ type Category = {
   score: number;
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
-};
-
-type VideoItem = {
-  id: string;
-  duration: string; // keep only what we can show without backend
 };
 
 const CATEGORIES: Category[] = [
@@ -58,24 +54,6 @@ const CATEGORIES: Category[] = [
   },
 ];
 
-// ✅ Mock video counts/rows (no thumbnails yet)
-const VIDEO_LIBRARY: Record<CategoryKey, VideoItem[]> = {
-  warmup: [
-    { id: "wu-1", duration: "2:10" },
-    { id: "wu-2", duration: "3:05" },
-    { id: "wu-3", duration: "2:45" },
-  ],
-  strength: [
-    { id: "st-1", duration: "4:20" },
-    { id: "st-2", duration: "3:30" },
-  ],
-  balance: [
-    { id: "ba-1", duration: "3:40" },
-    { id: "ba-2", duration: "3:15" },
-    { id: "ba-3", duration: "4:05" },
-  ],
-};
-
 export default function ExercisePage() {
   const router = useRouter();
 
@@ -96,17 +74,16 @@ export default function ExercisePage() {
     setOpenFolders((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const openVideo = (cat: CategoryKey, videoId: string, duration: string) => {
-  router.push({
-    pathname: "/(tabs)/video-confirm",
-    params: {
-      cat,
-      video: videoId,
-      label: "Video placeholder",
-      duration,
-    },
-  });
-};
+  const openVideo = (cat: CategoryKey, exerciseId: string, name: string) => {
+    router.push({
+      pathname: "/(tabs)/video-confirm",
+      params: {
+        cat,
+        video: exerciseId,
+        label: name,
+      },
+    });
+  };
 
 
   return (
@@ -166,7 +143,7 @@ export default function ExercisePage() {
         {/* Category cards */}
         <View style={{ gap: 18 }}>
           {CATEGORIES.map((c) => {
-            const videos = VIDEO_LIBRARY[c.key];
+            const videos = getExerciseVideos(c.key);
             const isOpen = openFolders[c.key];
 
             return (
@@ -231,9 +208,9 @@ export default function ExercisePage() {
                     <View style={styles.videoList}>
                       {videos.map((v) => (
                         <TouchableOpacity
-                          key={v.id}
+                          key={v.exerciseId}
                           activeOpacity={0.85}
-                          onPress={() => openVideo(c.key, v.id, v.duration)}
+                          onPress={() => openVideo(c.key, v.exerciseId, v.name)}
                           style={styles.videoRow}
                         >
                           <View style={styles.videoPlaceholderIcon}>
@@ -246,9 +223,8 @@ export default function ExercisePage() {
 
                           <View style={{ flex: 1 }}>
                             <Text style={styles.videoName}>
-                              Video placeholder
+                              {v.name}
                             </Text>
-                            <Text style={styles.videoMeta}>{v.duration}</Text>
                           </View>
 
                           <Ionicons

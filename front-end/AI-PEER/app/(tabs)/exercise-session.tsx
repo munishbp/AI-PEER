@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
+  LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,8 @@ import { useTensorflowModel } from "react-native-fast-tflite";
 import { useVision } from "@/src/vision";
 import { MODEL_ASSET } from "@/src/vision/config";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
+import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
+import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
 
 type CatKey = "warmup" | "strength" | "balance";
 
@@ -27,24 +30,6 @@ function prettyCat(cat?: string) {
   if (cat === "strength") return "Strength";
   if (cat === "balance") return "Balance";
   return "Exercise";
-}
-
-// map video id prefix to exercise registry category name
-// wu-1 -> warmup-1, st-1 -> strength-1, ba-1 -> balance-1
-const PREFIX_MAP: Record<string, string> = {
-  wu: "warmup",
-  st: "strength",
-  ba: "balance",
-};
-
-function videoIdToExerciseId(cat: string, videoId?: string): string {
-  if (!videoId) return `${cat}-1`;
-  const parts = videoId.split("-");
-  if (parts.length < 2) return `${cat}-1`;
-  const prefix = parts[0];
-  const num = parts[1];
-  const category = PREFIX_MAP[prefix] || cat;
-  return `${category}-${num}`;
 }
 
 export default function ExerciseSessionPage() {
@@ -57,10 +42,7 @@ export default function ExerciseSessionPage() {
   }>();
 
   const title = useMemo(() => prettyCat(params.cat), [params.cat]);
-  const exerciseId = useMemo(
-    () => videoIdToExerciseId(params.cat || "warmup", params.video),
-    [params.cat, params.video]
-  );
+  const exerciseId = params.video || `${params.cat || "warmup"}-1`;
 
   // "default" delegate = CPU. CoreML delegate fails to load this model
   // on-device, so we fall back to CPU for reliable inference.
@@ -73,6 +55,7 @@ export default function ExerciseSessionPage() {
   // vision hook
   const {
     isTracking,
+    currentPose,
     currentFeedback,
     error: visionError,
     setModelReady,
@@ -104,6 +87,13 @@ export default function ExerciseSessionPage() {
   const violationCountRef = useRef<Record<string, number>>({});
   // trigger re-render for summary only
   const [summaryTick, setSummaryTick] = useState(0);
+
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  const handleCameraLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setContainerSize({ width, height });
+  }, []);
 
   // accumulate scores and violations while tracking
   useEffect(() => {
@@ -206,7 +196,7 @@ export default function ExerciseSessionPage() {
         </Text>
 
         {/* camera / preview area */}
-        <View style={styles.cameraContainer}>
+        <View style={styles.cameraContainer} onLayout={handleCameraLayout}>
           {cameraActive && device ? (
             <Camera
               style={StyleSheet.absoluteFill}
@@ -246,6 +236,26 @@ export default function ExerciseSessionPage() {
                 </>
               )}
             </View>
+          )}
+
+          {/* skeleton overlays */}
+          {isTracking && currentPose && containerSize.width > 0 && (
+            <>
+              <GuideOverlay
+                pose={currentPose}
+                exerciseId={exerciseId}
+                width={containerSize.width}
+                height={containerSize.height}
+                isFrontCamera
+              />
+              <SkeletonOverlay
+                pose={currentPose}
+                feedback={currentFeedback}
+                width={containerSize.width}
+                height={containerSize.height}
+                isFrontCamera
+              />
+            </>
           )}
 
           {/* score overlay when tracking */}

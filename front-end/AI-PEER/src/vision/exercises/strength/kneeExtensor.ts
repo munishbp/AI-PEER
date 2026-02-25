@@ -34,5 +34,21 @@ export const kneeExtensorRules: ExerciseRule = {
       message: 'Keep your hips stable',
       severity: 'warning',
     },
+    {
+      type: 'alignment',
+      keypoints: ['left_shoulder', 'right_shoulder'],
+      direction: 'horizontal',
+      tolerance: 10,
+      message: 'Keep your shoulders level',
+      severity: 'warning',
+    },
+    {
+      type: 'position',
+      keypoint: 'nose',
+      reference: 'left_hip',
+      relation: 'above',
+      message: 'Keep your head up',
+      severity: 'warning',
+    },
   ],
 };

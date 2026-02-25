@@ -42,5 +42,13 @@ export const oneLegStandRules: ExerciseRule = {
       message: 'Keep your standing leg straight',
       severity: 'warning',
     },
+    {
+      type: 'position',
+      keypoint: 'nose',
+      reference: 'left_hip',
+      relation: 'above',
+      message: 'Keep your head up — look forward',
+      severity: 'warning',
+    },
   ],
 };

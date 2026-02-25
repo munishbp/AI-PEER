@@ -34,5 +34,21 @@ export const hipAbductorRules: ExerciseRule = {
       message: 'Keep your shoulders level',
       severity: 'warning',
     },
+    {
+      type: 'alignment',
+      keypoints: ['left_hip', 'right_hip'],
+      direction: 'horizontal',
+      tolerance: 20,
+      message: 'Try to keep your hips level',
+      severity: 'warning',
+    },
+    {
+      type: 'position',
+      keypoint: 'nose',
+      reference: 'left_hip',
+      relation: 'above',
+      message: 'Keep your head up',
+      severity: 'warning',
+    },
   ],
 };
