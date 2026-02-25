@@ -6,11 +6,6 @@
 require('dotenv').config();
 
 
-console.log('GCS_PROJECT_ID:', process.env.GCS_PROJECT_ID);
-console.log('GCS_CLIENT_EMAIL:', process.env.GCS_CLIENT_EMAIL);
-console.log('GCS_PRIVATE_KEY exists:', !!process.env.GCS_PRIVATE_KEY);
-console.log('GCS_PRIVATE_KEY length:', process.env.GCS_PRIVATE_KEY?.length);
-
 const express=require('express');
 const cors=require('cors');
 const verification=require('./middleware/authMiddleware');

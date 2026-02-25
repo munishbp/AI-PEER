@@ -5,11 +5,6 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 ## Project Structure
 
 ```
-├── .github/workflows/           # CI/CD pipelines
-│   ├── api-ci.yml               # PR checks: npm audit, smoke test, Docker build
-│   ├── api-deploy.yml           # Auto-deploy API to Cloud Run on merge
-│   └── frontend-ci.yml          # PR checks: TypeScript, ESLint
-│
 ├── API/                         # Node.js backend (Cloud Run)
 │   ├── server.js                # Express entry point
 │   ├── routes/                  # Auth, user, & video endpoints
@@ -84,7 +79,7 @@ npm run ios             # Build and run on iOS
 
 ### Deploy to Cloud Run
 
-Deployments are automated via GitHub Actions on merge to `main` (see CI/CD below). To deploy manually:
+API is deployed manually:
 
 ```bash
 cd API
@@ -108,7 +103,6 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 - Cloud Run deployment with SignBlob URL signing
 - YOLOv26n real-time pose estimation for exercise form monitoring
 - REDCap integration for clinical data sync (Firebase Cloud Function)
-- CI/CD pipelines (GitHub Actions)
 
 **In Progress:**
 - Firebase auth persistence across app restarts
@@ -125,19 +119,6 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 | Database | Firestore |
 | Video Storage | Google Cloud Storage (signed URLs) |
 | Auth | Firebase + Identity Platform (SMS 2FA) |
-| CI/CD | GitHub Actions |
-
-## CI/CD
-
-Three GitHub Actions workflows automate testing and deployment:
-
-| Workflow | Trigger | What It Does |
-|----------|---------|--------------|
-| `api-ci.yml` | PR to `main` touching `API/**` | npm audit, smoke test `/health`, Docker build |
-| `api-deploy.yml` | Push to `main` touching `API/**` | Deploy to Cloud Run, verify health endpoint |
-| `frontend-ci.yml` | PR to `main` touching `front-end/**` | TypeScript type check, ESLint |
-
-See the [CI/CD setup guide](https://github.com/munishbp/AI-PEER/wiki) or ask the team for GitHub Secrets configuration.
 
 ## Security & HIPAA Compliance
 
