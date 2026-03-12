@@ -3,6 +3,16 @@ import { Stack } from "expo-router";
 import { LLMProvider } from "@/src/llm";
 import {AuthProvider} from "@/src/auth"
 import { PrefsProvider } from "../src/prefs-context";
+import * as Notifications from "expo-notifications";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function RootLayout() {
   return (

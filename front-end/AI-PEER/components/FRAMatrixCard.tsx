@@ -165,6 +165,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: "#E6E6E6",
+    maxHeight: 600,
   },
 
   headerRow: {
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     backgroundColor: "#FAFAFA",
-    minHeight: 320, // bigger than before
+    minHeight: 290, // bigger than before
   },
 
   quad: { position: "absolute", width: "50%", height: "50%" },

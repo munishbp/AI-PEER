@@ -1,5 +1,5 @@
 // app/(tabs)/settings.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,13 +13,27 @@ import {
   TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { scaleFontSizes } from "../../src/theme";
 import type { Prefs } from "../../src/prefs-context";
 import { usePrefs } from "../../src/prefs-context";
+import {
+  requestReminderPermissions,
+  scheduleReminderNotification,
+  cancelReminderNotification,
+} from "../../src/reminder-notifications";
 
 type SettingsTab = "accessibility" | "devices" | "notifications";
+type Reminder = {
+  id: string;
+  title: string;
+  hour: number;
+  minute: number;
+  enabled: boolean;
+  notificationId?: string;
+};
 
 const beige = "#F7EDE4";
 const beigeTile = "#F4E3D6";
@@ -29,10 +43,10 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
   const { prefs, updatePrefs, scaled, colors } = usePrefs();
-  const [reminders, setReminders] = useState<Array<{ id: string; title: string; time?: string; enabled: boolean }>>([
-    { id: "1", title: "Morning walk", time: "8:00 AM", enabled: true },
-    { id: "2", title: "Take meds", time: "9:00 PM", enabled: true },
-  ]);
+  const REMINDERS_KEY = "user_reminders_v1";
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+
+  const [remindersLoaded, setRemindersLoaded] = useState(false);
 
   // Mock connected devices
   const devices = [
@@ -62,18 +76,104 @@ export default function SettingsScreen() {
     },
   ];
 
-  function addReminder(title: string, time?: string) {
+  async function addReminder(title: string, hour: number, minute: number) {
+    const permissionGranted = await requestReminderPermissions();
+    if (!permissionGranted) {
+      Alert.alert("Notifications disabled", "Please enable notifications for reminders.");
+      return;
+    }
+
     const id = Date.now().toString();
-    setReminders((r) => [{ id, title, time, enabled: true }, ...r]);
+
+    const reminderBase: Reminder = {
+      id,
+      title,
+      hour,
+      minute,
+      enabled: true,
+    };
+
+    const notificationId = await scheduleReminderNotification(reminderBase);
+
+    setReminders((r) => [
+      { ...reminderBase, notificationId },
+      ...r,
+    ]);
   }
 
-  function deleteReminder(id: string) {
+  async function deleteReminder(id: string) {
+    const existing = reminders.find((x) => x.id === id);
+    if (existing?.notificationId) {
+      await cancelReminderNotification(existing.notificationId);
+    }
     setReminders((r) => r.filter((x) => x.id !== id));
   }
 
-  function toggleReminder(id: string) {
-    setReminders((r) => r.map((x) => (x.id === id ? { ...x, enabled: !x.enabled } : x)));
+  async function toggleReminder(id: string) {
+    const existing = reminders.find((x) => x.id === id);
+    if (!existing) return;
+
+    if (existing.enabled) {
+      await cancelReminderNotification(existing.notificationId);
+      setReminders((r) =>
+        r.map((x) =>
+          x.id === id ? { ...x, enabled: false, notificationId: undefined } : x
+        )
+      );
+    } else {
+      const permissionGranted = await requestReminderPermissions();
+      if (!permissionGranted) {
+        Alert.alert("Notifications disabled", "Please enable notifications for reminders.");
+        return;
+      }
+
+      const notificationId = await scheduleReminderNotification(existing);
+
+      setReminders((r) =>
+        r.map((x) =>
+          x.id === id ? { ...x, enabled: true, notificationId } : x
+        )
+      );
+    }
   }
+
+  // Load reminders from AsyncStorage once on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(REMINDERS_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored) as Reminder[];
+          setReminders(parsed);
+        } else {
+          // Seed with two defaults when nothing stored yet
+          setReminders([
+            { id: "1", title: "Morning walk", hour: 8, minute: 0, enabled: true },
+            { id: "2", title: "Take meds", hour: 21, minute: 0, enabled: true },
+          ]);
+        }
+      } catch {
+        setReminders([
+          { id: "1", title: "Morning walk", hour: 8, minute: 0, enabled: true },
+          { id: "2", title: "Take meds", hour: 21, minute: 0, enabled: true },
+        ]);
+      } finally {
+        setRemindersLoaded(true);
+      }
+    })();
+  }, []);
+
+  // Persist reminders whenever they change (after initial load)
+  useEffect(() => {
+    if (!remindersLoaded) return;
+    (async () => {
+      try {
+        await AsyncStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
+      } catch {
+        // no-op
+      }
+    })();
+  }, [reminders, remindersLoaded]);
 
   function playAlertPreview() {
     if (!prefs.soundAlerts) return;
@@ -431,21 +531,35 @@ function NotificationsTab({
   onLogout,
   scaled,
 }: {
-  reminders: Array<{ id: string; title: string; time?: string; enabled: boolean }>;
-  addReminder: (title: string, time?: string) => void;
-  deleteReminder: (id: string) => void;
-  toggleReminder: (id: string) => void;
+  reminders: Reminder[];
+  addReminder: (title: string, hour: number, minute: number) => void | Promise<void>;
+  deleteReminder: (id: string) => void | Promise<void>;
+  toggleReminder: (id: string) => void | Promise<void>;
   onLogout: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
 }) {
   const [title, setTitle] = useState("");
-  const [time, setTime] = useState("");
+  const [hour, setHour] = useState("");
+  const [minute, setMinute] = useState("");
 
-  function handleAdd() {
+  async function handleAdd() {
+    const h = Number(hour);
+    const m = Number(minute);
+
     if (!title.trim()) return;
-    addReminder(title.trim(), time.trim() || undefined);
+    if (!Number.isInteger(h) || h < 0 || h > 23) {
+      Alert.alert("Invalid hour", "Enter an hour from 0 to 23.");
+      return;
+    }
+    if (!Number.isInteger(m) || m < 0 || m > 59) {
+      Alert.alert("Invalid minute", "Enter minutes from 0 to 59.");
+      return;
+    }
+
+    await addReminder(title.trim(), h, m);
     setTitle("");
-    setTime("");
+    setHour("");
+    setMinute("");
   }
 
   return (
@@ -465,7 +579,9 @@ function NotificationsTab({
               <Ionicons name="time-outline" size={16} color={warmRed} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.notificationLabel, { fontSize: scaled.small }]}>{rem.title}</Text>
-                <Text style={[styles.notificationDescription, { fontSize: scaled.h2/2 }]}>{rem.time || ""}</Text>
+                <Text style={[styles.notificationDescription, { fontSize: scaled.h2 / 2 }]}>
+                  {String(rem.hour).padStart(2, "0")}:{String(rem.minute).padStart(2, "0")}
+                </Text>
               </View>
             <Switch
               value={rem.enabled}
@@ -487,12 +603,24 @@ function NotificationsTab({
             style={[styles.input, { fontSize: scaled.small }]}
           />
           <TextInput
-            placeholder="Time (optional)"
-            value={time}
-            onChangeText={setTime}
-            style={[styles.input, { fontSize: scaled.small, width: 110 }]}
+            placeholder="HH (-23)"
+            value={hour}
+            onChangeText={(t) => setHour(t.replace(/\D/g, "").slice(0, 2))}
+            keyboardType="number-pad"
+            style={[styles.input, { fontSize: scaled.small, width: 60 }]}
           />
-          <TouchableOpacity style={[styles.primaryButton, { paddingHorizontal: 12 }]} onPress={handleAdd} activeOpacity={0.85}>
+          <TextInput
+            placeholder="MM (-59)"
+            value={minute}
+            onChangeText={(t) => setMinute(t.replace(/\D/g, "").slice(0, 2))}
+            keyboardType="number-pad"
+            style={[styles.input, { fontSize: scaled.small, width: 60 }]}
+          />
+          <TouchableOpacity
+            style={[styles.primaryButton, { paddingHorizontal: 12 }]}
+            onPress={handleAdd}
+            activeOpacity={0.85}
+          >
             <Ionicons name="add-circle-outline" size={16} color="#fff" />
             <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>Add</Text>
           </TouchableOpacity>

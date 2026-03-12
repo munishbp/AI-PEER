@@ -66,7 +66,7 @@ export default function Home() {
           <TouchableOpacity
             style={styles.segmentBtn}
             activeOpacity={0.85}
-            onPress={() => router.push("/(tabs)/exercise")}
+            onPress={() => router.replace("/(tabs)/exercise")}
           >
             <Ionicons name="barbell-outline" size={14} />
             <Text style={[styles.segmentText, { fontSize: scaled.base }]}>Exercise</Text>
@@ -103,23 +103,7 @@ export default function Home() {
           />
         </View>
 
-        {/* Weekly Activity Summary */}
-        <View style={styles.card}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 8,
-            }}
-          >
-            <Ionicons name="pulse-outline" size={16} />
-            <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>Weekly Activity Summary</Text>
-          </View>
-          <LineGraph data={lineData} height={120} />
-        </View>
-
-        <View style={{ height: 28 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -196,7 +180,7 @@ const styles = StyleSheet.create({
       android: { elevation: 1.5 },
     }),
   },
-  cardTitle: { fontWeight: "800", fontSize: 14 },
+  cardTitle: { fontWeight: "800", fontSize: 14, marginBottom: 8 },
 
   scoreCaption: {
     textAlign: "center",
