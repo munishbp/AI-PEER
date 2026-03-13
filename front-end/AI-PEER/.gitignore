@@ -38,6 +38,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+src/firebaseConfig.ts
 *.keystore
 *.p12
 *.mobileprovision
@@ -50,6 +51,18 @@ coverage/
 
 # ===== TypeScript =====
 *.tsbuildinfo
+
+# ===== ML Model artifacts =====
+# only track the final tflite model in src/vision/models/
+*.pt
+*.onnx
+*.npy
+*.pb
+yolo26n_saved_model/
+tflite.py
+
+# ===== Claude =====
+.claude/
 
 # ===== Packages (keep your chosen lockfile committed) =====
 # (Do NOT ignore package-lock.json / yarn.lock / pnpm-lock.yaml)

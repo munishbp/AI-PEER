@@ -101,7 +101,7 @@ function TodayView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes>; }) {
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="pulse-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Today's Activity</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Today&apos;s Activity</Text>
         </View>
 
         {/* Grid of tiles like the Figma */}

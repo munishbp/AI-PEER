@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { LLMProvider } from "@/src/llm";
 import {AuthProvider} from "@/src/auth"
 import { PrefsProvider } from "../src/prefs-context";
+import { VisionProvider } from "@/src/vision";
 import * as Notifications from "expo-notifications";
 
 Notifications.setNotificationHandler({
@@ -19,6 +20,7 @@ export default function RootLayout() {
     <AuthProvider>
       <LLMProvider>
         <PrefsProvider>
+          <VisionProvider>
           <Stack>
             {/* Landing (Login) */}
             <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -42,6 +44,7 @@ export default function RootLayout() {
             <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
             <Stack.Screen name="+not-found" options={{ title: "Not found" }} />
           </Stack>
+          </VisionProvider>
         </PrefsProvider>
       </LLMProvider>
     </AuthProvider>

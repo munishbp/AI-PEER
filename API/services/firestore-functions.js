@@ -1,5 +1,4 @@
 const {db} = require("../config/firebaseConfig");
-const { registerUser } = require("../controllers/userController");
 
 module.exports = {
     //firebase functions to call in routes
@@ -60,7 +59,9 @@ module.exports = {
     try {
     const res = await db.collection('users').doc(id).get();
 
-    if(!doc.exists){
+
+
+    if(!res.exists){
       return null;
       }
 

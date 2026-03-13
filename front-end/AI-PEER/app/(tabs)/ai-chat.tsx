@@ -138,7 +138,7 @@ export default function AiChatScreen() {
                   ? needsDownload
                     ? "Download required"
                     : "Loading model..."
-                  : "Ask about fall risk, activity, or tips"}
+                  : "Ask AI Chat about fall risk, activity, or tips"}
               </Text>
             </View>
           </View>
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
-    marginTop: 8,
+    marginTop: 10,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 10,
