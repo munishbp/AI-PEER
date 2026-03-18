@@ -138,7 +138,7 @@ export default function AiChatScreen() {
                   ? needsDownload
                     ? "Download required"
                     : "Loading model..."
-                  : "Ask about fall risk, activity, or tips"}
+                  : "Ask AI Chat about fall risk, activity, or tips"}
               </Text>
             </View>
           </View>
@@ -275,8 +275,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     gap: 8,
   },
-  title: { fontSize: 18, fontWeight: "800", color: darkText },
-  subtitle: { fontSize: 12, color: subtleText, marginTop: 2 },
+  title: { fontSize: 18, fontWeight: "800", letterSpacing: 0.3, color: darkText },
+  subtitle: { fontSize: 12, color: subtleText, marginTop: 3, marginBottom: 4 },
   headerButton: {
     padding: 8,
     borderRadius: 8,
@@ -287,9 +287,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
-    marginTop: 8,
+    marginTop: 10,
     borderRadius: 14,
-    backgroundColor: "#FFFFFF",
     paddingVertical: 12,
     paddingHorizontal: 10,
     ...Platform.select({

@@ -54,16 +54,7 @@ export default function Home() {
             <Ionicons name="moon-outline" size={18} color="#555" />
             <Ionicons name="notifications-outline" size={18} color="#555" />
           </View>
-          <View style={{ flex: 1 }} />
-          <Ionicons name="moon-outline" size={18} color="#555" />
-          <Ionicons
-            name="notifications-outline"
-            size={18}
-            color="#555"
-            style={{ marginLeft: 12 }}
-          />
         </View>
-        <Text style={styles.subtitle}>Fall Risk Assessment</Text>
 
         {/* Segmented (Overview | Exercise) */}
         <View style={styles.segmentOuter}>
@@ -167,9 +158,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   container: { paddingHorizontal: 16, paddingBottom: 12, gap: 14 },
 
-  header: { paddingTop: 6, flexDirection: "row", alignItems: "center" },
+  header: { paddingTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 4, marginBottom: 6, color: "#6B5E55" },
+  subtitle: { marginTop: 3, marginBottom: 6, color: "#6B5E55" },
 
   segmentOuter: {
     backgroundColor: "#F4E3D6",

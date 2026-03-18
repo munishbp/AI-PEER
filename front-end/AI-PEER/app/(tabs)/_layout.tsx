@@ -79,6 +79,7 @@ export default function TabsLayout() {
       {/* Hidden routes that still keep the tab bar visible */}
       <Tabs.Screen name="exercise" options={{ href: null }} />
       <Tabs.Screen name="exercise-session" options={{ href: null }} />
+      <Tabs.Screen name="video-confirm" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { signInWithCustomToken } from "firebase/auth";
-import { auth } from "../src/firebaseConfig";
+import { auth } from "../src/firebaseClient";
 import { api } from "../src/api";
 import { colors, spacing, radii, fontSizes } from "../src/theme";
 

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Video, ResizeMode } from "expo-av";
+import { fetchVideoUrl, VideoResponse } from "@/src/video";
+import { useAuth } from "@/src/auth/AuthContext";
 
 type CatKey = "warmup" | "strength" | "balance";
 
@@ -20,22 +24,73 @@ function prettyCat(cat?: string) {
   return "Exercise";
 }
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export default function VideoConfirmPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const params = useLocalSearchParams<{
     cat?: CatKey;
     video?: string;
     label?: string;
-    duration?: string;
   }>();
 
   const catTitle = useMemo(() => prettyCat(params.cat), [params.cat]);
+  const exerciseLabel = params.label ?? "Exercise";
 
-  const exerciseLabel = params.label ?? "Video placeholder";
-  const duration = params.duration ?? "—";
+  const [videoData, setVideoData] = useState<VideoResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    if (!params.video) {
+      setLoading(false);
+      setError("No exercise selected");
+      return;
+    }
+    if (!token) {
+      setLoading(false);
+      setError("Not signed in");
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetchVideoUrl(params.video, token)
+      .then((data) => {
+        if (!cancelled) {
+          setVideoData(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.message || "Failed to load video");
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.video, token, retryCount]);
+
+  const handleRetry = useCallback(() => {
+    setRetryCount((c) => c + 1);
+  }, []);
+
+  const duration = videoData
+    ? formatDuration(videoData.duration)
+    : "\u2014";
 
   const onConfirm = () => {
-    // ✅ Pass the selected exercise info forward so Vision/Monitoring knows exactly what to track
     router.push({
       pathname: "/(tabs)/exercise-session",
       params: {
@@ -68,22 +123,43 @@ export default function VideoConfirmPage() {
         <Text style={styles.pageTitle}>Confirm Video</Text>
         <Text style={styles.pageSub}>
           This confirmation step ensures the Vision model knows exactly which
-          exercise you’re performing.
+          exercise you're performing.
         </Text>
 
-        {/* Video preview placeholder */}
+        {/* Video preview */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Selected Exercise</Text>
 
-          <View style={styles.previewBox}>
-            <Ionicons name="play-circle-outline" size={44} color="#8C7A6C" />
-            <Text style={styles.previewTitle}>{exerciseLabel}</Text>
-            <Text style={styles.previewMeta}>
-              {catTitle} • {duration}
-            </Text>
-            <Text style={styles.previewHint}>
-              Video player will be connected when backend/media is ready.
-            </Text>
+          <View style={styles.videoBox}>
+            {loading ? (
+              <View style={styles.videoPlaceholder}>
+                <ActivityIndicator size="large" color={warmRed} />
+                <Text style={styles.placeholderText}>Loading video...</Text>
+              </View>
+            ) : error ? (
+              <View style={styles.videoPlaceholder}>
+                <Ionicons name="alert-circle-outline" size={44} color={warmRed} />
+                <Text style={styles.placeholderTitle}>{exerciseLabel}</Text>
+                <Text style={[styles.placeholderText, { color: warmRed }]}>
+                  {error}
+                </Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  activeOpacity={0.85}
+                  onPress={handleRetry}
+                >
+                  <Ionicons name="refresh-outline" size={16} color="#FFF" />
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : videoData ? (
+              <Video
+                source={{ uri: videoData.videoUrl }}
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+                style={styles.video}
+              />
+            ) : null}
           </View>
 
           <View style={styles.infoRow}>
@@ -165,26 +241,44 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontWeight: "900", color: "#222" },
 
-  previewBox: {
+  videoBox: {
     marginTop: 10,
     height: 220,
     borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  video: {
+    width: "100%",
+    height: "100%",
+  },
+  videoPlaceholder: {
+    flex: 1,
     backgroundColor: "#FFF7F1",
-    borderWidth: 1,
-    borderColor: "#F0E0D4",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
+    gap: 8,
   },
-  previewTitle: { marginTop: 10, fontWeight: "900", fontSize: 16, color: "#222" },
-  previewMeta: { marginTop: 4, fontWeight: "800", color: "#6B5E55" },
-  previewHint: {
-    marginTop: 10,
+  placeholderTitle: { fontWeight: "900", fontSize: 16, color: "#222" },
+  placeholderText: {
     color: "#8C7A6C",
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 18,
   },
+
+  retryBtn: {
+    marginTop: 4,
+    backgroundColor: warmRed,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  retryText: { fontWeight: "900", color: "#FFF" },
 
   infoRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   pill: {
