@@ -36,7 +36,7 @@ async function loadREDCapConfig(){
     return cachedConfig;
 }
 
-function buildREDCapRecord({userID, phonenum, balanceTrackScore, fallFearScore})
+function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score})
 {
     if (!userID)
     {
@@ -45,16 +45,16 @@ function buildREDCapRecord({userID, phonenum, balanceTrackScore, fallFearScore})
     if (typeof phonenum !=="string"){
         throw new Error ("Phone number must be a string");
     }
-    if (!Number.isInteger(balanceTrackScore) || !Number.isInteger(fallFearScore))
+    if (!Number.isInteger(btrack_score) || !Number.isInteger(fear_falling_score))
     {
-        throw new Error ("Scores must be an integer")
+        throw new Error ("Scores must be an integer");
     }
 
     return{
         record_id: userID,
-        b_track_score: balanceTrackScore,
+        b_track_score: btrack_score,
         phone_number: phonenum,
-        ff_score: fallFearScore
+        ff_score: fear_falling_score
     };
 }
 
@@ -98,8 +98,8 @@ async function exportFromREDCap() {
     return records.map(r=>({
         userID: r.record_id,
         phonenum: String(r.phone_number||""),
-        balanceTrackScore: parseInt(r.b_track_score, 10),
-        fallFearScore: parseInt(r.ff_score, 10),
+        btrack_score: parseInt(r.b_track_score, 10),
+        fear_falling_score: parseInt(r.ff_score, 10),
         source:"redcap",
         synced_at: new Date().toISOString()
     }));

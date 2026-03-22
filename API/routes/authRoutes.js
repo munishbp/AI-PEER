@@ -48,7 +48,9 @@ router.post('/register', async(req,res)=>{
             phoneNumber:phoneNumber,
             passwordHash,
             phoneVerified:false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            btrack_score: null,
+            fear_falling_score: null
         })
 
         res.status(201).json({
@@ -192,7 +194,9 @@ router.post('/send-code', async(req, res)=>{
                 phoneNumber: phoneNumber,
                 passwordHash,
                 phoneVerified: false,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                btrack_score: null,
+                fear_falling_score: null
             });
             userId = newUser.id;
         }
