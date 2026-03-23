@@ -25,6 +25,9 @@ import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
 
 type CatKey = "warmup" | "strength" | "balance";
 
+const TIMED_CATEGORIES: Set<CatKey> = new Set(['balance', 'warmup']);
+const AUTO_STOP_SECONDS = 30;
+
 function prettyCat(cat?: string) {
   if (cat === "warmup") return "Warm-Up";
   if (cat === "strength") return "Strength";
@@ -88,6 +91,14 @@ export default function ExerciseSessionPage() {
   // trigger re-render for summary only
   const [summaryTick, setSummaryTick] = useState(0);
 
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const isTimedExercise = useMemo(
+    () => TIMED_CATEGORIES.has(params.cat as CatKey),
+    [params.cat]
+  );
+
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   const handleCameraLayout = useCallback((e: LayoutChangeEvent) => {
@@ -111,6 +122,14 @@ export default function ExerciseSessionPage() {
   // handlePoseResult runs form analysis and updates vision context state
   const frameProcessor = useVisionFrameProcessor(model, handlePoseResult);
 
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setSecondsLeft(null);
+  }, []);
+
   const handleStartMonitoring = async () => {
     // request camera permission on first tap
     if (!hasPermission) {
@@ -127,20 +146,46 @@ export default function ExerciseSessionPage() {
     setShowSummary(false);
 
     startTracking(exerciseId);
+
+    if (isTimedExercise) {
+      setSecondsLeft(AUTO_STOP_SECONDS);
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev === null || prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    }
   };
 
-  const handleStopMonitoring = () => {
+  const handleStopMonitoring = useCallback(() => {
+    clearTimer();
     stopTracking();
     setSummaryTick((t) => t + 1);
     setShowSummary(true);
-  };
+  }, [stopTracking, clearTimer]);
+
+  // auto-stop when countdown reaches 0
+  useEffect(() => {
+    if (secondsLeft === 0 && isTracking) {
+      handleStopMonitoring();
+    }
+  }, [secondsLeft, isTracking, handleStopMonitoring]);
+
+  // safety-net: if tracking stops externally, clear timer
+  useEffect(() => {
+    if (!isTracking && timerRef.current !== null) {
+      clearTimer();
+    }
+  }, [isTracking, clearTimer]);
 
   // cleanup on unmount
   useEffect(() => {
     return () => {
+      clearTimer();
       stopTracking();
     };
-  }, [stopTracking]);
+  }, [stopTracking, clearTimer]);
 
   // compute summary data — recalcs when summaryTick changes
   const avgScore = useMemo(() => {
@@ -176,6 +221,7 @@ export default function ExerciseSessionPage() {
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
+              clearTimer();
               stopTracking();
               router.back();
             }}
@@ -265,6 +311,16 @@ export default function ExerciseSessionPage() {
                 {currentScore}
               </Text>
               <Text style={styles.scoreLabel}>Form Score</Text>
+            </View>
+          )}
+
+          {/* timer overlay */}
+          {isTracking && secondsLeft !== null && (
+            <View style={styles.timerOverlay}>
+              <Text style={[styles.timerText, secondsLeft <= 5 && styles.timerTextUrgent]}>
+                {secondsLeft}s
+              </Text>
+              <Text style={styles.timerLabel}>remaining</Text>
             </View>
           )}
 
@@ -358,7 +414,7 @@ export default function ExerciseSessionPage() {
               onPress={handleStopMonitoring}
             >
               <Ionicons name="square" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Stop Monitoring</Text>
+              <Text style={styles.primaryText}>{secondsLeft !== null ? "Stop Early" : "Stop Monitoring"}</Text>
             </TouchableOpacity>
           ) : (
             <>
@@ -450,6 +506,24 @@ const styles = StyleSheet.create({
   },
   scoreText: { fontSize: 28, fontWeight: "900" },
   scoreLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+
+  timerOverlay: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      android: { elevation: 3 },
+    }),
+  },
+  timerText: { fontSize: 28, fontWeight: "900", color: "#222" },
+  timerTextUrgent: { color: warmRed },
+  timerLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
 
   violationsOverlay: {
     position: "absolute",
