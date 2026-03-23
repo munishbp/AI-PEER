@@ -9,6 +9,14 @@ export const kneeExtensorRules: ExerciseRule = {
   id: 'strength-1',
   name: 'Knee Extensor',
   category: 'strength',
+  repConfig: {
+    keypoints: ['left_hip', 'left_knee', 'left_ankle'],
+    startMin: 60, startMax: 120,
+    endMin: 145, endMax: 180,
+    targetReps: 10,
+  },
+  totalSets: 3,
+  cameraPrompt: 'Sit in a chair facing the camera. Make sure your full legs — hips, knees, and ankles — are visible. Place your phone about 6 feet away at knee height.',
   checks: [
     {
       type: 'angle',
