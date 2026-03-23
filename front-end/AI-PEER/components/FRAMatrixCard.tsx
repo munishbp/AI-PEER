@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     backgroundColor: "#FAFAFA",
-    minHeight: 320, // bigger than before
+    minHeight: 250,
   },
 
   quad: { position: "absolute", width: "50%", height: "50%" },

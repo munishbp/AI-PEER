@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { scaleFontSizes } from "../../src/theme";
 import type { Prefs } from "../../src/prefs-context";
 import { usePrefs } from "../../src/prefs-context";
+import { useAuth } from "../../src/auth";
 
 type SettingsTab = "accessibility" | "devices" | "notifications";
 
@@ -29,6 +30,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
   const { prefs, updatePrefs, scaled, colors } = usePrefs();
+  const { logout } = useAuth();
   const [reminders, setReminders] = useState<Array<{ id: string; title: string; time?: string; enabled: boolean }>>([
     { id: "1", title: "Morning walk", time: "8:00 AM", enabled: true },
     { id: "2", title: "Take meds", time: "9:00 PM", enabled: true },
@@ -105,8 +107,7 @@ export default function SettingsScreen() {
   }
 
   function handleLogout() {
-    // Change this if your login route is not app/index.tsx
-    const LOGIN_ROUTE = "/";
+    const LOGIN_ROUTE = "../login";
 
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -115,6 +116,7 @@ export default function SettingsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
+            await logout();
             const mod = await import("@react-native-async-storage/async-storage");
             await mod.default.removeItem("token");
             await mod.default.removeItem("user");
@@ -209,7 +211,7 @@ function AccessibilityTab({
 }) {
   const fontSizesLabels = ["Small (90%)", "Normal (100%)", "Large (120%)"];
   const contrastOptions = ["Light", "Dark", "High Contrast"];
-  const languages = ["English", "Español", "Français"];
+  const languages = ["English", "Espa帽ol", "Fran莽ais"];
 
   return (
     <>
@@ -385,7 +387,7 @@ function DevicesTab({ devices, scaled }: { devices: any[]; scaled: ReturnType<ty
                 {device.connected ? (
                   <>
                     <Ionicons name="checkmark-circle" size={12} color="#3BAA56" />
-                    {" Connected • "}
+                    {" Connected 鈥?"}
                     {device.battery}%
                   </>
                 ) : (
@@ -696,3 +698,4 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
 });
+

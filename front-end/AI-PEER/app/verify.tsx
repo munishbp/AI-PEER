@@ -35,9 +35,9 @@ export default function Verify() {
 
       // Navigate based on mode
       if (res.isNewUser || mode === 'create') {
-        router.replace("/welcome");
+        router.replace("/tutorial?next=welcome");
       } else {
-        router.replace("/(tabs)");
+        router.replace("/tutorial?next=tabs");
       }
     } catch (e: any) {
       setErr(e.message || "Invalid code. Please try again.");
