@@ -22,6 +22,7 @@ import { MODEL_ASSET } from "@/src/vision/config";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
+import { getExerciseRules } from "@/src/vision/exercises";
 
 type CatKey = "warmup" | "strength" | "balance";
 
@@ -44,6 +45,13 @@ export default function ExerciseSessionPage() {
   const title = useMemo(() => prettyCat(params.cat), [params.cat]);
   const exerciseId = params.video || `${params.cat || "warmup"}-1`;
 
+  // look up per-exercise config
+  const exerciseRules = useMemo(() => getExerciseRules(exerciseId), [exerciseId]);
+  const timerDuration = exerciseRules?.timerSeconds ?? null;
+  const hasRepConfig = !!exerciseRules?.repConfig;
+  const totalSets = exerciseRules?.totalSets ?? 1;
+  const cameraPrompt = exerciseRules?.cameraPrompt ?? "Place your phone so your full body is visible";
+
   // "default" delegate = CPU. CoreML delegate fails to load this model
   // on-device, so we fall back to CPU for reliable inference.
   const plugin = useTensorflowModel(MODEL_ASSET, "default");
@@ -62,6 +70,8 @@ export default function ExerciseSessionPage() {
     startTracking,
     stopTracking,
     handlePoseResult,
+    repCount,
+    targetReps,
   } = useVision();
 
   // debug: log model plugin state changes
@@ -82,11 +92,22 @@ export default function ExerciseSessionPage() {
   const device = useCameraDevice("front");
   const [showSummary, setShowSummary] = useState(false);
 
+  // set tracking
+  const [currentSet, setCurrentSet] = useState(1);
+  const [setComplete, setSetComplete] = useState(false);
+
   // session stats — use refs so we don't re-render on every frame
   const scoresRef = useRef<number[]>([]);
   const violationCountRef = useRef<Record<string, number>>({});
   // trigger re-render for summary only
   const [summaryTick, setSummaryTick] = useState(0);
+
+  // snapshot rep count for summary (since repCount resets on stopTracking)
+  const lastRepCountRef = useRef<number | null>(null);
+  const lastTargetRepsRef = useRef<number | null>(null);
+
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
@@ -111,6 +132,14 @@ export default function ExerciseSessionPage() {
   // handlePoseResult runs form analysis and updates vision context state
   const frameProcessor = useVisionFrameProcessor(model, handlePoseResult);
 
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setSecondsLeft(null);
+  }, []);
+
   const handleStartMonitoring = async () => {
     // request camera permission on first tap
     if (!hasPermission) {
@@ -127,20 +156,100 @@ export default function ExerciseSessionPage() {
     setShowSummary(false);
 
     startTracking(exerciseId);
+
+    if (timerDuration) {
+      setSecondsLeft(timerDuration);
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev === null || prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    }
   };
 
-  const handleStopMonitoring = () => {
+  const handleSetComplete = useCallback(() => {
+    clearTimer();
+    // snapshot rep count before stopTracking clears it
+    lastRepCountRef.current = repCount;
+    lastTargetRepsRef.current = targetReps;
+    stopTracking();
+    if (currentSet < totalSets) {
+      // more sets remaining — show "Set Complete" screen
+      setSetComplete(true);
+    } else {
+      // final set done — show full summary
+      setSummaryTick((t) => t + 1);
+      setShowSummary(true);
+    }
+  }, [currentSet, totalSets, clearTimer, stopTracking, repCount, targetReps]);
+
+  const handleStopMonitoring = useCallback(() => {
+    clearTimer();
+    lastRepCountRef.current = repCount;
+    lastTargetRepsRef.current = targetReps;
     stopTracking();
     setSummaryTick((t) => t + 1);
     setShowSummary(true);
-  };
+  }, [stopTracking, clearTimer, repCount, targetReps]);
+
+  // auto-stop when countdown reaches 0
+  useEffect(() => {
+    if (secondsLeft === 0 && isTracking) {
+      handleSetComplete();
+    }
+  }, [secondsLeft, isTracking, handleSetComplete]);
+
+  // auto-stop set when target reps reached
+  useEffect(() => {
+    if (repCount !== null && targetReps && repCount >= targetReps) {
+      handleSetComplete();
+    }
+  }, [repCount, targetReps, handleSetComplete]);
+
+  // safety-net: if tracking stops externally, clear timer
+  useEffect(() => {
+    if (!isTracking && timerRef.current !== null) {
+      clearTimer();
+    }
+  }, [isTracking, clearTimer]);
 
   // cleanup on unmount
   useEffect(() => {
     return () => {
+      clearTimer();
       stopTracking();
     };
-  }, [stopTracking]);
+  }, [stopTracking, clearTimer]);
+
+  // start next set
+  const handleNextSet = useCallback(async () => {
+    setCurrentSet((s) => s + 1);
+    setSetComplete(false);
+
+    // request camera permission if needed
+    if (!hasPermission) {
+      const granted = await requestPermission();
+      if (!granted) return;
+    }
+    if (!modelReady) return;
+
+    // reset session stats for new set
+    scoresRef.current = [];
+    violationCountRef.current = {};
+
+    startTracking(exerciseId);
+
+    if (timerDuration) {
+      setSecondsLeft(timerDuration);
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev === null || prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  }, [hasPermission, requestPermission, modelReady, startTracking, exerciseId, timerDuration]);
 
   // compute summary data — recalcs when summaryTick changes
   const avgScore = useMemo(() => {
@@ -168,6 +277,7 @@ export default function ExerciseSessionPage() {
 
   const currentScore = currentFeedback?.score ?? null;
   const cameraActive = isTracking && hasPermission && !!device;
+  const isAutoStopExercise = !!timerDuration || hasRepConfig;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -176,6 +286,7 @@ export default function ExerciseSessionPage() {
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
+              clearTimer();
               stopTracking();
               router.back();
             }}
@@ -195,96 +306,144 @@ export default function ExerciseSessionPage() {
           {params.label || exerciseId}
         </Text>
 
-        {/* camera / preview area */}
-        <View style={styles.cameraContainer} onLayout={handleCameraLayout}>
-          {cameraActive && device ? (
-            <Camera
-              style={StyleSheet.absoluteFill}
-              device={device}
-              isActive={isTracking}
-              frameProcessor={frameProcessor}
-              pixelFormat="rgb"
-            />
-          ) : (
-            <View style={styles.cameraPlaceholder}>
-              {isModelLoading ? (
-                <>
-                  <ActivityIndicator size="large" color={warmRed} />
-                  <Text style={styles.cameraHint}>Loading model...</Text>
-                </>
-              ) : modelError ? (
-                <>
-                  <Ionicons name="alert-circle-outline" size={34} color={warmRed} />
-                  <Text style={[styles.cameraHint, { color: warmRed }]}>Model failed to load</Text>
-                  <Text style={styles.cameraSmall}>
-                    {modelError.message}
-                  </Text>
-                </>
-              ) : !hasPermission ? (
-                <>
-                  <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Camera access needed</Text>
-                  <Text style={styles.cameraSmall}>Tap Start Monitoring to enable camera</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Ready to monitor</Text>
-                  <Text style={styles.cameraSmall}>
-                    Place your phone so your full body is visible
-                  </Text>
-                </>
-              )}
+        {/* between-set rest screen */}
+        {setComplete && !isTracking ? (
+          <View style={styles.cameraContainer}>
+            <View style={styles.setCompleteContainer}>
+              <Ionicons name="checkmark-circle" size={48} color="#1E7A3A" />
+              <Text style={styles.setCompleteTitle}>Set {currentSet} Complete!</Text>
+              <Text style={styles.tipText}>Rest, then tap Next Set when ready.</Text>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                activeOpacity={0.9}
+                onPress={handleNextSet}
+              >
+                <Ionicons name="play" size={16} color="#FFF" />
+                <Text style={styles.primaryText}>
+                  Next Set ({currentSet + 1}/{totalSets})
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
-
-          {/* skeleton overlays */}
-          {isTracking && currentPose && containerSize.width > 0 && (
-            <>
-              <GuideOverlay
-                pose={currentPose}
-                exerciseId={exerciseId}
-                width={containerSize.width}
-                height={containerSize.height}
-                isFrontCamera
+          </View>
+        ) : (
+          /* camera / preview area */
+          <View style={styles.cameraContainer} onLayout={handleCameraLayout}>
+            {cameraActive && device ? (
+              <Camera
+                style={StyleSheet.absoluteFill}
+                device={device}
+                isActive={isTracking}
+                frameProcessor={frameProcessor}
+                pixelFormat="rgb"
               />
-              <SkeletonOverlay
-                pose={currentPose}
-                feedback={currentFeedback}
-                width={containerSize.width}
-                height={containerSize.height}
-                isFrontCamera
-              />
-            </>
-          )}
+            ) : (
+              <View style={styles.cameraPlaceholder}>
+                {isModelLoading ? (
+                  <>
+                    <ActivityIndicator size="large" color={warmRed} />
+                    <Text style={styles.cameraHint}>Loading model...</Text>
+                  </>
+                ) : modelError ? (
+                  <>
+                    <Ionicons name="alert-circle-outline" size={34} color={warmRed} />
+                    <Text style={[styles.cameraHint, { color: warmRed }]}>Model failed to load</Text>
+                    <Text style={styles.cameraSmall}>
+                      {modelError.message}
+                    </Text>
+                  </>
+                ) : !hasPermission ? (
+                  <>
+                    <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
+                    <Text style={styles.cameraHint}>Camera access needed</Text>
+                    <Text style={styles.cameraSmall}>Tap Start Monitoring to enable camera</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
+                    <Text style={styles.cameraHint}>Ready to monitor</Text>
+                    <Text style={styles.cameraSmall}>
+                      {cameraPrompt}
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
 
-          {/* score overlay when tracking */}
-          {isTracking && currentScore !== null && (
-            <View style={styles.scoreOverlay}>
-              <Text style={[styles.scoreText, { color: scoreColor(currentScore) }]}>
-                {currentScore}
-              </Text>
-              <Text style={styles.scoreLabel}>Form Score</Text>
-            </View>
-          )}
+            {/* skeleton overlays */}
+            {isTracking && currentPose && containerSize.width > 0 && (
+              <>
+                <GuideOverlay
+                  pose={currentPose}
+                  exerciseId={exerciseId}
+                  width={containerSize.width}
+                  height={containerSize.height}
+                  isFrontCamera
+                />
+                <SkeletonOverlay
+                  pose={currentPose}
+                  feedback={currentFeedback}
+                  width={containerSize.width}
+                  height={containerSize.height}
+                  isFrontCamera
+                />
+              </>
+            )}
 
-          {/* violation messages overlay */}
-          {isTracking && currentFeedback && currentFeedback.violations.length > 0 && (
-            <View style={styles.violationsOverlay}>
-              {currentFeedback.violations.slice(0, 3).map((v, i) => (
-                <View
-                  key={`${v.bodyPart}-${i}`}
-                  style={[
-                    styles.violationBadge,
-                    v.severity === "error" ? styles.violationError : styles.violationWarning,
-                  ]}
-                >
-                  <Text style={styles.violationText}>{v.message}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
+            {/* score overlay when tracking */}
+            {isTracking && currentScore !== null && (
+              <View style={styles.scoreOverlay}>
+                <Text style={[styles.scoreText, { color: scoreColor(currentScore) }]}>
+                  {currentScore}
+                </Text>
+                <Text style={styles.scoreLabel}>Form Score</Text>
+              </View>
+            )}
+
+            {/* timer overlay */}
+            {isTracking && secondsLeft !== null && (
+              <View style={styles.timerOverlay}>
+                <Text style={[styles.timerText, secondsLeft <= 5 && styles.timerTextUrgent]}>
+                  {secondsLeft}s
+                </Text>
+                <Text style={styles.timerLabel}>remaining</Text>
+              </View>
+            )}
+
+            {/* rep counter overlay */}
+            {isTracking && repCount !== null && targetReps !== null && (
+              <View style={styles.timerOverlay}>
+                <Text style={[styles.timerText, repCount >= targetReps && styles.timerTextUrgent]}>
+                  {repCount}/{targetReps}
+                </Text>
+                <Text style={styles.timerLabel}>reps</Text>
+              </View>
+            )}
+
+            {/* set indicator overlay */}
+            {isTracking && totalSets > 1 && (
+              <View style={styles.setOverlay}>
+                <Text style={styles.setText}>Set {currentSet}/{totalSets}</Text>
+              </View>
+            )}
+
+            {/* violation messages overlay */}
+            {isTracking && currentFeedback && currentFeedback.violations.length > 0 && (
+              <View style={styles.violationsOverlay}>
+                {currentFeedback.violations.slice(0, 3).map((v, i) => (
+                  <View
+                    key={`${v.bodyPart}-${i}`}
+                    style={[
+                      styles.violationBadge,
+                      v.severity === "error" ? styles.violationError : styles.violationWarning,
+                    ]}
+                  >
+                    <Text style={styles.violationText}>{v.message}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* error display */}
         {modelError && (
@@ -304,6 +463,20 @@ export default function ExerciseSessionPage() {
             <Text style={styles.cardTitle}>Session Summary</Text>
             {avgScore !== null ? (
               <>
+                {totalSets > 1 && (
+                  <View style={styles.feedbackRow}>
+                    <Text style={styles.feedbackLabel}>Sets Completed:</Text>
+                    <Text style={styles.feedbackValue}>{currentSet}/{totalSets}</Text>
+                  </View>
+                )}
+                {lastRepCountRef.current !== null && (
+                  <View style={styles.feedbackRow}>
+                    <Text style={styles.feedbackLabel}>Reps (last set):</Text>
+                    <Text style={styles.feedbackValue}>
+                      {lastRepCountRef.current}/{lastTargetRepsRef.current}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.feedbackRow}>
                   <Text style={styles.feedbackLabel}>Average Score:</Text>
                   <Text style={[styles.feedbackValue, { color: scoreColor(avgScore) }]}>
@@ -332,7 +505,7 @@ export default function ExerciseSessionPage() {
         )}
 
         {/* tips card when idle */}
-        {!isTracking && !showSummary && (
+        {!isTracking && !showSummary && !setComplete && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Tips</Text>
             <View style={styles.tipBox}>
@@ -350,42 +523,46 @@ export default function ExerciseSessionPage() {
         <View style={{ flex: 1 }} />
 
         {/* controls */}
-        <View style={styles.controlsRow}>
-          {isTracking ? (
-            <TouchableOpacity
-              style={styles.stopBtn}
-              activeOpacity={0.9}
-              onPress={handleStopMonitoring}
-            >
-              <Ionicons name="square" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Stop Monitoring</Text>
-            </TouchableOpacity>
-          ) : (
-            <>
-              {showSummary && (
-                <TouchableOpacity
-                  style={styles.secondaryBtn}
-                  activeOpacity={0.9}
-                  onPress={() => setShowSummary(false)}
-                >
-                  <Ionicons name="close" size={16} color="#5B4636" />
-                  <Text style={styles.secondaryText}>Dismiss</Text>
-                </TouchableOpacity>
-              )}
+        {!setComplete && (
+          <View style={styles.controlsRow}>
+            {isTracking ? (
               <TouchableOpacity
-                style={[styles.primaryBtn, isModelLoading && { opacity: 0.6 }]}
+                style={styles.stopBtn}
                 activeOpacity={0.9}
-                onPress={handleStartMonitoring}
-                disabled={isModelLoading}
+                onPress={handleStopMonitoring}
               >
-                <Ionicons name="play" size={16} color="#FFF" />
+                <Ionicons name="square" size={16} color="#FFF" />
                 <Text style={styles.primaryText}>
-                  {isModelLoading ? "Loading..." : "Start Monitoring"}
+                  {isAutoStopExercise ? "Stop Early" : "Stop Monitoring"}
                 </Text>
               </TouchableOpacity>
-            </>
-          )}
-        </View>
+            ) : (
+              <>
+                {showSummary && (
+                  <TouchableOpacity
+                    style={styles.secondaryBtn}
+                    activeOpacity={0.9}
+                    onPress={() => setShowSummary(false)}
+                  >
+                    <Ionicons name="close" size={16} color="#5B4636" />
+                    <Text style={styles.secondaryText}>Dismiss</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={[styles.primaryBtn, isModelLoading && { opacity: 0.6 }]}
+                  activeOpacity={0.9}
+                  onPress={handleStartMonitoring}
+                  disabled={isModelLoading}
+                >
+                  <Ionicons name="play" size={16} color="#FFF" />
+                  <Text style={styles.primaryText}>
+                    {isModelLoading ? "Loading..." : "Start Monitoring"}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
 
         <View style={{ height: 12 }} />
       </View>
@@ -434,6 +611,17 @@ const styles = StyleSheet.create({
   cameraHint: { color: "#6B5E55", fontWeight: "800" },
   cameraSmall: { color: "#8C7A6C", fontWeight: "700", textAlign: "center", paddingHorizontal: 20 },
 
+  setCompleteContainer: {
+    flex: 1,
+    backgroundColor: "#FFF7F1",
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 20,
+  },
+  setCompleteTitle: { fontSize: 20, fontWeight: "900", color: "#1E7A3A" },
+
   scoreOverlay: {
     position: "absolute",
     top: 12,
@@ -450,6 +638,39 @@ const styles = StyleSheet.create({
   },
   scoreText: { fontSize: 28, fontWeight: "900" },
   scoreLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+
+  timerOverlay: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      android: { elevation: 3 },
+    }),
+  },
+  timerText: { fontSize: 28, fontWeight: "900", color: "#222" },
+  timerTextUrgent: { color: warmRed },
+  timerLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+
+  setOverlay: {
+    position: "absolute",
+    top: 12,
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      android: { elevation: 3 },
+    }),
+  },
+  setText: { fontSize: 13, fontWeight: "900", color: "#3D2F27" },
 
   violationsOverlay: {
     position: "absolute",

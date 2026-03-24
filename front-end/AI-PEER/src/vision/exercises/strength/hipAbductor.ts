@@ -9,6 +9,14 @@ export const hipAbductorRules: ExerciseRule = {
   id: 'strength-3',
   name: 'Hip Abductor',
   category: 'strength',
+  repConfig: {
+    keypoints: ['left_shoulder', 'left_hip', 'left_ankle'],
+    startMin: 165, startMax: 180,
+    endMin: 100, endMax: 150,
+    targetReps: 10,
+  },
+  totalSets: 3,
+  cameraPrompt: 'Stand facing the camera with your full body visible — head to feet. Place your phone about 6-8 feet away. Lift your leg to the side toward the camera\'s view.',
   checks: [
     {
       type: 'alignment',

@@ -10,6 +10,8 @@ import { Pose, FormFeedback } from './types';
 export function useVision() {
   const {
     state,
+    repCount,
+    targetReps,
     setModelReady,
     startTracking,
     stopTracking,
@@ -33,6 +35,8 @@ export function useVision() {
     error,
     score,
     isGoodForm,
+    repCount,
+    targetReps,
 
     // actions
     setModelReady,

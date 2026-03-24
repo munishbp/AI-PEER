@@ -9,6 +9,14 @@ export const kneeBendsRules: ExerciseRule = {
   id: 'balance-1',
   name: 'Knee Bends',
   category: 'balance',
+  repConfig: {
+    keypoints: ['left_hip', 'left_knee', 'left_ankle'],
+    startMin: 155, startMax: 180,
+    endMin: 85, endMax: 140,
+    targetReps: 10,
+  },
+  totalSets: 3,
+  cameraPrompt: 'Stand facing the camera with your full body visible — head to feet. Place your phone about 6-8 feet away. Bend your knees slowly and stand back up.',
   checks: [
     {
       type: 'angle',

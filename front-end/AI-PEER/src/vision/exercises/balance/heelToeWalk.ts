@@ -9,6 +9,9 @@ export const heelToeWalkRules: ExerciseRule = {
   id: 'balance-8',
   name: 'Heel Toe Walk',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Place your phone so the camera can see your full body. Walk heel-to-toe across the camera\'s view.',
   checks: [
     {
       type: 'alignment',

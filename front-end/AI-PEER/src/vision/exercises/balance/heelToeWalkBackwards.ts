@@ -9,6 +9,9 @@ export const heelToeWalkBackwardsRules: ExerciseRule = {
   id: 'balance-11',
   name: 'Heel Toe Walk Backwards',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Place your phone so the camera can see your full body. Walk heel-to-toe backwards across the camera\'s view.',
   checks: [
     {
       type: 'alignment',

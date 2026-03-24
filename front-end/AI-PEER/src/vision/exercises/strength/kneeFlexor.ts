@@ -9,6 +9,14 @@ export const kneeFlexorRules: ExerciseRule = {
   id: 'strength-2',
   name: 'Knee Flexor',
   category: 'strength',
+  repConfig: {
+    keypoints: ['left_hip', 'left_knee', 'left_ankle'],
+    startMin: 160, startMax: 180,
+    endMin: 60, endMax: 125,
+    targetReps: 10,
+  },
+  totalSets: 3,
+  cameraPrompt: 'Stand with your left side facing the camera. Your full body from head to ankles should be visible. Place your phone about 6-8 feet away.',
   checks: [
     {
       type: 'angle',

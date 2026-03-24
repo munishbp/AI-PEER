@@ -9,6 +9,9 @@ export const walkAndTurnRules: ExerciseRule = {
   id: 'balance-5',
   name: 'Walk and Turn',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Place your phone so the camera can see your full body. Walk and turn within the camera\'s view.',
   checks: [
     {
       type: 'alignment',
