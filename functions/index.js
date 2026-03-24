@@ -2,7 +2,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const { importToREDCap, exportFromREDCap } = require("../API/services/REDCap_Service");
 const { getUsersForSync } = require("../API/services/firestore-readers");
-const { REDCAP_TO_FIRESTORE } = require("../API/config/FieldMappings");
+const { REDCAP_TO_FIRESTORE } = require("../API/config/fieldMappings");
 
 if (!admin.apps.length) {
     admin.initializeApp();
