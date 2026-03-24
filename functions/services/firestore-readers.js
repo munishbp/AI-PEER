@@ -19,7 +19,7 @@ async function getUsersForSync() {
 
       // Required fields
       const userID = doc.id;
-      const phonenum = data.phone_number;
+      const phonenum = data.phoneNumber;
       const btrack_score = data.btrack_score;
       const fear_falling_score = data.fear_falling_score;
 

@@ -98,8 +98,8 @@ async function exportFromREDCap() {
     return records.map(r=>({
         userID: r.record_id,
         phonenum: String(r.phone_number||""),
-        btrack_score: parseInt(r.b_track_score, 10),
-        fear_falling_score: parseInt(r.ff_score, 10),
+        btrack_score: parseInt(r.b_track_score, 10) || null,
+        fear_falling_score: parseInt(r.ff_score, 10)|| null,
         source:"redcap",
         synced_at: new Date().toISOString()
     }));
