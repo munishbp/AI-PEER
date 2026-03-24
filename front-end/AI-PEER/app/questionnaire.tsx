@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { fontSizes } from "../src/theme";
 import { usePrefs } from "../src/prefs-context";
+import { saveQuestionnaireResult } from "../src/fra-storage";
 
 interface Question {
   id: number;
@@ -418,9 +419,18 @@ export default function Questionnaire() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={() => {
-                Alert.alert("Success", "Results saved to your profile");
-                router.back();
+              onPress={async () => {
+                try {
+                  await saveQuestionnaireResult({
+                    fesI: score,
+                    answers,
+                    completedAt: new Date().toISOString(),
+                  });
+                  Alert.alert("Success", "Results saved to your profile");
+                  router.back();
+                } catch {
+                  Alert.alert("Error", "Unable to save results. Please try again.");
+                }
               }}
             >
               <Text style={[styles.primaryButtonText, { fontSize: scaled.h1 / 2 }]}>

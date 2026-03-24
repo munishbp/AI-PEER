@@ -14,12 +14,16 @@ export default function RootLayout() {
           <Stack>
             {/* Landing (Login) */}
             <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="login" options={{ headerShown: false }} />
 
             {/* Welcome - Accessibility Changes */}
             <Stack.Screen name="welcome" options={{ headerShown: false }} />
 
             {/* Verify - 2FA */}
             <Stack.Screen name="verify" options={{ headerShown: false }} />
+
+            {/* Tutorial - post-2FA walkthrough */}
+            <Stack.Screen name="tutorial" options={{ headerShown: false }} />
 
             {/* Tabs group (Home/AI Chat/Activity/Contacts/Settings) */}
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

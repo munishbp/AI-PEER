@@ -123,7 +123,7 @@ export default function VideoConfirmPage() {
         <Text style={styles.pageTitle}>Confirm Video</Text>
         <Text style={styles.pageSub}>
           This confirmation step ensures the Vision model knows exactly which
-          exercise you're performing.
+          exercise you are performing.
         </Text>
 
         {/* Video preview */}

@@ -1,9 +1,9 @@
 // app/index.tsx
-import { useState } from "react";
-import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import { ActivityIndicator, Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { api } from "../src/api";
-import { colors, spacing, radii, fontSizes } from "../src/theme";
+import { colors, fontSizes, radii, spacing } from "../src/theme";
 
 function normalizePhone(input: string) {
   // keep digits only; backend can decide final validation
@@ -48,8 +48,9 @@ const onLogin = async () => {
 
   try {
     setLoading(true);
-    await api.sendCode(p, password, "login");
-    router.push(`/verify?phone=${p}&mode=login`);
+    //await api.sendCode(p, password, "login");
+    //router.push(`/verify?phone=${p}&mode=login`);
+    router.replace("/(tabs)");
   } catch (e: any) {
     setErr(e.message || "Invalid phone or password");
   } finally {
