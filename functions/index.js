@@ -1,5 +1,8 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
+const { importToREDCap, exportFromREDCap } = require("../API/services/REDCap_Service");
+const { getUsersForSync } = require("../API/services/firestore-readers");
+const { REDCAP_TO_FIRESTORE } = require("../API/config/FieldMappings");
 
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -16,10 +19,6 @@ exports.redcapSync = onSchedule(
     },
     async (event) => {
         console.log("[SYNC] Starting REDCap sync...");
-
-        const { importToREDCap, exportFromREDCap } = require("../API/services/REDCap_Service");
-        const { getUsersForSync } = require("../API/services/firestore-readers");
-
         try {
             // -------------------------------------------------------
             // STEP 1: Pull scores from REDCap into Firestore
@@ -48,8 +47,8 @@ exports.redcapSync = onSchedule(
                 // a score the user submitted in-app with a stale REDCap value)
                 if (userData.btrack_score === null || userData.fear_falling_score === null) {
                     batch.update(userRef, {
-                        btrack_score: record.btrack_score ?? userData.btrack_score,
-                        fear_falling_score: record.fear_falling_score ?? userData.fear_falling_score,
+                        [REDCAP_TO_FIRESTORE.b_track_score]: record.btrack_score ?? userData.btrack_score,
+                        [REDCAP_TO_FIRESTORE.ff_score]: record.fear_falling_score ?? userData.fear_falling_score,
                         updatedAt: new Date().toISOString()
                     });
                     redcapUpdateCount++;
