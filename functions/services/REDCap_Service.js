@@ -1,6 +1,6 @@
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
-const { FIELD_MAPPINGS,  REDCAP_TO_FIRESTORE} = require("../API/config/fieldMappings");
+const { FIELD_MAPPINGS } = require("../config/fieldMappings");
 
 if (!admin.apps.length) {
     admin.initializeApp();

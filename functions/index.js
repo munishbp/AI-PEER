@@ -1,8 +1,8 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
-const { importToREDCap, exportFromREDCap } = require("../API/services/REDCap_Service");
-const { getUsersForSync } = require("../API/services/firestore-readers");
-const { REDCAP_TO_FIRESTORE } = require("../API/config/fieldMappings");
+const { importToREDCap, exportFromREDCap } = require("./services/REDCap_Service");
+const { getUsersForSync } = require("./services/firestore-readers");
+const { REDCAP_TO_FIRESTORE } = require("./config/fieldMappings");
 
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -15,7 +15,8 @@ exports.redcapSync = onSchedule(
         schedule: "0 2 * * *",       // 2am daily
         timeZone: "America/New_York",
         timeoutSeconds: 300,         // 5 min timeout for ~50 users
-        retryCount: 3                // retry up to 3 times on failure
+        retryCount: 3,                // retry up to 3 times on failure
+        serviceAccount: "munish@research-ai-peer-dev.iam.gserviceaccount.com"
     },
     async (event) => {
         console.log("[SYNC] Starting REDCap sync...");
