@@ -57,7 +57,7 @@ export default function ContactsScreen() {
   const [editing, setEditing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const { scaled, colors } = usePrefs();
-  const { user } = useAuth();
+  const { user, token: authToken } = useAuth();
 
   // Form state for add/edit modal
   const [newName, setNewName] = useState("");
@@ -71,10 +71,10 @@ export default function ContactsScreen() {
 
   // Load contacts from backend
   useEffect(() => {
-    if (!userId) { setLoadingData(false); return; }
+    if (!userId || !authToken) { setLoadingData(false); return; }
     (async () => {
       try {
-        const res = await api.getUser(userId);
+        const res = await api.getUser(userId, authToken);
         if (res.user?.contacts) {
           setContacts({
             emergency: res.user.contacts.emergency ?? [],
@@ -92,14 +92,14 @@ export default function ContactsScreen() {
 
   // Persist contacts to backend
   const saveContacts = useCallback(async (updated: ContactsData) => {
-    if (!userId) return;
+    if (!userId || !authToken) return;
     setContacts(updated);
     try {
-      await api.updateUser(userId, { contacts: updated });
+      await api.updateUser(userId, { contacts: updated }, authToken);
     } catch (e) {
       console.log("[Contacts] Failed to save:", e);
     }
-  }, [userId]);
+  }, [userId, authToken]);
 
   // Open modal to edit an existing contact
   const openEdit = (c: any) => {

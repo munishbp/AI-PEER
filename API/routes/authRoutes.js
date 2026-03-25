@@ -129,7 +129,7 @@ router.post('/login',async(req,res)=>{
  */
 router.post('/send-code', async(req, res)=>{
     try {
-        const {phone, password, mode} = req.body;
+        const {phone, password, mode, btrackScore} = req.body;
         const phoneNumber = normalizePhone(phone);
 
         // Validate inputs
@@ -199,7 +199,7 @@ router.post('/send-code', async(req, res)=>{
                 passwordHash,
                 phoneVerified: false,
                 createdAt: new Date().toISOString(),
-                btrack_score: null,
+                btrack_score: typeof btrackScore === 'number' ? btrackScore : null,
                 fear_falling_score: null
             });
             userId = newUser.id;

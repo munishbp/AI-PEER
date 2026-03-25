@@ -24,6 +24,7 @@ export default function Login() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [btrackInput, setBtrackInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -75,7 +76,8 @@ const onCreate = async () => {
 
   try {
     setLoading(true);
-    await api.sendCode(p, password, "create");
+    const btrack = btrackInput.trim() ? parseFloat(btrackInput.trim()) : undefined;
+    await api.sendCode(p, password, "create", btrack);
     router.push(`/verify?phone=${p}&mode=create`);
   } catch (e: any) {
     setErr(e.message || "Failed to create account");
@@ -90,6 +92,7 @@ const switch_clearPages = async () => {
   setPhone("");
   setPassword("");
   setConfirmPassword("");
+  setBtrackInput("");
   setErr(null);
 }
 
@@ -154,6 +157,16 @@ const switch_clearPages = async () => {
                 <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
               </TouchableOpacity>
             </View>
+
+            <Text style={[s.label, { marginTop: spacing(3) }]}>BTrackS Score (cm)</Text>
+            <TextInput
+              value={btrackInput}
+              onChangeText={setBtrackInput}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 25.4 (optional)"
+              placeholderTextColor={colors.muted}
+              style={s.input}
+            />
 
             {err ? <Text style={s.error}>{err}</Text> : null}
 
