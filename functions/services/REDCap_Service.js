@@ -61,7 +61,8 @@ function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score})
 
 async function exportFromREDCap() {
     const {apiToken, apiUrl} = await loadREDCapConfig();
-
+    console.log("[DEBUG] REDCap URL:", apiUrl);
+    console.log("[DEBUG] Token length:", apiToken?.length);
     const body = new URLSearchParams({
         token: apiToken,
         content: "record",
