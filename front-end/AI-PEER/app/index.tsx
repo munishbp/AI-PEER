@@ -1,8 +1,9 @@
 // app/index.tsx
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ActivityIndicator, Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { api } from "../src/api";
+import { useAuth } from "../src/auth";
 import { colors, fontSizes, radii, spacing } from "../src/theme";
 
 function normalizePhone(input: string) {
@@ -12,6 +13,14 @@ function normalizePhone(input: string) {
 
 export default function Login() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/(tabs)");
+    }
+  }, [authLoading, user]);
+
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -48,9 +57,8 @@ const onLogin = async () => {
 
   try {
     setLoading(true);
-    //await api.sendCode(p, password, "login");
-    //router.push(`/verify?phone=${p}&mode=login`);
-    router.replace("/(tabs)");
+    await api.sendCode(p, password, "login");
+    router.push(`/verify?phone=${p}&mode=login`);
   } catch (e: any) {
     setErr(e.message || "Invalid phone or password");
   } finally {
@@ -84,6 +92,14 @@ const switch_clearPages = async () => {
   setConfirmPassword("");
   setErr(null);
 }
+
+  if (authLoading || user) {
+    return (
+      <View style={[s.wrap, { alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
