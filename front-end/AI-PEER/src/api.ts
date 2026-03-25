@@ -53,12 +53,19 @@ export const api = {
     requestJSON<{
       success: boolean;
       customToken: string;
+      refreshToken: string;
       userId: string;
       isNewUser: boolean;
     }>("/auth/verify", {
       method: "POST",
       body: JSON.stringify({ phone, code }),
     }),
+
+  refresh: (refreshToken: string) =>
+    requestJSON<{ success: boolean; customToken: string; userId: string }>(
+      "/auth/refresh",
+      { method: "POST", body: JSON.stringify({ refreshToken }) }
+    ),
 };
 
 export { BASE };

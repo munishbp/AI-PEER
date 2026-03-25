@@ -1,5 +1,6 @@
 import {createContext, useContext, useEffect, useState} from "react";
 import {User, signOut, signInWithCustomToken, onAuthStateChanged} from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {auth} from '../firebaseClient';
 import {api} from '../api';
 
@@ -12,56 +13,86 @@ type AuthContextType = {
     logout: () => Promise<void>;
 };
 
-// 2. Create the context
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// 3. Create the provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Listen for auth state changes
+    // On mount: try to restore session from refresh token in AsyncStorage
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            setUser(firebaseUser);
+        let cancelled = false;
 
+        const restoreSession = async () => {
+            console.log('[Auth] Checking AsyncStorage for refresh token...');
+            try {
+                const refreshToken = await AsyncStorage.getItem("refreshToken");
+
+                if (!refreshToken) {
+                    console.log('[Auth] No refresh token found, showing login screen');
+                    if (!cancelled) setLoading(false);
+                    return;
+                }
+
+                console.log('[Auth] Found refresh token, calling /auth/refresh...');
+                const res = await api.refresh(refreshToken);
+
+                console.log('[Auth] Got fresh custom token, signing into Firebase...');
+                const cred = await signInWithCustomToken(auth, res.customToken);
+
+                if (!cancelled) {
+                    const idToken = await cred.user.getIdToken();
+                    setUser(cred.user);
+                    setToken(idToken);
+                    console.log('[Auth] Session restored successfully');
+                }
+            } catch (e: any) {
+                console.log('[Auth] Refresh failed:', e.message || e);
+                // Token expired or invalid — clear it
+                await AsyncStorage.removeItem("refreshToken");
+                if (!cancelled) {
+                    setUser(null);
+                    setToken(null);
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        restoreSession();
+
+        // Also listen for ongoing auth changes (e.g. sign out)
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                // User is signed in - get their ID token for API calls
+                setUser(firebaseUser);
                 const idToken = await firebaseUser.getIdToken();
                 setToken(idToken);
             } else {
-                // User is signed out
+                setUser(null);
                 setToken(null);
             }
-
-            setLoading(false);
         });
 
-        // Cleanup: unsubscribe when component unmounts
-        return () => unsubscribe();
+        return () => {
+            cancelled = true;
+            unsubscribe();
+        };
     }, []);
-    // calls backend to verify credentials, then signs into firebase with the token we get back
-    const login = async (phone: string, password: string): Promise<void> => {
-        // step 1: call our backend - it checks the password and gives us a custom token
-        const response = await api.login(phone, password);
 
-        // step 2: use that token to sign into firebase
-        // this will trigger onAuthStateChanged above, which sets user and token automatically
+    const login = async (phone: string, password: string): Promise<void> => {
+        const response = await api.login(phone, password);
         await signInWithCustomToken(auth, response.customToken);
     };
 
-    // calls backend to create new user in firestore - does NOT log them in
     const register = async (phone: string, password: string): Promise<{ userId: string }> => {
-        // just calls the backend - firebase isn't involved here
-        // user will need to call login() after this
         const response = await api.createAccount(phone, password);
         return { userId: response.userId };
     };
 
-    // signs out of firebase - clears the user session
     const logout = async (): Promise<void> => {
-        // this triggers onAuthStateChanged, which will set user and token to null
+        console.log('[Auth] Logging out, clearing refresh token...');
+        await AsyncStorage.removeItem("refreshToken");
         await signOut(auth);
     };
 
@@ -72,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
-// 4. Create the hook
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
