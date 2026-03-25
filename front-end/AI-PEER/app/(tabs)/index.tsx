@@ -13,6 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { scaleFontSizes } from "../../src/theme";
 import { usePrefs } from "../../src/prefs-context";
+import { useAuth } from "../../src/auth";
+import { api } from "../../src/api";
 import FRAMatrixCard from "../../components/FRAMatrixCard";
 import { getQuestionnaireResult } from "../../src/fra-storage";
 
@@ -21,7 +23,11 @@ export default function Home() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const { scaled } = usePrefs();
+  const { user, token: authToken } = useAuth();
   const [fesI, setFesI] = useState<number | null>(null);
+  const [btrackScore, setBtrackScore] = useState<number | null>(null);
+
+  const userId = user?.uid;
 
   useFocusEffect(
     useCallback(() => {
@@ -34,13 +40,37 @@ export default function Home() {
         } catch {
           if (isMounted) setFesI(null);
         }
+
+        // Load btrack score from backend
+        if (userId && authToken) {
+          try {
+            const res = await api.getUser(userId, authToken);
+            if (isMounted && typeof res.user?.btrack_score === "number") {
+              setBtrackScore(res.user.btrack_score);
+            }
+          } catch (e) {
+            console.log("[Home] Failed to load user:", e);
+          }
+        }
       })();
 
       return () => {
         isMounted = false;
       };
-    }, [])
+    }, [userId, authToken])
   );
+
+  const handleBtrackUpdate = async (newScore: number) => {
+    console.log('[Home] BTrack update called with:', newScore);
+    setBtrackScore(newScore);
+    if (userId && authToken) {
+      try {
+        await api.updateUser(userId, { btrack_score: newScore }, authToken);
+      } catch (e) {
+        console.log("[Home] Failed to save btrack:", e);
+      }
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -84,7 +114,13 @@ export default function Home() {
         </View>
 
         {/* FRA Matrix card */}
-        <FRAMatrixCard inputs={typeof fesI === "number" ? { fesI } : undefined} />
+        <FRAMatrixCard
+          inputs={{
+            ...(typeof btrackScore === "number" && { btrackScore }),
+            ...(typeof fesI === "number" && { fesI }),
+          }}
+          onBtrackUpdate={handleBtrackUpdate}
+        />
 
         {/* Action Row 1 */}
         <View style={styles.rowTwo}>
