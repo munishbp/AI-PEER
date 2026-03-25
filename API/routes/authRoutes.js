@@ -1,5 +1,6 @@
 const express=require('express');
 const bcrypt=require('bcrypt');
+const crypto=require('crypto');
 const {db, admin}=require('../config/firebaseConfig');
 const {createCustomToken, sendVerificationCode, verifyCode}=require('../services/Auth_Service');
 
@@ -10,6 +11,9 @@ const SALT_ROUNDS=12;
 // Rate limit constants
 const SMS_COOLDOWN_SECONDS = 60;
 const SMS_MAX_PER_HOUR = 5;
+
+// Refresh token expiry: 30 days
+const REFRESH_TOKEN_DAYS = 30;
 
 
 function normalizePhone(phone){
@@ -125,7 +129,7 @@ router.post('/login',async(req,res)=>{
  */
 router.post('/send-code', async(req, res)=>{
     try {
-        const {phone, password, mode} = req.body;
+        const {phone, password, mode, btrackScore} = req.body;
         const phoneNumber = normalizePhone(phone);
 
         // Validate inputs
@@ -195,7 +199,7 @@ router.post('/send-code', async(req, res)=>{
                 passwordHash,
                 phoneVerified: false,
                 createdAt: new Date().toISOString(),
-                btrack_score: null,
+                btrack_score: typeof btrackScore === 'number' ? btrackScore : null,
                 fear_falling_score: null
             });
             userId = newUser.id;
@@ -289,6 +293,16 @@ router.post('/verify', async(req, res)=>{
         // Create custom token for Firebase Auth
         const customToken = await createCustomToken(session.userId);
 
+        // Generate a refresh token (random UUID) with 30-day expiry
+        const refreshToken = crypto.randomUUID();
+        const refreshExpiresAt = new Date(now.getTime() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
+        await db.collection('refreshTokens').add({
+            token: refreshToken,
+            userId: session.userId,
+            createdAt: admin.firestore.Timestamp.fromDate(now),
+            expiresAt: admin.firestore.Timestamp.fromDate(refreshExpiresAt)
+        });
+
         // Delete the used session
         await sessionDoc.ref.delete();
 
@@ -297,6 +311,7 @@ router.post('/verify', async(req, res)=>{
         res.status(200).json({
             success: true,
             customToken,
+            refreshToken,
             userId: session.userId,
             isNewUser: session.mode === 'create'
         });
@@ -310,6 +325,54 @@ router.post('/verify', async(req, res)=>{
         }
 
         res.status(500).json({error: 'Verification failed.'});
+    }
+});
+
+/**
+ * POST /auth/refresh
+ * Exchanges a valid refresh token for a new Firebase custom token
+ * Body: { refreshToken }
+ */
+router.post('/refresh', async(req, res)=>{
+    try {
+        const {refreshToken} = req.body;
+        if (!refreshToken) {
+            return res.status(400).json({error: 'refreshToken is required.'});
+        }
+
+        // Look up the refresh token in Firestore
+        const snap = await db.collection('refreshTokens')
+            .where('token', '==', refreshToken)
+            .limit(1)
+            .get();
+
+        if (snap.empty) {
+            return res.status(401).json({error: 'Invalid refresh token.'});
+        }
+
+        const tokenDoc = snap.docs[0];
+        const tokenData = tokenDoc.data();
+
+        // Check expiry
+        if (tokenData.expiresAt.toDate() < new Date()) {
+            await tokenDoc.ref.delete();
+            return res.status(401).json({error: 'Refresh token expired.'});
+        }
+
+        // Generate a fresh Firebase custom token
+        const customToken = await createCustomToken(tokenData.userId);
+
+        console.log(`[AUDIT] Refresh token used: userId=${tokenData.userId}`);
+
+        res.status(200).json({
+            success: true,
+            customToken,
+            userId: tokenData.userId
+        });
+
+    } catch(error) {
+        console.error('Refresh error:', error);
+        res.status(500).json({error: 'Token refresh failed.'});
     }
 });
 

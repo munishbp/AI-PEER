@@ -40,12 +40,12 @@ export const api = {
       { method: "POST", body: JSON.stringify({ phone, password }) }
     ),
 
-  sendCode: (phone: string, password: string, mode: "login" | "create") =>
+  sendCode: (phone: string, password: string, mode: "login" | "create", btrackScore?: number) =>
     requestJSON<{ success: boolean; message: string; expiresIn: number }>(
       "/auth/send-code",
       {
         method: "POST",
-        body: JSON.stringify({ phone, password, mode }),
+        body: JSON.stringify({ phone, password, mode, ...(btrackScore != null && { btrackScore }) }),
       }
     ),
 
@@ -53,11 +53,31 @@ export const api = {
     requestJSON<{
       success: boolean;
       customToken: string;
+      refreshToken: string;
       userId: string;
       isNewUser: boolean;
     }>("/auth/verify", {
       method: "POST",
       body: JSON.stringify({ phone, code }),
+    }),
+
+  refresh: (refreshToken: string) =>
+    requestJSON<{ success: boolean; customToken: string; userId: string }>(
+      "/auth/refresh",
+      { method: "POST", body: JSON.stringify({ refreshToken }) }
+    ),
+
+  getUser: (id: string, token: string) =>
+    requestJSON<{ message: string; user: Record<string, any> }>(`/users/get?id=${id}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  updateUser: (id: string, data: Record<string, any>, token: string) =>
+    requestJSON<{ message: string }>("/users/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id, ...data }),
     }),
 };
 

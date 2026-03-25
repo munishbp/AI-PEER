@@ -1,8 +1,9 @@
 // app/index.tsx
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ActivityIndicator, Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { api } from "../src/api";
+import { useAuth } from "../src/auth";
 import { colors, fontSizes, radii, spacing } from "../src/theme";
 
 function normalizePhone(input: string) {
@@ -12,9 +13,18 @@ function normalizePhone(input: string) {
 
 export default function Login() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/(tabs)");
+    }
+  }, [authLoading, user]);
+
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [btrackInput, setBtrackInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -48,9 +58,8 @@ const onLogin = async () => {
 
   try {
     setLoading(true);
-    //await api.sendCode(p, password, "login");
-    //router.push(`/verify?phone=${p}&mode=login`);
-    router.replace("/(tabs)");
+    await api.sendCode(p, password, "login");
+    router.push(`/verify?phone=${p}&mode=login`);
   } catch (e: any) {
     setErr(e.message || "Invalid phone or password");
   } finally {
@@ -67,7 +76,8 @@ const onCreate = async () => {
 
   try {
     setLoading(true);
-    await api.sendCode(p, password, "create");
+    const btrack = btrackInput.trim() ? parseFloat(btrackInput.trim()) : undefined;
+    await api.sendCode(p, password, "create", btrack);
     router.push(`/verify?phone=${p}&mode=create`);
   } catch (e: any) {
     setErr(e.message || "Failed to create account");
@@ -82,8 +92,17 @@ const switch_clearPages = async () => {
   setPhone("");
   setPassword("");
   setConfirmPassword("");
+  setBtrackInput("");
   setErr(null);
 }
+
+  if (authLoading || user) {
+    return (
+      <View style={[s.wrap, { alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -138,6 +157,16 @@ const switch_clearPages = async () => {
                 <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
               </TouchableOpacity>
             </View>
+
+            <Text style={[s.label, { marginTop: spacing(3) }]}>BTrackS Score (cm)</Text>
+            <TextInput
+              value={btrackInput}
+              onChangeText={setBtrackInput}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 25.4 (optional)"
+              placeholderTextColor={colors.muted}
+              style={s.input}
+            />
 
             {err ? <Text style={s.error}>{err}</Text> : null}
 
