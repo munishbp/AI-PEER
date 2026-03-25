@@ -66,6 +66,19 @@ export const api = {
       "/auth/refresh",
       { method: "POST", body: JSON.stringify({ refreshToken }) }
     ),
+
+  getUser: (id: string) =>
+    requestJSON<{ user: Record<string, any> }>("/user/get", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }),
+
+  updateUser: (id: string, data: Record<string, any>) =>
+    requestJSON<{ message: string }>("/user/update", {
+      method: "POST",
+      body: JSON.stringify({ id, ...data }),
+    }),
 };
 
 export { BASE };
