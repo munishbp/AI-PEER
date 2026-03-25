@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
+const { FIELD_MAPPINGS } = require("../config/fieldMappings");
 
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -52,15 +53,16 @@ function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score})
 
     return{
         record_id: userID,
-        b_track_score: btrack_score,
-        phone_number: phonenum,
-        ff_score: fear_falling_score
+        [FIELD_MAPPINGS.btrack_score]: btrack_score,
+        [FIELD_MAPPINGS.phoneNumber]: phonenum,
+        [FIELD_MAPPINGS.fear_falling_score]: fear_falling_score
     };
 }
 
 async function exportFromREDCap() {
     const {apiToken, apiUrl} = await loadREDCapConfig();
-
+    console.log("[DEBUG] REDCap URL:", apiUrl);
+    console.log("[DEBUG] Token length:", apiToken?.length);
     const body = new URLSearchParams({
         token: apiToken,
         content: "record",
@@ -68,9 +70,9 @@ async function exportFromREDCap() {
         type: "flat",
         fields:[
             "record_id",
-            "b_track_score",
-            "phone_number",
-            "ff_score"
+            FIELD_MAPPINGS.btrack_score,
+            FIELD_MAPPINGS.phoneNumber,
+            FIELD_MAPPINGS.fear_falling_score
         ].join(",")
     });
 
@@ -97,9 +99,9 @@ async function exportFromREDCap() {
 
     return records.map(r=>({
         userID: r.record_id,
-        phonenum: String(r.phone_number||""),
-        btrack_score: parseInt(r.b_track_score, 10),
-        fear_falling_score: parseInt(r.ff_score, 10),
+        phonenum: String(r[FIELD_MAPPINGS.phoneNumber]||""),
+        btrack_score: parseInt(r[FIELD_MAPPINGS.btrack_score], 10) || null,
+        fear_falling_score: parseInt(r[FIELD_MAPPINGS.fear_falling_score], 10)|| null,
         source:"redcap",
         synced_at: new Date().toISOString()
     }));
