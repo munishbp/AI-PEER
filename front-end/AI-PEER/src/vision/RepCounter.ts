@@ -4,10 +4,13 @@ import { calculateAngle, isConfident } from './exercises/utils';
 
 type RepPhase = 'idle' | 'in_start' | 'in_end';
 
+const COOLDOWN_MS = 2000;
+
 export class RepCounter {
   private phase: RepPhase = 'idle';
   private _count = 0;
   private config: RepConfig;
+  private lastRepTime = 0;
 
   constructor(config: RepConfig) {
     this.config = config;
@@ -39,9 +42,10 @@ export class RepCounter {
         if (inEnd) this.phase = 'in_end';
         break;
       case 'in_end':
-        if (inStart) {
+        if (inStart && Date.now() - this.lastRepTime >= COOLDOWN_MS) {
           this._count++;
-          // stays in_start, ready for next rep
+          this.lastRepTime = Date.now();
+          this.phase = 'in_start';
         }
         break;
     }
@@ -52,5 +56,6 @@ export class RepCounter {
   reset() {
     this._count = 0;
     this.phase = 'idle';
+    this.lastRepTime = 0;
   }
 }
