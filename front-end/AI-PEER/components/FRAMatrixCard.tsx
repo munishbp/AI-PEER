@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 type PhysicalRisk = "Low" | "High";
 type PerceivedRisk = "Low" | "High";
@@ -7,15 +8,16 @@ type Quadrant = "Rational" | "Irrational" | "Incongruent" | "Congruent";
 
 type Props = {
   inputs?: {
-    tandemSeconds?: number; // full-tandem stand seconds
+    btrackScore?: number; // BTrackS CoP path length in cm
     fesI?: number; // FES-I total score
   };
+  onBtrackUpdate?: (newScore: number) => void;
 };
 
-function computeFRA(tandemSeconds: number, fesI: number) {
-  // Paper: <= 10s low physiological, > 10s high physiological
-  const physical: PhysicalRisk = tandemSeconds > 10 ? "High" : "Low";
-  // Paper: 16–23 low perceived, 24–64 high perceived
+function computeFRA(btrackScore: number, fesI: number) {
+  // BTrackS: > 30cm = high physiological risk, <= 30cm = low
+  const physical: PhysicalRisk = btrackScore > 30 ? "High" : "Low";
+  // FES-I: 16–23 low perceived, 24–64 high perceived
   const perceived: PerceivedRisk = fesI > 23 ? "High" : "Low";
 
   let quadrant: Quadrant;
@@ -27,56 +29,84 @@ function computeFRA(tandemSeconds: number, fesI: number) {
   return { physical, perceived, quadrant };
 }
 
-// Dot centered in the chosen quadrant (simple + clear for now)
 function dotPosition(
   physical: PhysicalRisk,
   perceived: PerceivedRisk
 ): { x: `${number}%`; y: `${number}%` } {
   const x: `${number}%` = physical === "High" ? "75%" : "25%";
-  const y: `${number}%` = perceived === "High" ? "25%" : "75%"; // RN y grows downward
+  const y: `${number}%` = perceived === "High" ? "25%" : "75%";
   return { x, y };
 }
 
-export default function FRAMatrixCard({ inputs }: Props) {
-  const tandemSeconds =
-    typeof inputs?.tandemSeconds === "number" ? inputs.tandemSeconds : 7.2;
-  const fesI = typeof inputs?.fesI === "number" ? inputs.fesI : 28;
+export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
+  const btrackScore =
+    typeof inputs?.btrackScore === "number" ? inputs.btrackScore : null;
+  const fesI = typeof inputs?.fesI === "number" ? inputs.fesI : null;
+
+  const displayBtrack = btrackScore ?? 0;
+  const displayFesI = fesI ?? 28;
 
   const fra = useMemo(
-    () => computeFRA(tandemSeconds, fesI),
-    [tandemSeconds, fesI]
+    () => computeFRA(displayBtrack, displayFesI),
+    [displayBtrack, displayFesI]
   );
 
   const pos = dotPosition(fra.physical, fra.perceived);
   const elevated = fra.quadrant !== "Rational";
+  const hasBothScores = btrackScore !== null && fesI !== null;
+
+  const handleEditBtrack = () => {
+    Alert.prompt(
+      "Update BTrackS Score",
+      "Enter your new BTrackS score in cm:",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Save",
+          onPress: (value) => {
+            const num = parseFloat(value || "");
+            if (!isNaN(num) && num >= 0) {
+              onBtrackUpdate?.(num);
+            } else {
+              Alert.alert("Invalid", "Please enter a valid number.");
+            }
+          },
+        },
+      ],
+      "plain-text",
+      btrackScore !== null ? String(btrackScore) : "",
+      "decimal-pad"
+    );
+  };
 
   return (
     <View style={styles.card}>
-      {/* Header (smaller) */}
+      {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Today’s Risk (FRA)</Text>
-        <View style={[styles.pill, elevated ? styles.pillBad : styles.pillGood]}>
-          <Text style={styles.pillText}>
-            {elevated ? "Elevated Risk" : "Low Risk"}
-          </Text>
+        <Text style={styles.title}>Today's Risk (FRA)</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={[styles.pill, elevated ? styles.pillBad : styles.pillGood]}>
+            <Text style={styles.pillText}>
+              {!hasBothScores ? "Incomplete" : elevated ? "Elevated Risk" : "Low Risk"}
+            </Text>
+          </View>
         </View>
       </View>
 
       <Text style={styles.subtitle}>
-        Based on alignment of physical fall risk (tandem stand) and perceived
+        Based on alignment of physical fall risk (BTrackS) and perceived
         fall risk (FES-I).
       </Text>
 
-      {/* Readouts (smaller + tighter) */}
+      {/* Readouts */}
       <View style={styles.readoutRow}>
-        <Readout label="Tandem" value={`${tandemSeconds.toFixed(1)}s`} />
-        <Readout label="FES-I" value={`${fesI}`} />
-        <Readout label="Quadrant" value={fra.quadrant} />
+        <Readout label="BTrackS" value={btrackScore !== null ? `${btrackScore} cm` : "—"} />
+        <Readout label="FES-I" value={fesI !== null ? `${fesI}` : "—"} />
+        <Readout label="Quadrant" value={hasBothScores ? fra.quadrant : "—"} />
       </View>
 
-      {/* ===== MATRIX AREA (bigger) ===== */}
+      {/* Matrix */}
       <View style={styles.matrixArea}>
-        {/* Everything on Y axis rotated sideways */}
         <View style={styles.yRail}>
           <View style={styles.yRailInner}>
             <Text style={styles.ySideTitle}>Perceived fall risk</Text>
@@ -85,25 +115,20 @@ export default function FRAMatrixCard({ inputs }: Props) {
           </View>
         </View>
 
-        {/* Big matrix */}
         <View style={styles.matrix}>
-          {/* Quadrant fills */}
           <View style={[styles.quad, styles.qTL, styles.badFill]} />
           <View style={[styles.quad, styles.qTR, styles.badFill]} />
           <View style={[styles.quad, styles.qBR, styles.badFill]} />
           <View style={[styles.quad, styles.qBL, styles.goodFill]} />
 
-          {/* Crosshair */}
           <View style={styles.vLine} />
           <View style={styles.hLine} />
 
-          {/* Labels */}
           <QuadLabel title="Irrational" pos="tl" bad />
           <QuadLabel title="Congruent" pos="tr" bad />
           <QuadLabel title="Incongruent" pos="br" bad />
           <QuadLabel title="Rational" pos="bl" good />
 
-          {/* Dot */}
           <View
             style={[
               styles.dot,
@@ -117,10 +142,16 @@ export default function FRAMatrixCard({ inputs }: Props) {
         </View>
       </View>
 
-      {/* X axis (slightly smaller) */}
+      {/* X axis */}
       <View style={styles.xAxis}>
         <Text style={styles.axisTitle}>Physiological fall risk</Text>
-        <Text style={styles.axisHint}>≤ 10s (Low) · &gt; 10s (High)</Text>
+        <Text style={styles.axisHint}>≤ 30cm (Low) · &gt; 30cm (High)</Text>
+        {onBtrackUpdate && (
+          <TouchableOpacity onPress={handleEditBtrack} style={styles.editBtrackBtn}>
+            <Ionicons name="create-outline" size={14} color="#555" />
+            <Text style={styles.editBtrackText}>Edit BTrackS</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -160,12 +191,11 @@ function QuadLabel({
   );
 }
 
-/* ===================== STYLES ===================== */
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFF",
     borderRadius: 16,
-    padding: 12,
+    padding: 8,
     borderWidth: 1,
     borderColor: "#E6E6E6",
   },
@@ -182,12 +212,12 @@ const styles = StyleSheet.create({
   pillBad: { backgroundColor: "#FFE2E0" },
   pillText: { fontWeight: "900", color: "#111", fontSize: 12 },
 
-  subtitle: { marginTop: 6, fontSize: 11, color: "#555" },
+  subtitle: { marginTop: 4, fontSize: 11, color: "#555" },
 
   readoutRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 10,
+    marginTop: 6,
     flexWrap: "wrap",
   },
   readout: {
@@ -200,14 +230,12 @@ const styles = StyleSheet.create({
   readoutLabel: { fontSize: 9, fontWeight: "800", color: "#666" },
   readoutValue: { marginTop: 3, fontWeight: "900", fontSize: 13, color: "#111" },
 
-  /** ===== MATRIX AREA ===== */
   matrixArea: {
-    marginTop: 12,
+    marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
   },
 
-  // A narrow vertical rail on the left; everything inside is rotated
   yRail: {
     width: 44,
     height: "100%",
@@ -219,12 +247,11 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-90deg" }],
     alignItems: "center",
     justifyContent: "center",
-    width: 220, // gives room after rotate
+    width: 220,
   },
   ySideTitle: { fontSize: 12, fontWeight: "900", color: "#111" },
   ySideTick: { marginTop: 4, fontSize: 11, fontWeight: "700", color: "#555" },
 
-  // BIG matrix square: takes more space
   matrix: {
     flex: 1,
     aspectRatio: 1,
@@ -234,7 +261,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     backgroundColor: "#FAFAFA",
-    minHeight: 250,
+    minHeight: 180,
   },
 
   quad: { position: "absolute", width: "50%", height: "50%" },
@@ -303,5 +330,21 @@ const styles = StyleSheet.create({
     color: "#555",
     textAlign: "center",
     fontWeight: "700",
+  },
+  editBtrackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 56,
+    marginBottom: -48,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 10,
+  },
+  editBtrackText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#555",
   },
 });

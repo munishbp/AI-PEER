@@ -9,6 +9,9 @@ export const heelToeStandRules: ExerciseRule = {
   id: 'balance-7',
   name: 'Heel Toe Stand',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Stand facing the camera with your full body visible — head to feet. About 6-8 feet away.',
   checks: [
     {
       type: 'alignment',

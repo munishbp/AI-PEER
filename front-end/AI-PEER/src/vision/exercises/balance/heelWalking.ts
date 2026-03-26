@@ -9,6 +9,9 @@ export const heelWalkingRules: ExerciseRule = {
   id: 'balance-9',
   name: 'Heel Walking',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Place your phone so the camera can see your full body. Walk on your heels across the camera\'s view.',
   checks: [
     {
       type: 'alignment',

@@ -9,6 +9,9 @@ export const neckMovementsRules: ExerciseRule = {
   id: 'warmup-2',
   name: 'Neck Movements',
   category: 'warmup',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Stand facing the camera. Make sure your head and shoulders are clearly visible.',
   checks: [
     {
       type: 'alignment',

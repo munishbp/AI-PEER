@@ -9,6 +9,9 @@ export const toeWalkingRules: ExerciseRule = {
   id: 'balance-10',
   name: 'Toe Walking',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Place your phone so the camera can see your full body. Walk on your toes across the camera\'s view.',
   checks: [
     {
       type: 'alignment',

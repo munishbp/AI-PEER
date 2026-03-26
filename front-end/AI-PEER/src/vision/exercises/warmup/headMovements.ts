@@ -9,6 +9,9 @@ export const headMovementsRules: ExerciseRule = {
   id: 'warmup-1',
   name: 'Head Movements',
   category: 'warmup',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Stand facing the camera. Make sure your head and shoulders are clearly visible.',
   checks: [
     {
       type: 'alignment',

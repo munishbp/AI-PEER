@@ -17,9 +17,13 @@ import React, {
 import { AppState, AppStateStatus } from 'react-native';
 import { VisionState, Pose, FormFeedback } from './types';
 import { analyzePose } from './FormAnalyzer';
+import { RepCounter } from './RepCounter';
+import { getExerciseRules } from './exercises';
 
 type VisionContextValue = {
   state: VisionState;
+  repCount: number | null;
+  targetReps: number | null;
   setModelReady: (ready: boolean) => void;
   startTracking: (exerciseId: string) => void;
   stopTracking: () => void;
@@ -44,6 +48,8 @@ const STATE_UPDATE_INTERVAL = 200;
 
 export function VisionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<VisionState>(initialState);
+  const [repCount, setRepCount] = useState<number | null>(null);
+  const [targetReps, setTargetReps] = useState<number | null>(null);
 
   // refs for stable callback identity
   const isTrackingRef = useRef(false);
@@ -51,6 +57,7 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const lastStateUpdateRef = useRef(0);
   const pendingPoseRef = useRef<Pose | null>(null);
   const pendingFeedbackRef = useRef<FormFeedback | null>(null);
+  const repCounterRef = useRef<RepCounter | null>(null);
 
   const setModelReady = useCallback((ready: boolean) => {
     setState((s) => ({ ...s, isModelLoaded: ready }));
@@ -59,6 +66,19 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const startTracking = useCallback((exerciseId: string) => {
     exerciseIdRef.current = exerciseId;
     isTrackingRef.current = true;
+
+    // set up rep counter if exercise has repConfig
+    const rules = getExerciseRules(exerciseId);
+    if (rules?.repConfig) {
+      repCounterRef.current = new RepCounter(rules.repConfig);
+      setRepCount(0);
+      setTargetReps(rules.repConfig.targetReps);
+    } else {
+      repCounterRef.current = null;
+      setRepCount(null);
+      setTargetReps(null);
+    }
+
     setState((s) => ({
       ...s,
       isTracking: true,
@@ -71,6 +91,10 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const stopTracking = useCallback(() => {
     exerciseIdRef.current = null;
     isTrackingRef.current = false;
+    repCounterRef.current?.reset();
+    repCounterRef.current = null;
+    setRepCount(null);
+    setTargetReps(null);
     setState((s) => ({
       ...s,
       isTracking: false,
@@ -88,6 +112,12 @@ export function VisionProvider({ children }: { children: ReactNode }) {
       let feedback: FormFeedback | null = null;
       if (pose && exerciseIdRef.current) {
         feedback = analyzePose(pose, exerciseIdRef.current);
+      }
+
+      // update rep counter
+      if (pose && repCounterRef.current) {
+        const count = repCounterRef.current.update(pose);
+        setRepCount(count);
       }
 
       pendingPoseRef.current = pose;
@@ -123,6 +153,8 @@ export function VisionProvider({ children }: { children: ReactNode }) {
     <VisionContext.Provider
       value={{
         state,
+        repCount,
+        targetReps,
         setModelReady,
         startTracking,
         stopTracking,

@@ -62,13 +62,13 @@ exports.deleteUser = async (req, res) => {
 //response is user info 
 exports.getUser = async (req, res) => {
   try {
-    const data = req.body;
+    const id = req.query.id || req.body?.id;
 
-    const result = await userService.readId(data.id);
+    const result = await userService.readId(id);
 
     res.status(200).json({
       message: "User retrieved successfully",
-      user: result,
+      user: result ? result.data() : null,
     });
   } catch (error) {
     console.error(error);
