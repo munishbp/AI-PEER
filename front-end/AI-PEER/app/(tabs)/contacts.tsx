@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { scaleFontSizes } from "../../src/theme";
 import { usePrefs } from "../../src/prefs-context";
@@ -42,16 +43,17 @@ const MEDICAL: Contact[] = [
 export default function ContactsScreen() {
   const [tab, setTab] = useState<ContactTab>("emergency");
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
 
   const currentList =
     tab === "emergency" ? EMERGENCY : tab === "family" ? FAMILY : MEDICAL;
 
   const title =
     tab === "emergency"
-      ? "Emergency Contacts"
+      ? t("contacts.emergencyContacts")
       : tab === "family"
-      ? "Family Members"
-      : "Medical Contacts";
+      ? t("contacts.familyMembers")
+      : t("contacts.medicalContacts");
 
   const titleIconName: keyof typeof Ionicons.glyphMap =
     tab === "emergency"
@@ -71,7 +73,7 @@ export default function ContactsScreen() {
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>Contact Lists</Text>
+              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>{t("contacts.contactLists")}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -83,21 +85,21 @@ export default function ContactsScreen() {
         {/* Segmented control: Emergency | Family | Medical */}
         <View style={styles.segmentOuter}>
           <SegmentButton
-            label="Urgent"
+            label={t("contacts.urgent")}
             icon="warning-outline"
             active={tab === "emergency"}
             onPress={() => setTab("emergency")}
             scaled={scaled}
           />
           <SegmentButton
-            label="Family"
+            label={t("contacts.family")}
             icon="people-outline"
             active={tab === "family"}
             onPress={() => setTab("family")}
             scaled={scaled}
           />
           <SegmentButton
-            label="Medical"
+            label={t("contacts.medical")}
             icon="medkit-outline"
             active={tab === "medical"}
             onPress={() => setTab("medical")}

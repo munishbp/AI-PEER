@@ -2,9 +2,11 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { usePrefs } from "../../src/prefs-context";
+import { useTranslation } from "react-i18next";
 
 export default function TabsLayout() {
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -29,7 +31,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tabs_layout.home"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -38,7 +40,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="ai-chat"
         options={{
-          title: "AI Chat",
+          title: t("tabs_layout.ai-chat"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="chatbubble-ellipses-outline"
@@ -51,7 +53,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          title: "Activity",
+          title: t("tabs_layout.activity"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pulse-outline" size={size} color={color} />
           ),
@@ -60,7 +62,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="contacts"
         options={{
-          title: "Contacts",
+          title: t("tabs_layout.contacts"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
@@ -69,7 +71,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: t("tabs_layout.settings"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),

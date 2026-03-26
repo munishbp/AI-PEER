@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 
 type PhysicalRisk = "Low" | "High";
 type PerceivedRisk = "Low" | "High";
@@ -38,6 +39,7 @@ function dotPosition(
 }
 
 export default function FRAMatrixCard({ inputs }: Props) {
+  const { t } = useTranslation();
   const tandemSeconds =
     typeof inputs?.tandemSeconds === "number" ? inputs.tandemSeconds : 7.2;
   const fesI = typeof inputs?.fesI === "number" ? inputs.fesI : 28;
@@ -54,18 +56,15 @@ export default function FRAMatrixCard({ inputs }: Props) {
     <View style={styles.card}>
       {/* Header (smaller) */}
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Today’s Risk (FRA)</Text>
+        <Text style={styles.title}>{t("FRAMatrixCard.todaysRisk")}</Text>
         <View style={[styles.pill, elevated ? styles.pillBad : styles.pillGood]}>
           <Text style={styles.pillText}>
-            {elevated ? "Elevated Risk" : "Low Risk"}
+            {elevated ? t("FRAMatrixCard.elevatedRisk") : t("FRAMatrixCard.lowRisk")}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.subtitle}>
-        Based on alignment of physical fall risk (tandem stand) and perceived
-        fall risk (FES-I).
-      </Text>
+      <Text style={styles.subtitle}>{t("FRAMatrixCard.riskBasedOn")}</Text>
 
       {/* Readouts (smaller + tighter) */}
       <View style={styles.readoutRow}>
@@ -79,7 +78,7 @@ export default function FRAMatrixCard({ inputs }: Props) {
         {/* Everything on Y axis rotated sideways */}
         <View style={styles.yRail}>
           <View style={styles.yRailInner}>
-            <Text style={styles.ySideTitle}>Perceived fall risk</Text>
+            <Text style={styles.ySideTitle}>{t("FRAMatrixCard.perceivedRisk")}</Text>
             <Text style={styles.ySideTick}>High: 24–64</Text>
             <Text style={styles.ySideTick}>Low: 16–23</Text>
           </View>
@@ -119,7 +118,7 @@ export default function FRAMatrixCard({ inputs }: Props) {
 
       {/* X axis (slightly smaller) */}
       <View style={styles.xAxis}>
-        <Text style={styles.axisTitle}>Physiological fall risk</Text>
+        <Text style={styles.axisTitle}>{t("FRAMatrixCard.physiologicalRisk")}</Text>
         <Text style={styles.axisHint}>≤ 10s (Low) · &gt; 10s (High)</Text>
       </View>
     </View>
@@ -176,14 +175,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  title: { fontSize: 16, fontWeight: "900", color: "#111" },
+  title: { fontSize: 18.5, fontWeight: "900", color: "#111" },
 
   pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   pillGood: { backgroundColor: "#DFF3E5" },
   pillBad: { backgroundColor: "#FFE2E0" },
   pillText: { fontWeight: "900", color: "#111", fontSize: 12 },
 
-  subtitle: { marginTop: 6, fontSize: 11, color: "#555" },
+  subtitle: { marginTop: 16, fontSize: 11, color: "#555" },
 
   readoutRow: {
     flexDirection: "row",

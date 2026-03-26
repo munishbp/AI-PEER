@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -19,26 +20,6 @@ interface Question {
   text: string;
 }
 
-const questions: Question[] = [
-  { id: 1, text: "Getting dressed or undressed" },
-  { id: 2, text: "Taking a bath or shower" },
-  { id: 3, text: "Getting in or out of a chair" },
-  { id: 4, text: "Going up or down stairs" },
-  { id: 5, text: "Reaching for something above your head or on the ground" },
-  { id: 6, text: "Walking up or down a slope" },
-  {
-    id: 7,
-    text: "Going out to a social event (e.g. religious service, family gathering or club meeting)",
-  },
-];
-
-const answerOptions = [
-  { value: "1", label: "Not at all concerned", score: 1 },
-  { value: "2", label: "Somewhat concerned", score: 2 },
-  { value: "3", label: "Fairly concerned", score: 3 },
-  { value: "4", label: "Very concerned", score: 4 },
-];
-
 type AssessmentView = "start" | "questions" | "results";
 
 const warmRed = "#A24135";
@@ -49,6 +30,24 @@ export default function Questionnaire() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const { scaled } = usePrefs();
+  const { t } = useTranslation();
+
+  const questions: Question[] = [
+    { id: 1, text: t("questionnaire.question1") },
+    { id: 2, text: t("questionnaire.question2") },
+    { id: 3, text: t("questionnaire.question3") },
+    { id: 4, text: t("questionnaire.question4") },
+    { id: 5, text: t("questionnaire.question5") },
+    { id: 6, text: t("questionnaire.question6") },
+    { id: 7, text: t("questionnaire.question7") },
+  ];
+
+  const answerOptions = [
+    { value: "1", label: t("questionnaire.notAtAll"), score: 1 },
+    { value: "2", label: t("questionnaire.somewhat"), score: 2 },
+    { value: "3", label: t("questionnaire.fairly"), score: 3 },
+    { value: "4", label: t("questionnaire.very"), score: 4 },
+  ];
 
   const handleStart = () => {
     setView("questions");
@@ -62,7 +61,7 @@ export default function Questionnaire() {
 
   const handleNext = () => {
     if (!answers[questions[currentQuestion].id]) {
-      Alert.alert("Error", "Please select an answer before continuing");
+      Alert.alert(t("questionnaire.errorTitle"), t("questionnaire.notAnsweredError"));
       return;
     }
 
@@ -152,14 +151,14 @@ export default function Questionnaire() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
               <View>
-                <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
-                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-                  Fall Risk Questionnaire
-                </Text>
+                    <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
+                    <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
+                      {t("questionnaire.subtitle")}
+                    </Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={[styles.backText, { fontSize: scaled.h1 / 2 }]}>Quit</Text>
+              <Text style={[styles.backText, { fontSize: scaled.h1 / 2 }]}>{t("questionnaire.quit")}</Text>
             </TouchableOpacity>
           </View>
 
@@ -173,25 +172,17 @@ export default function Questionnaire() {
               }}
             >
               <Ionicons name="clipboard-outline" size={24} color={warmRed} />
-              <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>Instructions</Text>
+              <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>{t("questionnaire.instructionsTitle")}</Text>
             </View>
 
             <View style={styles.infoBox}>
-              <Text style={[styles.infoText, { fontSize: scaled.base }]}>
-                - 7 quick questions
-              </Text>
-              <Text style={[styles.infoText, { fontSize: scaled.base }]}>
-                - Rate how concerned you would be about falling during each activity
-              </Text>
-              <Text style={[styles.infoText, { fontSize: scaled.base }]}>
-                - If you do not do an activity, answer how concerned you would be if you did
-              </Text>
+              <Text style={[styles.infoText, { fontSize: scaled.base }]}>- {t("questionnaire.info1")}</Text>
+              <Text style={[styles.infoText, { fontSize: scaled.base }]}>- {t("questionnaire.info2")}</Text>
+              <Text style={[styles.infoText, { fontSize: scaled.base }]}>- {t("questionnaire.info3")}</Text>
             </View>
 
             <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
-              <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>
-                Begin Assessment
-              </Text>
+              <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>{t("questionnaire.beginAssessment")}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -211,13 +202,11 @@ export default function Questionnaire() {
               <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
               <View>
                 <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
-                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-                  Fall Risk Questionnaire
-                </Text>
+                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>{t("questionnaire.subtitle")}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={[styles.backText, { fontSize: scaled.h1 / 2 }]}>Quit</Text>
+              <Text style={[styles.backText, { fontSize: scaled.h1 / 2 }]}>{t("questionnaire.quit")}</Text>
             </TouchableOpacity>
           </View>
 
@@ -225,16 +214,14 @@ export default function Questionnaire() {
             <View style={{ marginBottom: 16 }}>
               <View style={styles.badge}>
                 <Text style={[styles.badgeText, { fontSize: scaled.small }]}>
-                  Question {currentQuestion + 1} of {questions.length}
+                  {t("questionnaire.questionOf", { current: currentQuestion + 1, total: questions.length })}
                 </Text>
               </View>
               <ProgressBar progress={progress} />
             </View>
 
             <View style={styles.questionBox}>
-              <Text style={[styles.questionLabel, { fontSize: scaled.small }]}>
-                How concerned are you that you might fall:
-              </Text>
+              <Text style={[styles.questionLabel, { fontSize: scaled.small }]}>{t("questionnaire.howConcerned")}</Text>
               <Text style={[styles.questionText, { fontSize: scaled.h3 }]}>{currentQ.text}</Text>
             </View>
 
@@ -291,7 +278,7 @@ export default function Questionnaire() {
                     { fontSize: Math.round(scaled.h1 * 0.5) },
                   ]}
                 >
-                  Back
+                  {t("questionnaire.back")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
@@ -301,15 +288,11 @@ export default function Questionnaire() {
                     { fontSize: Math.round(scaled.h1 * 0.5) },
                   ]}
                 >
-                  {currentQuestion === questions.length - 1 ? "View Results" : "Next"}
+                  {currentQuestion === questions.length - 1 ? t("questionnaire.viewResults") : t("questionnaire.next")}
                 </Text>
                 <Ionicons name="arrow-forward" size={16} color="#FFF" />
               </TouchableOpacity>
             </View>
-
-            <Text style={[styles.progressText, { fontSize: scaled.small }]}>
-              {Object.keys(answers).length} of {questions.length} questions answered
-            </Text>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -412,20 +395,16 @@ export default function Questionnaire() {
             }}
           >
             <TouchableOpacity style={styles.secondaryButton} onPress={handleRestart}>
-              <Text style={[styles.secondaryButtonText, { fontSize: scaled.h1 / 2 }]}>
-                Take Again
-              </Text>
+              <Text style={[styles.secondaryButtonText, { fontSize: scaled.h1 / 2 }]}>{t("questionnaire.takeAgain")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => {
-                Alert.alert("Success", "Results saved to your profile");
+                Alert.alert(t("questionnaire.savedTitle"), t("questionnaire.savedMessage"));
                 router.back();
               }}
             >
-              <Text style={[styles.primaryButtonText, { fontSize: scaled.h1 / 2 }]}>
-                Save Results
-              </Text>
+              <Text style={[styles.primaryButtonText, { fontSize: scaled.h1 / 2 }]}>{t("questionnaire.saveResults")}</Text>
             </TouchableOpacity>
           </View>
         </View>

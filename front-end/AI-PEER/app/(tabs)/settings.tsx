@@ -13,6 +13,7 @@ import {
   TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -41,6 +42,7 @@ const warmRed = "#D84535";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
   const { prefs, updatePrefs, scaled, colors } = usePrefs();
   const REMINDERS_KEY = "user_reminders_v1";
@@ -79,7 +81,7 @@ export default function SettingsScreen() {
   async function addReminder(title: string, hour: number, minute: number) {
     const permissionGranted = await requestReminderPermissions();
     if (!permissionGranted) {
-      Alert.alert("Notifications disabled", "Please enable notifications for reminders.");
+      Alert.alert(t("settings.notifsDisabled"), t("settings.notifsAlert"));
       return;
     }
 
@@ -123,7 +125,7 @@ export default function SettingsScreen() {
     } else {
       const permissionGranted = await requestReminderPermissions();
       if (!permissionGranted) {
-        Alert.alert("Notifications disabled", "Please enable notifications for reminders.");
+        Alert.alert(t("settings.notifsDisabled"), t("settings.notifsAlert"));
         return;
       }
 
@@ -208,10 +210,10 @@ export default function SettingsScreen() {
     // Change this if your login route is not app/index.tsx
     const LOGIN_ROUTE = "/";
 
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("settings.logout"), t("settings.logoutConfirmation"), [
+      { text: t("settings.cancel"), style: "cancel" },
       {
-        text: "Logout",
+        text: t("settings.logout"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -239,7 +241,7 @@ export default function SettingsScreen() {
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC"/>
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>Settings & Preferences</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("settings.title")}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -250,21 +252,21 @@ export default function SettingsScreen() {
         {/* Segmented Control */}
         <View style={styles.segmentOuter}>
           <SegmentButton
-            label="Access"
+            label={t("settings.access")}
             icon="accessibility-outline"
             active={tab === "accessibility"}
             onPress={() => setTab("accessibility")}
             scaled={scaled}
           />
           <SegmentButton
-            label="Devices"
+            label={t("settings.devices")}
             icon="bluetooth-outline"
             active={tab === "devices"}
             onPress={() => setTab("devices")}
             scaled={scaled}
           />
           <SegmentButton
-            label="Alerts"
+            label={t("settings.alerts")}
             icon="alarm-outline"
             active={tab === "notifications"}
             onPress={() => setTab("notifications")}
@@ -309,7 +311,8 @@ function AccessibilityTab({
 }) {
   const fontSizesLabels = ["Small (90%)", "Normal (100%)", "Large (120%)"];
   const contrastOptions = ["Light", "Dark", "High Contrast"];
-  const languages = ["English", "Español", "Français"];
+  const languages = ["English", "Español", "Kreyòl Ayisyen"];
+  const { t } = useTranslation();
 
   return (
     <>
@@ -317,10 +320,10 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="text-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Text Size</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.textSize")}</Text>
         </View>
         <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-          Choose a comfortable reading size
+          {t("settings.testDescription")}
         </Text>
         <View style={styles.optionsRow}>
           {fontSizesLabels.map((size, i) => (
@@ -332,15 +335,15 @@ function AccessibilityTab({
                 prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonActive,
               ]}
             >
-                <Text
-                  style={[
-                    styles.optionButtonText,
-                    prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonTextActive,
-                    { fontSize: scaled.base*0.75 },
-                  ]}
-                >
-                  {size.split(" ")[0]}
-                </Text>
+              <Text
+                style={[
+                  styles.optionButtonText,
+                  prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonTextActive,
+                  { fontSize: scaled.base*0.75 },
+                ]}
+              >
+                {size.split(" ")[0]}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -350,10 +353,10 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="contrast-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Display Contrast</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.displayContrast")}</Text>
         </View>
         <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-          Choose colors that are easy on your eyes
+          {t("settings.displayDescription")}
         </Text>
         <View style={styles.optionsRow}>
           {(["light", "dark", "high"] as const).map((contrast, i) => (
@@ -382,11 +385,11 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="globe-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Language</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.language")}</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>Select your preferred language</Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>{t("settings.languageDescription")}</Text>
         <View style={styles.optionsRow}>
-          {(["en", "es", "fr"] as const).map((lang, i) => (
+          {(["en", "es", "ht"] as const).map((lang, i) => (
             <TouchableOpacity
               key={lang}
               onPress={() => updatePrefs("language", lang)}
@@ -421,10 +424,10 @@ function AccessibilityTab({
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Ionicons name="volume-high-outline" size={16} color={warmRed} />
-              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Sound Alerts</Text>
+              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.soundAlerts")}</Text>
             </View>
             <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-              Enable notification sounds
+              {t("settings.soundDescription")}
             </Text>
           </View>
           <Switch
@@ -441,7 +444,7 @@ function AccessibilityTab({
           >
             <Ionicons name="play-outline" size={14} color={warmRed} />
             <Text style={[styles.secondaryButtonText, { color: warmRed, fontSize: scaled.small }]}> 
-              Play Preview
+              {t("settings.playPreview")}
             </Text>
           </TouchableOpacity>
         )}
@@ -453,15 +456,17 @@ function AccessibilityTab({
 /* ===================== DEVICES TAB ===================== */
 
 function DevicesTab({ devices, scaled }: { devices: any[]; scaled: ReturnType<typeof scaleFontSizes>; }) {
+  const { t } = useTranslation();
+
   return (
     <>
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="bluetooth-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Connected Devices</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.connectedDevices")}</Text>
         </View>
         <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-          Manage your paired health devices
+          {t("settings.devicesDescription")}
         </Text>
 
         {devices.map((device) => (
@@ -499,7 +504,7 @@ function DevicesTab({ devices, scaled }: { devices: any[]; scaled: ReturnType<ty
                   </>
                 )}
               </Text>
-              <Text style={[styles.deviceSync, { fontSize: scaled.h2/2 }]}>Last sync: {device.lastSync}</Text>
+              <Text style={[styles.deviceSync, { fontSize: scaled.h2/2 }]}>{t("settings.lastSynced")} {device.lastSync}</Text>
             </View>
             <TouchableOpacity style={styles.deviceButton}>
               <Ionicons name="chevron-forward" size={18} color="#999" />
@@ -514,7 +519,7 @@ function DevicesTab({ devices, scaled }: { devices: any[]; scaled: ReturnType<ty
           activeOpacity={0.85}
         >
           <Ionicons name="add-circle-outline" size={16} color="#fff" />
-          <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>Add New Device</Text>
+          <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>{t("settings.addNewDevice")}</Text>
         </TouchableOpacity>
       </View>
     </>
@@ -541,6 +546,7 @@ function NotificationsTab({
   const [title, setTitle] = useState("");
   const [hour, setHour] = useState("");
   const [minute, setMinute] = useState("");
+  const { t } = useTranslation();
 
   async function handleAdd() {
     const h = Number(hour);
@@ -548,11 +554,11 @@ function NotificationsTab({
 
     if (!title.trim()) return;
     if (!Number.isInteger(h) || h < 0 || h > 23) {
-      Alert.alert("Invalid hour", "Enter an hour from 0 to 23.");
+      Alert.alert(t("settings.errorHour"), t("settings.errorHourRange"));
       return;
     }
     if (!Number.isInteger(m) || m < 0 || m > 59) {
-      Alert.alert("Invalid minute", "Enter minutes from 0 to 59.");
+      Alert.alert(t("settings.errorMinute"), t("settings.errorMinuteRange"));
       return;
     }
 
@@ -567,10 +573,10 @@ function NotificationsTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="alarm-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Reminders</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.reminders")}</Text>
           </View>
           <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-            Create and manage personal reminders
+            {t("settings.remindersDescription")}
           </Text>
 
         {reminders.map((rem) => (
@@ -597,7 +603,7 @@ function NotificationsTab({
 
         <View style={styles.inputRow}>
           <TextInput
-            placeholder="Reminder title"
+            placeholder={t("settings.reminderTitle")}
             value={title}
             onChangeText={setTitle}
             style={[styles.input, { fontSize: scaled.small }]}
@@ -622,20 +628,20 @@ function NotificationsTab({
             activeOpacity={0.85}
           >
             <Ionicons name="add-circle-outline" size={16} color="#fff" />
-            <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>Add</Text>
+            <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>{t("settings.add")}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>Account</Text>
+        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>{t("settings.account")}</Text>
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={onLogout}
           activeOpacity={0.85}
         >
           <Ionicons name="log-out-outline" size={16} color="#fff" />
-          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>Logout</Text>
+          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>{t("settings.logout")}</Text>
         </TouchableOpacity>
       </View>
     </>

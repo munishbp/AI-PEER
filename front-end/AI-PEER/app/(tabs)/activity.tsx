@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import LineGraph from "../../components/graphs/LineGraph";
 import { scaleFontSizes } from "../../src/theme";
@@ -23,6 +24,7 @@ export default function ActivityScreen() {
   const [tab, setTab] = useState<ActivityTab>("today");
 
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
 
   const week = [
     { label: "Mon", steps: 4250, ex: 2 },
@@ -47,8 +49,8 @@ export default function ActivityScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
-              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>Activity summaries and insights</Text>
+                  <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+                  <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>{t("activity.subtitle")}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -60,21 +62,21 @@ export default function ActivityScreen() {
         {/* Top segmented control: Today | Weekly | Trends */}
         <View style={styles.segmentOuter}>
           <SegmentButton
-            label="Today"
+            label={t("activity.today")}
             icon="time-outline"
             active={tab === "today"}
             onPress={() => setTab("today")}
             scaled={scaled}
           />
           <SegmentButton
-            label="Weekly"
+            label={t("activity.weekly")}
             icon="stats-chart-outline"
             active={tab === "weekly"}
             onPress={() => setTab("weekly")}
             scaled={scaled}
           />
           <SegmentButton
-            label="Trends"
+            label={t("activity.trends")}
             icon="trending-up-outline"
             active={tab === "trends"}
             onPress={() => setTab("trends")}
@@ -95,13 +97,15 @@ export default function ActivityScreen() {
 /* ------------------------ TODAY VIEW ------------------------ */
 
 function TodayView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes>; }) {
+  const { t } = useTranslation();
+
   return (
     <>
       {/* Today’s Activity */}
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="pulse-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Today&apos;s Activity</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("activity.todayActivity")}</Text>
         </View>
 
         {/* Grid of tiles like the Figma */}
@@ -109,7 +113,7 @@ function TodayView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes>; }) {
           {/* Steps (big tile with bar) */}
           <View style={[styles.todayTileLarge, { marginRight: 8 }]}>
             <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>3,272</Text>
-            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>Steps</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>{t("activity.steps")}</Text>
             <View style={styles.progressOuter}>
               <View style={[styles.progressInner, { width: "65%" }]} />
             </View>
@@ -118,8 +122,8 @@ function TodayView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes>; }) {
           {/* BPM */}
           <View style={styles.todayTileSmall}>
             <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>79</Text>
-            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>BPM</Text>
-            <Text style={[styles.todaySubStatus, { fontSize: scaled.base*0.75 }]}>Normal</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>{t("activity.bpm")}</Text>
+            <Text style={[styles.todaySubStatus, { fontSize: scaled.base*0.75 }]}>{t("activity.normal")}</Text>
           </View>
         </View>
 
@@ -127,36 +131,36 @@ function TodayView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes>; }) {
           {/* CHANGED: Calories -> Activities Done */}
           <View style={[styles.todayTileSmall, { marginRight: 8 }]}>
             <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>4</Text>
-            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>Activities Done</Text>
-            <Text style={[styles.todaySubText, { fontSize: scaled.base*0.75 }]}>Goal: 5</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>{t("activity.activitiesDone")}</Text>
+            <Text style={[styles.todaySubText, { fontSize: scaled.base*0.75 }]}>{t("activity.goal")} 5</Text>
           </View>
 
           {/* Sleep */}
           <View style={styles.todayTileSmall}>
             <Text style={[styles.todayValue, { fontSize: scaled.h2 }]}>7.2h</Text>
-            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>Sleep</Text>
-            <Text style={[styles.todaySubStatus, { fontSize: scaled.base*0.75 }]}>Good</Text>
+            <Text style={[styles.todayLabel, { fontSize: scaled.small }]}>{t("activity.sleep")}</Text>
+            <Text style={[styles.todaySubStatus, { fontSize: scaled.base*0.75 }]}>{t("activity.good")}</Text>
           </View>
         </View>
       </View>
 
       {/* Movement Timeline */}
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Movement Timeline</Text>
+        <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("activity.movementTimeline")}</Text>
 
         <View style={styles.timelineItem}>
           <View style={[styles.timelineDot, { backgroundColor: "#F6B800" }]} />
-          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>Walking detected - 0m ago</Text>
+          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>{t("activity.walkingDetected")}0m ago</Text>
         </View>
 
         <View style={styles.timelineItem}>
           <View style={[styles.timelineDot, { backgroundColor: warmRed }]} />
-          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>Exercise session - 45 minutes ago</Text>
+          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>{t("activity.exerciseSession")}45 minutes ago</Text>
         </View>
 
         <View style={styles.timelineItem}>
           <View style={[styles.timelineDot, { backgroundColor: "#4B3A30" }]} />
-          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>Resting period - 2 hours ago</Text>
+          <Text style={[styles.timelineText, { fontSize: scaled.small }]}>{t("activity.restingPeriod")}2 hours ago</Text>
         </View>
       </View>
     </>
@@ -179,13 +183,14 @@ function WeeklyView({
     () => week.map((d) => ({ label: d.label, value: d.ex })),
     [week]
   );
+  const { t } = useTranslation();
 
   return (
     <>
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="stats-chart-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Weekly Summary</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("activity.weeklySummary")}</Text>
         </View>
 
         <View style={{ marginTop: 12 }}>
@@ -206,7 +211,7 @@ function WeeklyView({
                   <View style={[styles.weekBar, { height: h }]} />
                 </View>
                 <Text style={[styles.weekSteps, { fontSize: scaled.small }]}>{d.steps}</Text>
-                <Text style={[styles.weekEx, { fontSize: scaled.h2/2 }]}>{d.ex} activities</Text>
+                <Text style={[styles.weekEx, { fontSize: scaled.h2/2 }]}>{d.ex} {t("activity.activities")}</Text>
                 <Text style={[styles.weekLabel, { fontSize: scaled.small }]}>{d.label}</Text>
               </View>
             );
@@ -220,39 +225,41 @@ function WeeklyView({
 /* ------------------------ TRENDS VIEW ------------------------ */
 
 function TrendsView({ scaled }: { scaled: ReturnType<typeof scaleFontSizes> }) {
+  const { t } = useTranslation();
+  
   return (
     <>
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="trending-up-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Activity Trends</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("activity.activityTrends")}</Text>
         </View>
 
         {/* Steps */}
         <View style={styles.trendRow}>
           <View style={styles.trendLeft}>
             <Ionicons name="walk-outline" size={18} color="#5B4636" />
-            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>Steps</Text>
+            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>{t("activity.steps")}</Text>
           </View>
-          <Text style={[styles.trendDeltaPositive, { fontSize: scaled.small }]}>+12% this week</Text>
+          <Text style={[styles.trendDeltaPositive, { fontSize: scaled.small }]}>+12% {t("activity.thisWeek")}</Text>
         </View>
 
         {/* Heart rate (pink row) */}
         <View style={[styles.trendRow, styles.trendRowHeart]}>
           <View style={styles.trendLeft}>
             <Ionicons name="heart-outline" size={18} color={warmRed} />
-            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>Heart Rate</Text>
+            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>{t("activity.heartRate")}</Text>
           </View>
-          <Text style={[styles.trendStatus, { fontSize: scaled.small }]}>Stable</Text>
+          <Text style={[styles.trendStatus, { fontSize: scaled.small }]}>{t("activity.stable")}</Text>
         </View>
 
         {/* Sleep quality */}
         <View style={styles.trendRow}>
           <View style={styles.trendLeft}>
             <Ionicons name="bed-outline" size={18} color="#5B4636" />
-            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>Sleep Quality</Text>
+            <Text style={[styles.trendLabel, { fontSize: scaled.h1/2 }]}>{t("activity.sleepQuality")}</Text>
           </View>
-          <Text style={[styles.trendDeltaNegative, { fontSize: scaled.small }]}>-5% this week</Text>
+          <Text style={[styles.trendDeltaNegative, { fontSize: scaled.small }]}>-5% {t("activity.thisWeek")}</Text>
         </View>
       </View>
     </>

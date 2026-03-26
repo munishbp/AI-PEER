@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { scaleFontSizes } from "../../src/theme";
@@ -17,10 +18,11 @@ import LineGraph from "../../components/graphs/LineGraph";
 
 export default function Home() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // status label derived from your FRA result
   // (keep your real logic here if you already have it elsewhere)
-  const riskLevel = "Low Risk";
+
   const { scaled, colors } = usePrefs();
 
   const week = [
@@ -47,7 +49,7 @@ export default function Home() {
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>Fall Risk Assessment</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("home.subtitle")}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -60,7 +62,7 @@ export default function Home() {
         <View style={styles.segmentOuter}>
           <TouchableOpacity style={[styles.segmentBtn, styles.segmentActive]}>
             <Ionicons name="home-outline" size={14} />
-            <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>Overview</Text>
+            <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>{t("home.overview")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -69,34 +71,32 @@ export default function Home() {
             onPress={() => router.replace("/(tabs)/exercise")}
           >
             <Ionicons name="barbell-outline" size={14} />
-            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>Exercise</Text>
+            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>{t("home.exercise")}</Text>
           </TouchableOpacity>
         </View>
 
         {/* FRA Matrix card */}
-        <View style={styles.card}>
+        <View>
           {/* ✅ Replace old title with "FRA Matrix" */}
-          <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>FRA Matrix</Text>
-
           <FRAMatrixCard />
         </View>
 
         {/* Action Row 1 */}
         <View style={styles.rowTwo}>
-          <PillButton icon="pulse-outline" label="Balance Test" onPress={() => {} } scaled={scaled} />
-          <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} scaled={scaled} />
+          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {} } scaled={scaled} />
+          <PillButton icon="clipboard-outline" label={t("home.questionnaire")} onPress={() => {router.push("/questionnaire")}} scaled={scaled} />
         </View>
 
         {/* Action Row 2: Exercise Mode (full width) */}
         <View style={styles.rowOne}>
-          <PillButton icon="heart-outline" label="Exercise Mode" onPress={() => {}} full scaled={scaled} />
+          <PillButton icon="heart-outline" label={t("home.exerciseMode")} onPress={() => {}} full scaled={scaled} />
         </View>
 
         {/* Let’s Chat */}
         <View style={styles.rowOne}>
           <PillButton
             icon="chatbubble-ellipses-outline"
-            label="Let’s Chat"
+            label={t("home.letsChat")}
             onPress={() => router.push("/(tabs)/ai-chat")}
             full
             scaled={scaled}

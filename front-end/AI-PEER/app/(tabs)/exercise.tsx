@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePrefs } from "../../src/prefs-context";
 import { getExerciseVideos } from "@/src/video";
+import { useTranslation } from "react-i18next";
 
 type CategoryKey = "warmup" | "strength" | "balance";
 
@@ -58,6 +59,7 @@ const CATEGORIES: Category[] = [
 export default function ExercisePage() {
   const router = useRouter();
   const { scaled } = usePrefs();
+  const { t } = useTranslation();
 
   const [openFolders, setOpenFolders] = useState<Record<CategoryKey, boolean>>({
     warmup: false,
@@ -97,7 +99,7 @@ export default function ExercisePage() {
             <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>Exercises Page</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("exercise.exercisePage")}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -114,7 +116,7 @@ export default function ExercisePage() {
             onPress={() => router.replace("/(tabs)")}
           >
             <Ionicons name="home-outline" size={14} />
-            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>Overview</Text>
+            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>{t("exercise.overview")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -122,17 +124,15 @@ export default function ExercisePage() {
           >
             <Ionicons name="barbell-outline" size={14} />
             <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>
-              Exercise
+              {t("exercise.exercise")}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Center heading */}
         <View style={styles.centerHead}>
-          <Text style={styles.centerTitle}>Exercise Categories</Text>
-          <Text style={styles.centerSub}>
-            Choose a category to start your workout
-          </Text>
+          <Text style={styles.centerTitle}>{t("exercise.exerciseCategories")}</Text>
+          <Text style={styles.centerSub}>{t("exercise.categoriesDescription")}</Text>
         </View>
 
         {/* Category cards */}
@@ -158,10 +158,10 @@ export default function ExercisePage() {
                 <View style={styles.infoStrip}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.infoText}>
-                      <Text style={styles.infoLabel}>Purpose:</Text> {c.purpose}
+                      <Text style={styles.infoLabel}>{t("exercise.purpose")}</Text> {c.purpose}
                     </Text>
                     <Text style={styles.infoText}>
-                      <Text style={styles.infoLabel}>Recommendation Score</Text>
+                      <Text style={styles.infoLabel}>{t("exercise.recommendationScore")}</Text>
                     </Text>
                   </View>
 
@@ -183,7 +183,7 @@ export default function ExercisePage() {
                         size={18}
                         color="#3D2F27"
                       />
-                      <Text style={styles.folderTitle}>Videos</Text>
+                      <Text style={styles.folderTitle}>{t("exercise.videos")}</Text>
                       <View style={styles.countPill}>
                         <Text style={styles.countText}>{videos.length}</Text>
                       </View>
@@ -240,7 +240,7 @@ export default function ExercisePage() {
                   onPress={() => startCategory(c.key)}
                 >
                   <Ionicons name="play" size={16} color="#FFF" />
-                  <Text style={styles.startText}>Start {c.title}</Text>
+                  <Text style={styles.startText}>{t("exercise.start")} {c.title}</Text>
                 </TouchableOpacity>
               </View>
             );

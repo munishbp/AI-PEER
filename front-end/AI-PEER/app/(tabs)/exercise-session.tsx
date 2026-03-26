@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   Camera,
   useCameraDevice,
@@ -168,6 +169,7 @@ export default function ExerciseSessionPage() {
 
   const currentScore = currentFeedback?.score ?? null;
   const cameraActive = isTracking && hasPermission && !!device;
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -183,14 +185,14 @@ export default function ExerciseSessionPage() {
             activeOpacity={0.85}
           >
             <Ionicons name="chevron-back" size={18} color="#3D2F27" />
-            <Text style={styles.backText}>Back</Text>
+              <Text style={styles.backText}>{t("exercise-session.back")}</Text>
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
           <Ionicons name="shield-checkmark-outline" size={18} color="#2E5AAC" />
         </View>
 
-        <Text style={styles.pageTitle}>{title} Session</Text>
+        <Text style={styles.pageTitle}>{title} {t("exercise-session.session")}</Text>
         <Text style={styles.pageSub}>
           {params.label || exerciseId}
         </Text>
@@ -210,12 +212,12 @@ export default function ExerciseSessionPage() {
               {isModelLoading ? (
                 <>
                   <ActivityIndicator size="large" color={warmRed} />
-                  <Text style={styles.cameraHint}>Loading model...</Text>
+                  <Text style={styles.cameraHint}>{t("exercise-session.loadingModel")}</Text>
                 </>
               ) : modelError ? (
                 <>
                   <Ionicons name="alert-circle-outline" size={34} color={warmRed} />
-                  <Text style={[styles.cameraHint, { color: warmRed }]}>Model failed to load</Text>
+                  <Text style={[styles.cameraHint, { color: warmRed }]}>{t("exercise-session.modelFailed")}</Text>
                   <Text style={styles.cameraSmall}>
                     {modelError.message}
                   </Text>
@@ -223,15 +225,15 @@ export default function ExerciseSessionPage() {
               ) : !hasPermission ? (
                 <>
                   <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Camera access needed</Text>
-                  <Text style={styles.cameraSmall}>Tap Start Monitoring to enable camera</Text>
+                  <Text style={styles.cameraHint}>{t("exercise-session.cameraNeeded")}</Text>
+                  <Text style={styles.cameraSmall}>{t("exercise-session.enableCamera")}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Ready to monitor</Text>
+                  <Text style={styles.cameraHint}>{t("exercise-session.readyToMonitor")}</Text>
                   <Text style={styles.cameraSmall}>
-                    Place your phone so your full body is visible
+                    {t("exercise-session.placePhone")}
                   </Text>
                 </>
               )}
@@ -264,7 +266,7 @@ export default function ExerciseSessionPage() {
               <Text style={[styles.scoreText, { color: scoreColor(currentScore) }]}>
                 {currentScore}
               </Text>
-              <Text style={styles.scoreLabel}>Form Score</Text>
+              <Text style={styles.scoreLabel}>{t("exercise-session.formScore")}</Text>
             </View>
           )}
 
@@ -301,22 +303,22 @@ export default function ExerciseSessionPage() {
         {/* session summary */}
         {showSummary && !isTracking && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Session Summary</Text>
+          <Text style={styles.cardTitle}>{t("exercise-session.sessionSummary")}</Text>
             {avgScore !== null ? (
               <>
                 <View style={styles.feedbackRow}>
-                  <Text style={styles.feedbackLabel}>Average Score:</Text>
+                  <Text style={styles.feedbackLabel}>{t("exercise-session.averageScore")}</Text>
                   <Text style={[styles.feedbackValue, { color: scoreColor(avgScore) }]}>
                     {avgScore} / 100
                   </Text>
                 </View>
                 <View style={styles.feedbackRow}>
-                  <Text style={styles.feedbackLabel}>Frames Analyzed:</Text>
+                  <Text style={styles.feedbackLabel}>{t("exercise-session.framesAnalyzed")}</Text>
                   <Text style={styles.feedbackValue}>{framesAnalyzed}</Text>
                 </View>
                 {topViolations.length > 0 && (
                   <View style={styles.tipBox}>
-                    <Text style={styles.tipTitle}>Top Issues</Text>
+                    <Text style={styles.tipTitle}>{t("exercise-session.topIssues")}</Text>
                     {topViolations.map(([msg, count]) => (
                       <Text key={msg} style={styles.tipText}>
                         {"\u2022"} {msg} ({count}x)
@@ -326,7 +328,7 @@ export default function ExerciseSessionPage() {
                 )}
               </>
             ) : (
-              <Text style={styles.feedbackValue}>No data recorded</Text>
+              <Text style={styles.feedbackValue}>{t("exercise-session.noDataRecorded")}</Text>
             )}
           </View>
         )}
@@ -334,13 +336,13 @@ export default function ExerciseSessionPage() {
         {/* tips card when idle */}
         {!isTracking && !showSummary && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Tips</Text>
+            <Text style={styles.cardTitle}>{t("exercise-session.tips")}</Text>
             <View style={styles.tipBox}>
               <Text style={styles.tipText}>
-                {"\u2022"} Place your phone so your full body is visible{"\n"}
-                {"\u2022"} Use good lighting{"\n"}
-                {"\u2022"} Stand ~6-8 feet away{"\n"}
-                {"\u2022"} Front-facing camera works best
+                {"\u2022"} {t("exercise-session.tip1")} {"\n"}
+                {"\u2022"} {t("exercise-session.tip2")} {"\n"}
+                {"\u2022"} {t("exercise-session.tip3")} {"\n"}
+                {"\u2022"} {t("exercise-session.tip4")}
               </Text>
             </View>
           </View>
@@ -358,7 +360,7 @@ export default function ExerciseSessionPage() {
               onPress={handleStopMonitoring}
             >
               <Ionicons name="square" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Stop Monitoring</Text>
+              <Text style={styles.primaryText}>{t("exercise-session.stopMonitoring")}</Text>
             </TouchableOpacity>
           ) : (
             <>
@@ -369,7 +371,7 @@ export default function ExerciseSessionPage() {
                   onPress={() => setShowSummary(false)}
                 >
                   <Ionicons name="close" size={16} color="#5B4636" />
-                  <Text style={styles.secondaryText}>Dismiss</Text>
+                  <Text style={styles.secondaryText}>{t("exercise-session.dismiss")}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -380,7 +382,7 @@ export default function ExerciseSessionPage() {
               >
                 <Ionicons name="play" size={16} color="#FFF" />
                 <Text style={styles.primaryText}>
-                  {isModelLoading ? "Loading..." : "Start Monitoring"}
+                  {isModelLoading ? t("exercise-session.loading") : t("exercise-session.startMonitoring")}
                 </Text>
               </TouchableOpacity>
             </>

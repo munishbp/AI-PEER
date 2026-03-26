@@ -29,6 +29,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLLM } from "@/src/llm";
 import ModelDownloadModal from "@/components/ModelDownloadModal";
 import { usePrefs } from "../../src/prefs-context";
+import { useTranslation } from "react-i18next";
 
 // App color scheme
 const beige = "#F7EDE4";
@@ -59,6 +60,7 @@ export default function AiChatScreen() {
   const [isDownloading, setIsDownloading] = useState(false);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
 
   // Show download modal if model not downloaded
   useEffect(() => {
@@ -136,9 +138,9 @@ export default function AiChatScreen() {
               <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}> 
                 {!isReady
                   ? needsDownload
-                    ? "Download required"
-                    : "Loading model..."
-                  : "Ask AI Chat about fall risk, activity, or tips"}
+                    ? t("ai-chat.downloadRequired")
+                    : t("ai-chat.loadingModel")
+                  : t("ai-chat.askAi")}
               </Text>
             </View>
           </View>
@@ -233,8 +235,8 @@ export default function AiChatScreen() {
               style={[styles.input, { fontSize: scaled.h1/2 }]}
               placeholder={
                 !isReady
-                  ? "Model loading..."
-                  : "Type your question..."
+                  ? t("ai-chat.modelLoadingPlaceholder")
+                  : t("ai-chat.typeYourQuestion")
               }
               placeholderTextColor="#A58D7B"
               value={input}

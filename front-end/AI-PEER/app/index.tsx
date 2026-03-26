@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { api } from "../src/api";
 import { colors, spacing, radii, fontSizes } from "../src/theme";
 
@@ -12,6 +13,7 @@ function normalizePhone(input: string) {
 
 export default function Login() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,60 +41,60 @@ export default function Login() {
       setLoading(false);
     }
   };
-*/
-const onLogin = async () => {
-  setErr(null);
-  const p = normalizePhone(phone);
-  if (p.length < 10) return setErr("Enter a valid phone number (10+ digits).");
-  if (password.length < 6) return setErr("Password must be at least 6 characters.");
+ */
+  const onLogin = async () => {
+    setErr(null);
+    const p = normalizePhone(phone);
+    if (p.length < 10) return setErr(t("login.enterValidPhone"));
+    if (password.length < 6) return setErr(t("login.passwordMinChars"));
 
-  try {
-    setLoading(true);
-    await api.sendCode(p, password, "login");
-    router.push(`/verify?phone=${p}&mode=login`);
-  } catch (e: any) {
-    setErr(e.message || "Invalid phone or password");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      await api.sendCode(p, password, "login");
+      router.push(`/verify?phone=${p}&mode=login`);
+    } catch (e: any) {
+      setErr(e.message || t("login.invalidPhoneOrPassword"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const onCreate = async () => {
-  setErr(null);
-  const p = normalizePhone(phone);
-  if (p.length < 10) return setErr("Enter a valid phone number (10+ digits).");
-  if (password.length < 6) return setErr("Password must be at least 6 characters.");
-  if (password !== confirmPassword.trim()) return setErr("Passwords do not match.");
+  const onCreate = async () => {
+    setErr(null);
+    const p = normalizePhone(phone);
+    if (p.length < 10) return setErr(t("login.enterValidPhone"));
+    if (password.length < 6) return setErr(t("login.passwordMinChars"));
+    if (password !== confirmPassword.trim()) return setErr(t("login.passwordsDoNotMatch"));
 
-  try {
-    setLoading(true);
-    await api.sendCode(p, password, "create");
-    router.push(`/verify?phone=${p}&mode=create`);
-  } catch (e: any) {
-    setErr(e.message || "Failed to create account");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      await api.sendCode(p, password, "create");
+      router.push(`/verify?phone=${p}&mode=create`);
+    } catch (e: any) {
+      setErr(e.message || t("login.failedCreateAccount"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const switch_clearPages = async () => {
-  setIsCreating(!isCreating);
-  setShowPw(false);
-  setPhone("");
-  setPassword("");
-  setConfirmPassword("");
-  setErr(null);
-}
+  const switch_clearPages = async () => {
+    setIsCreating(!isCreating);
+    setShowPw(false);
+    setPhone("");
+    setPassword("");
+    setConfirmPassword("");
+    setErr(null);
+  };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={s.wrap}>
         <Text style={s.brand}>AI PEER</Text>
-        <Text style={s.subtitle}>{isCreating ? "Create an account" : "Sign in to continue"}</Text>
+        <Text style={s.subtitle}>{isCreating ? t("login.createAccount") : t("login.signInToContinue")}</Text>
 
         {isCreating ? (
           <View style={s.form}>
-            <Text style={s.label}>Phone number</Text>
+            <Text style={s.label}>{t("login.phoneNumber")}</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
@@ -104,53 +106,53 @@ const switch_clearPages = async () => {
               autoCorrect={false}
             />
 
-            <Text style={[s.label, { marginTop: spacing(3) }]}>Password</Text>
+            <Text style={[s.label, { marginTop: spacing(3) }]}>{t("login.password")}</Text>
             <View style={s.row}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPw}
-                placeholder="Create password"
+                placeholder={t("login.createPasswordPlaceholder")}
                 placeholderTextColor={colors.muted}
                 style={[s.input, { flex: 1 }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.toggle}>
-                <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
+                <Text style={s.toggleText}>{showPw ? t("login.hide") : t("login.show")}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={[s.label, { marginTop: spacing(3) }]}>Confirm Password</Text>
+            <Text style={[s.label, { marginTop: spacing(3) }]}>{t("login.confirmPassword")}</Text>
             <View style={s.row}>
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showPw}
-                placeholder="Reenter password"
+                placeholder={t("login.reenterPasswordPlaceholder")}
                 placeholderTextColor={colors.muted}
                 style={[s.input, { flex: 1 }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.toggle}>
-                <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
+                <Text style={s.toggleText}>{showPw ? t("login.hide") : t("login.show")}</Text>
               </TouchableOpacity>
             </View>
 
             {err ? <Text style={s.error}>{err}</Text> : null}
 
             <TouchableOpacity style={s.loginBtn} onPress={onCreate} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>Create Account</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>{t("login.createAccountBtn")}</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => switch_clearPages()} style={s.switchWrap}>
-              <Text style={s.switchText}>Already have an account? Sign in</Text>
+              <Text style={s.switchText}>{t("login.alreadyHaveAccount")}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={s.form}>
-            <Text style={s.label}>Phone number</Text>
+            <Text style={s.label}>{t("login.phoneNumber")}</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
@@ -162,35 +164,35 @@ const switch_clearPages = async () => {
               autoCorrect={false}
             />
 
-            <Text style={[s.label, { marginTop: spacing(3) }]}>Password</Text>
+            <Text style={[s.label, { marginTop: spacing(3) }]}>{t("login.password")}</Text>
             <View style={s.row}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPw}
-                placeholder="Enter password"
+                placeholder={t("login.enterPasswordPlaceholder")}
                 placeholderTextColor={colors.muted}
                 style={[s.input, { flex: 1 }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.toggle}>
-                <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
+                <Text style={s.toggleText}>{showPw ? t("login.hide") : t("login.show")}</Text>
               </TouchableOpacity>
             </View>
 
             {err ? <Text style={s.error}>{err}</Text> : null}
 
-            <TouchableOpacity onPress={() => Alert.alert("Forgot Password", "That sucks... you got Alzheimer's or Dementia too or something? :(")}>
-              <Text style={s.link}>Forgot password?</Text>
+            <TouchableOpacity onPress={() => Alert.alert(t("login.forgotPasswordAlertTitle"), t("login.forgotPasswordAlertBody"))}> 
+              <Text style={s.link}>{t("login.forgotPassword")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={s.loginBtn} onPress={onLogin} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>Log In</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>{t("login.logInBtn")}</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => switch_clearPages()} style={s.switchWrap}>
-              <Text style={s.switchText}>Don&apos;t have an account? Create an account</Text>
+              <Text style={s.switchText}>{t("login.dontHaveAccount")}</Text>
             </TouchableOpacity>
           </View>
         )}

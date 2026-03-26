@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { usePrefs } from "../src/prefs-context";
 import { useLLM } from "@/src/llm";
@@ -44,6 +45,7 @@ export default function ChatHistoryScreen() {
   } = useLLM();
 
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
 
   // Handle selecting a conversation
   function handleSelect(id: string) {
@@ -60,12 +62,12 @@ export default function ChatHistoryScreen() {
   // Handle delete with confirmation
   function handleDelete(id: string) {
     Alert.alert(
-      "Delete Conversation",
-      "Are you sure you want to delete this conversation?",
+      t("chat-history.deleteConversationTitle"),
+      t("chat-history.deleteConversationBody"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("chat-history.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("chat-history.delete"),
           style: "destructive",
           onPress: () => remove(id),
         },
@@ -86,9 +88,9 @@ export default function ChatHistoryScreen() {
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { fontSize: scaled.h3 }]}>Chat History</Text>
+          <Text style={[styles.title, { fontSize: scaled.h3 }]}>{t("chat-history.title")}</Text>
           <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-            {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
+            {conversations.length} {conversations.length !== 1 ? t("chat-history.conversations") : t("chat-history.conversation")}
           </Text>
         </View>
 
@@ -117,13 +119,13 @@ export default function ChatHistoryScreen() {
         {conversations.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="chatbubbles-outline" size={48} color={subtleText} />
-            <Text style={[styles.emptyText, { fontSize: scaled.base }]}>No conversations yet</Text>
+            <Text style={[styles.emptyText, { fontSize: scaled.base }]}>{t("chat-history.noConversations")}</Text>
             <TouchableOpacity
               onPress={handleNewConversation}
               style={styles.emptyButton}
               activeOpacity={0.8}
             >
-              <Text style={styles.emptyButtonText}>Start a Conversation</Text>
+              <Text style={styles.emptyButtonText}>{t("chat-history.startConversation")}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -154,7 +156,8 @@ function ConversationCard({
   onDelete: () => void;
 }) {
   // Format timestamp as relative time ("2 hours ago", "Yesterday", etc.)
-  const timeAgo = formatTimeAgo(conversation.lastMessageAt);
+  const { t } = useTranslation();
+  const timeAgo = formatTimeAgo(conversation.lastMessageAt, t);
   const { scaled } = usePrefs();
 
 
@@ -211,7 +214,7 @@ function ConversationCard({
  * This function takes a timestamp (milliseconds since 1970) and returns
  * a human-readable string like "Just now", "5 minutes ago", "2 hours ago"
  */
-function formatTimeAgo(timestamp: number): string {
+function formatTimeAgo(timestamp: number, t: (key: string) => string): string {
   const now = Date.now();
   const diffMs = now - timestamp;
 
@@ -222,15 +225,15 @@ function formatTimeAgo(timestamp: number): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSeconds < 60) {
-    return "Just now";
+    return t("chat-history.justNow");
   } else if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
+    return `${diffMinutes} ${t("chat-history.minutesAgo")}`;
   } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+    return `${diffHours} ${t("chat-history.hoursAgo")}`;
   } else if (diffDays === 1) {
-    return "Yesterday";
+    return t("chat-history.yesterday");
   } else {
-    return `${diffDays} days ago`;
+    return `${diffDays} ${t("chat-history.daysAgo")}`;
   }
 }
 
