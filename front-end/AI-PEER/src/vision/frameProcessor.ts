@@ -28,7 +28,7 @@ import { TensorflowModel } from 'react-native-fast-tflite';
 import { parsePoseFromOutput } from './VisionService';
 import { Pose } from './types';
 
-type OnPoseDetected = (pose: Pose | null) => void;
+type OnPoseDetected = (pose: Pose | null, repCount: number | null) => void;
 
 // throttle to every 3rd frame (~10fps at 30fps camera)
 const FRAME_SKIP = 3;
@@ -43,8 +43,8 @@ export function useVisionFrameProcessor(
   onPoseRef.current = onPoseDetected;
 
   // callback runs on JS thread — receives the already-parsed Pose from the worklet
-  const handlePose = useCallback((pose: Pose | null) => {
-    onPoseRef.current(pose);
+  const handlePose = useCallback((pose: Pose | null, repCount: number | null) => {
+    onPoseRef.current(pose, repCount);
   }, []);
 
   // useRunOnJS (worklets-core) wraps handlePose as a shareable function callable
@@ -73,7 +73,21 @@ export function useVisionFrameProcessor(
     // parse pose in the worklet — avoids passing ArrayBuffer across threads
     const floats = new Float32Array(output.buffer);
     const pose = parsePoseFromOutput(floats);
-    handleOnJS(pose);
+
+    let repCount: number | null = null;
+    // Rep counter can arrive as an additional scalar-like output.
+    for (let i = 1; i < outputs.length; i += 1) {
+      const candidate = outputs[i];
+      if (!candidate) continue;
+      const candidateFloats = new Float32Array(candidate.buffer);
+      if (candidateFloats.length === 0) continue;
+      const rawRep = candidateFloats[0];
+      if (!Number.isFinite(rawRep)) continue;
+      repCount = Math.max(0, Math.round(rawRep));
+      break;
+    }
+
+    handleOnJS(pose, repCount);
   }, [resize, model, handleOnJS]);
 
   return frameProcessor;
