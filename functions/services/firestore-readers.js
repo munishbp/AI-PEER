@@ -1,10 +1,11 @@
 const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore("ai-peer");
 
 async function getUsersForSync() {
   const snapshot = await db.collection("users").get();

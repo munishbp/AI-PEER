@@ -1,5 +1,6 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
 const { importToREDCap, exportFromREDCap } = require("./services/REDCap_Service");
 const { getUsersForSync } = require("./services/firestore-readers");
 const { REDCAP_TO_FIRESTORE } = require("./config/fieldMappings");
@@ -8,7 +9,7 @@ if (!admin.apps.length) {
     admin.initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore("ai-peer");
 
 exports.redcapSync = onSchedule(
     {
