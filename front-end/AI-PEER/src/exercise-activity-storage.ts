@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const EXERCISE_ACTIVITY_KEY = "exercise_activity_records_v1";
-const MAX_RECORDS = 500;
+const MAX_RECORDS = 1000;
 
 export type ExerciseActivityCategory =
   | "warmup"
@@ -129,4 +129,17 @@ export async function appendExerciseCompletion(
 
 export async function clearExerciseActivityRecords(): Promise<void> {
   await AsyncStorage.removeItem(EXERCISE_ACTIVITY_KEY);
+}
+
+/** Returns a Set of YYYY-MM-DD date strings where at least one exercise was completed */
+export function getActiveDays(records: ExerciseCompletionRecord[]): Set<string> {
+  const days = new Set<string>();
+  for (const r of records) {
+    if (r.repCount <= 0) continue;
+    const d = new Date(r.completedAt);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    days.add(key);
+  }
+  return days;
 }

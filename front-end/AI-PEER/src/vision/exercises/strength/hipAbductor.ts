@@ -16,6 +16,7 @@ export const hipAbductorRules: ExerciseRule = {
     targetReps: 10,
   },
   totalSets: 3,
+  unilateral: true,
   cameraPrompt: 'Stand facing the camera with your full body visible — head to feet. Place your phone about 6-8 feet away. Lift your leg to the side toward the camera\'s view.',
   checks: [
     {

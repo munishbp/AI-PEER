@@ -38,7 +38,7 @@ async function loadREDCapConfig(){
     return cachedConfig;
 }
 
-function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score})
+function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score, compliance_days_active, compliance_rate})
 {
     if (!userID)
     {
@@ -52,12 +52,21 @@ function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score})
         throw new Error ("Scores must be an integer");
     }
 
-    return{
+    const record = {
         record_id: userID,
         [FIELD_MAPPINGS.btrack_score]: btrack_score,
         [FIELD_MAPPINGS.phoneNumber]: phonenum,
         [FIELD_MAPPINGS.fear_falling_score]: fear_falling_score
     };
+
+    if (Number.isInteger(compliance_days_active)) {
+        record[FIELD_MAPPINGS.compliance_days_active] = compliance_days_active;
+    }
+    if (Number.isInteger(compliance_rate)) {
+        record[FIELD_MAPPINGS.compliance_rate] = compliance_rate;
+    }
+
+    return record;
 }
 
 async function exportFromREDCap() {

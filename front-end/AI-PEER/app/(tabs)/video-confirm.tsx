@@ -108,7 +108,7 @@ export default function VideoConfirmPage() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.replace("/(tabs)/exercise")}
             style={styles.backBtn}
             activeOpacity={0.85}
           >
@@ -173,7 +173,7 @@ export default function VideoConfirmPage() {
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.9}
-            onPress={() => router.back()}
+            onPress={() => router.replace("/(tabs)/exercise")}
           >
             <Ionicons name="refresh-outline" size={16} color="#5B4636" />
             <Text style={styles.secondaryText}>Choose Different</Text>

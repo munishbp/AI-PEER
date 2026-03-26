@@ -101,6 +101,8 @@ export type ExerciseRule = {
   timerSeconds?: number;
   /** Number of sets (default 3) */
   totalSets?: number;
+  /** Whether this exercise is performed one side at a time (left then right) */
+  unilateral?: boolean;
   /** Camera positioning guidance shown before exercise starts */
   cameraPrompt?: string;
 };
