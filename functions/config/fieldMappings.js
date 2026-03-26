@@ -3,7 +3,9 @@
 const FIELD_MAPPINGS = {
     btrack_score: "b_track_score",
     fear_falling_score: "ff_score",
-    phoneNumber: "phone_number"
+    phoneNumber: "phone_number",
+    compliance_days_active: "compliance_active_days",
+    compliance_rate: "compliance_rate"
 };
 
 // Reverse mapping: REDCap field names -> Firestore field names

@@ -38,6 +38,8 @@ async function getUsersForSync() {
         phonenum,
         btrack_score,
         fear_falling_score,
+        compliance_days_active: Number.isInteger(data.compliance_days_active) ? data.compliance_days_active : null,
+        compliance_rate: Number.isInteger(data.compliance_rate) ? data.compliance_rate : null,
         updatedAt: data.updatedAt || null
       };
     })

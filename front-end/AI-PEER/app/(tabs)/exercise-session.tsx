@@ -7,6 +7,7 @@ import {
   Platform,
   ActivityIndicator,
   LayoutChangeEvent,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -84,12 +85,21 @@ export default function ExerciseSessionPage() {
     isTracking,
     currentPose,
     currentFeedback,
+    repCount,
+    targetReps: visionTargetReps,
     error: visionError,
     setModelReady,
     startTracking,
     stopTracking,
     handlePoseResult,
   } = useVision();
+
+  // reset sets when exercise changes
+  useEffect(() => {
+    setCurrentSet(1);
+    setSetComplete(false);
+    setShowSummary(false);
+  }, [exerciseId]);
 
   // debug: log model plugin state changes
   useEffect(() => {
@@ -108,6 +118,33 @@ export default function ExerciseSessionPage() {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("front");
   const [showSummary, setShowSummary] = useState(false);
+
+  // set & side management
+  const isUnilateral = exerciseRule?.unilateral ?? false;
+  const setsPerSide = exerciseRule?.totalSets ?? 3;
+  const totalSets = isUnilateral ? setsPerSide * 2 : setsPerSide;
+  const [currentSet, setCurrentSet] = useState(1);
+  const [setComplete, setSetComplete] = useState(false);
+  const currentSide = isUnilateral
+    ? currentSet <= setsPerSide ? "Left" : "Right"
+    : null;
+  // next set's side (for display in between-set screen)
+  const nextSide = isUnilateral
+    ? (currentSet + 1) <= setsPerSide ? "Left" : "Right"
+    : null;
+
+  // timer state
+  const timerDuration = exerciseRule?.timerSeconds ?? null;
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setSecondsLeft(null);
+  }, []);
 
   // session stats — use refs so we don't re-render on every frame
   const scoresRef = useRef<number[]>([]);
@@ -141,16 +178,9 @@ export default function ExerciseSessionPage() {
   const handleFrameResult = useCallback(
     (
       pose: Parameters<typeof handlePoseResult>[0],
-      repCount: number | null
+      _repCount: number | null
     ) => {
       handlePoseResult(pose);
-      if (typeof repCount === "number" && Number.isFinite(repCount)) {
-        // Keep the max seen in-session so brief model jitter does not erase reps.
-        repCountRef.current = Math.max(
-          repCountRef.current,
-          Math.max(0, Math.round(repCount))
-        );
-      }
     },
     [handlePoseResult]
   );
@@ -174,26 +204,37 @@ export default function ExerciseSessionPage() {
     setShowSummary(false);
 
     startTracking(exerciseId);
+
+    // start countdown timer if exercise has a duration
+    if (timerDuration) {
+      setSecondsLeft(timerDuration);
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev === null || prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    }
   };
 
-  const handleStopMonitoring = () => {
+  const handleSetComplete = useCallback(() => {
     const nowMs = Date.now();
     const startedAt = sessionStartedAtRef.current ?? nowMs;
     const durationSec = Math.max(1, Math.round((nowMs - startedAt) / 1000));
     const framesAnalyzedCount = scoresRef.current.length;
-    const repCount = repCountRef.current;
+    const finalRepCount = repCountRef.current;
     const avgScoreValue =
       framesAnalyzedCount > 0
         ? scoresRef.current.reduce((a, b) => a + b, 0) / framesAnalyzedCount
         : null;
 
-    // Persist only sessions with detected reps (rep-counter-based completion).
-    if (repCount > 0) {
+    // Persist sessions with detected reps
+    if (finalRepCount > 0) {
       void appendExerciseCompletion({
         exerciseId,
         exerciseName,
         category: activityCategory,
-        repCount,
+        repCount: finalRepCount,
         durationSec,
         avgScore: avgScoreValue,
         framesAnalyzed: framesAnalyzedCount,
@@ -204,19 +245,79 @@ export default function ExerciseSessionPage() {
 
     sessionStartedAtRef.current = null;
     repCountRef.current = 0;
+    clearTimer();
     stopTracking();
     setSummaryTick((t) => t + 1);
-    setShowSummary(true);
-  };
+
+    if (currentSet >= totalSets) {
+      // all sets done — go back to exercise tab
+      router.replace("/(tabs)/exercise");
+      return;
+    } else {
+      // more sets to go — show between-set screen
+      setSetComplete(true);
+    }
+  }, [currentSet, totalSets, clearTimer, stopTracking, exerciseId, exerciseName, activityCategory]);
+
+  const handleNextSet = useCallback(async () => {
+    setCurrentSet((s) => s + 1);
+    setSetComplete(false);
+
+    if (!hasPermission) {
+      const granted = await requestPermission();
+      if (!granted) return;
+    }
+    if (!modelReady) return;
+
+    // reset stats for new set
+    scoresRef.current = [];
+    violationCountRef.current = {};
+    repCountRef.current = 0;
+    sessionStartedAtRef.current = Date.now();
+
+    startTracking(exerciseId);
+
+    if (timerDuration) {
+      setSecondsLeft(timerDuration);
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev === null || prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  }, [hasPermission, requestPermission, modelReady, startTracking, exerciseId, timerDuration]);
+
+  // sync VisionContext repCount into ref for persistence
+  useEffect(() => {
+    if (typeof repCount === "number") {
+      repCountRef.current = Math.max(repCountRef.current, repCount);
+    }
+  }, [repCount]);
+
+  // auto-stop when countdown reaches 0
+  useEffect(() => {
+    if (secondsLeft === 0 && isTracking) {
+      handleSetComplete();
+    }
+  }, [secondsLeft, isTracking, handleSetComplete]);
+
+  // auto-stop when target reps reached
+  useEffect(() => {
+    if (visionTargetReps && repCount !== null && repCount >= visionTargetReps && isTracking) {
+      handleSetComplete();
+    }
+  }, [repCount, visionTargetReps, isTracking, handleSetComplete]);
 
   // cleanup on unmount
   useEffect(() => {
     return () => {
       sessionStartedAtRef.current = null;
       repCountRef.current = 0;
+      clearTimer();
       stopTracking();
     };
-  }, [stopTracking]);
+  }, [stopTracking, clearTimer]);
 
   // compute summary data — recalcs when summaryTick changes
   const avgScore = useMemo(() => {
@@ -247,15 +348,16 @@ export default function ExerciseSessionPage() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.containerContent}>
         {/* header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
               sessionStartedAtRef.current = null;
               repCountRef.current = 0;
+              clearTimer();
               stopTracking();
-              router.back();
+              router.replace("/(tabs)/exercise");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
@@ -346,6 +448,28 @@ export default function ExerciseSessionPage() {
             </View>
           )}
 
+          {/* timer overlay */}
+          {isTracking && secondsLeft !== null && (
+            <View style={styles.timerOverlay}>
+              <Text style={[styles.timerText, secondsLeft <= 5 && styles.timerTextUrgent]}>
+                {secondsLeft}s
+              </Text>
+              <Text style={styles.timerLabel}>remaining</Text>
+            </View>
+          )}
+
+          {/* rep counter moved below camera */}
+
+          {/* set indicator overlay */}
+          {isTracking && totalSets > 1 && (
+            <View style={styles.setOverlay}>
+              <Text style={styles.setText}>Set {currentSet}/{totalSets}</Text>
+              {currentSide && (
+                <Text style={styles.sideText}>{currentSide} Side</Text>
+              )}
+            </View>
+          )}
+
           {/* violation messages overlay */}
           {isTracking && currentFeedback && currentFeedback.violations.length > 0 && (
             <View style={styles.violationsOverlay}>
@@ -364,6 +488,15 @@ export default function ExerciseSessionPage() {
           )}
         </View>
 
+        {/* rep counter below camera */}
+        {isTracking && visionTargetReps !== null && repCount !== null && (
+          <View style={styles.repCounterBar}>
+            <Text style={[styles.repCounterText, repCount >= visionTargetReps && { color: warmRed }]}>
+              {repCount} / {visionTargetReps} reps
+            </Text>
+          </View>
+        )}
+
         {/* error display */}
         {modelError && (
           <View style={styles.errorBox}>
@@ -373,6 +506,28 @@ export default function ExerciseSessionPage() {
         {visionError && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{visionError}</Text>
+          </View>
+        )}
+
+        {/* between-set screen */}
+        {setComplete && !isTracking && !showSummary && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
+              Set {currentSet}/{totalSets} Complete!
+            </Text>
+            {isUnilateral && currentSet === setsPerSide && (
+              <View style={styles.switchSidesBox}>
+                <Ionicons name="swap-horizontal" size={24} color="#2E5AAC" />
+                <Text style={styles.switchSidesText}>
+                  Switch to your Right Side
+                </Text>
+              </View>
+            )}
+            {nextSide && (
+              <Text style={styles.sideLabel}>
+                Next: {nextSide} Side
+              </Text>
+            )}
           </View>
         )}
 
@@ -410,7 +565,7 @@ export default function ExerciseSessionPage() {
         )}
 
         {/* tips card when idle */}
-        {!isTracking && !showSummary && (
+        {!isTracking && !showSummary && !setComplete && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Tips</Text>
             <View style={styles.tipBox}>
@@ -424,19 +579,27 @@ export default function ExerciseSessionPage() {
           </View>
         )}
 
-        {/* spacer to push controls down */}
-        <View style={{ flex: 1 }} />
-
         {/* controls */}
         <View style={styles.controlsRow}>
           {isTracking ? (
             <TouchableOpacity
               style={styles.stopBtn}
               activeOpacity={0.9}
-              onPress={handleStopMonitoring}
+              onPress={handleSetComplete}
             >
               <Ionicons name="square" size={16} color="#FFF" />
               <Text style={styles.primaryText}>Stop Monitoring</Text>
+            </TouchableOpacity>
+          ) : setComplete ? (
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              activeOpacity={0.9}
+              onPress={handleNextSet}
+            >
+              <Ionicons name="play" size={16} color="#FFF" />
+              <Text style={styles.primaryText}>
+                Next Set ({currentSet + 1}/{totalSets})
+              </Text>
             </TouchableOpacity>
           ) : (
             <>
@@ -466,7 +629,7 @@ export default function ExerciseSessionPage() {
         </View>
 
         <View style={{ height: 12 }} />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -477,7 +640,8 @@ const warmRed = "#D84535";
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
-  container: { flex: 1, paddingHorizontal: 16, paddingBottom: 12 },
+  container: { flex: 1, paddingHorizontal: 16 },
+  containerContent: { paddingBottom: 24 },
 
   header: { paddingTop: 6, flexDirection: "row", alignItems: "center" },
   backBtn: {
@@ -493,7 +657,7 @@ const styles = StyleSheet.create({
   pageSub: { color: "#6B5E55", fontWeight: "600", marginBottom: 10 },
 
   cameraContainer: {
-    height: 340,
+    height: 500,
     borderRadius: 16,
     overflow: "hidden",
     backgroundColor: "#1A1A1A",
@@ -528,6 +692,66 @@ const styles = StyleSheet.create({
   },
   scoreText: { fontSize: 28, fontWeight: "900" },
   scoreLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+
+  timerOverlay: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      android: { elevation: 3 },
+    }),
+  },
+  timerText: { fontSize: 28, fontWeight: "900", color: "#222" },
+  timerTextUrgent: { color: warmRed },
+  timerLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+
+  setOverlay: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      android: { elevation: 3 },
+    }),
+  },
+  setText: { fontSize: 14, fontWeight: "900", color: "#222" },
+  sideText: { fontSize: 11, fontWeight: "800", color: "#2E5AAC", marginTop: 2 },
+
+  switchSidesBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#E8F0FE",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+  },
+  switchSidesText: { fontSize: 16, fontWeight: "900", color: "#2E5AAC" },
+  sideLabel: { fontSize: 13, fontWeight: "700", color: "#6B5E55", marginTop: 8 },
+
+  repCounterBar: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 10,
+    alignItems: "center",
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+      android: { elevation: 1.5 },
+    }),
+  },
+  repCounterText: { fontSize: 50, fontWeight: "900", color: "#222" },
 
   violationsOverlay: {
     position: "absolute",

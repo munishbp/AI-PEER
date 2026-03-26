@@ -16,6 +16,7 @@ export const kneeExtensorRules: ExerciseRule = {
     targetReps: 10,
   },
   totalSets: 3,
+  unilateral: true,
   cameraPrompt: 'Sit in a chair facing the camera. Make sure your full legs — hips, knees, and ankles — are visible. Place your phone about 6 feet away at knee height.',
   checks: [
     {

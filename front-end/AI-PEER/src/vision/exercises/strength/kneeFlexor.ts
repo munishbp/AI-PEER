@@ -16,6 +16,7 @@ export const kneeFlexorRules: ExerciseRule = {
     targetReps: 10,
   },
   totalSets: 3,
+  unilateral: true,
   cameraPrompt: 'Stand with your left side facing the camera. Your full body from head to ankles should be visible. Place your phone about 6-8 feet away.',
   checks: [
     {

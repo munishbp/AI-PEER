@@ -1,15 +1,17 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect } from "expo-router";
-import LineGraph from "../../components/graphs/LineGraph";
 import { usePrefs } from "../../src/prefs-context";
 import {
   ExerciseCompletionRecord,
   getExerciseActivityRecords,
+  getActiveDays,
 } from "../../src/exercise-activity-storage";
+import { useAuth } from "../../src/auth/AuthContext";
+import { api } from "../../src/api";
 
 const beige = "#F7EDE4";
 const beigeTile = "#F4E3D6";
@@ -29,27 +31,10 @@ function toLocalDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function relativeTimeFromNow(isoDate: string): string {
-  const parsed = new Date(isoDate);
-  const time = parsed.getTime();
-  if (Number.isNaN(time)) return "Unknown time";
-
-  const deltaMs = Date.now() - time;
-  const deltaMinutes = Math.floor(deltaMs / 60000);
-  if (deltaMinutes <= 0) return "Just now";
-  if (deltaMinutes < 60) return `${deltaMinutes} min ago`;
-
-  const deltaHours = Math.floor(deltaMinutes / 60);
-  if (deltaHours < 24) {
-    return `${deltaHours} hour${deltaHours === 1 ? "" : "s"} ago`;
-  }
-
-  const deltaDays = Math.floor(deltaHours / 24);
-  return `${deltaDays} day${deltaDays === 1 ? "" : "s"} ago`;
-}
 
 export default function ActivityScreen() {
   const { scaled, colors } = usePrefs();
+  const { user, token } = useAuth();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
 
@@ -90,14 +75,20 @@ export default function ActivityScreen() {
   );
 
   const dayCountMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, Set<string>>();
     for (const record of repBasedRecords) {
       const date = new Date(record.completedAt);
       if (Number.isNaN(date.getTime())) continue;
       const key = toLocalDateKey(date);
-      map.set(key, (map.get(key) ?? 0) + 1);
+      if (!map.has(key)) map.set(key, new Set());
+      map.get(key)!.add(record.exerciseId);
     }
-    return map;
+    // Convert sets to counts
+    const countMap = new Map<string, number>();
+    for (const [key, ids] of map) {
+      countMap.set(key, ids.size);
+    }
+    return countMap;
   }, [repBasedRecords]);
 
   const weeklyBuckets = useMemo(() => {
@@ -121,11 +112,6 @@ export default function ActivityScreen() {
     return result;
   }, [dayCountMap]);
 
-  const weeklyGraphData = useMemo(
-    () => weeklyBuckets.map((d) => ({ label: d.label, value: d.completed })),
-    [weeklyBuckets]
-  );
-
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
   const todayCompleted = dayCountMap.get(todayKey) ?? 0;
   const progressRatio = Math.min(1, todayCompleted / PROGRESS_SCALE);
@@ -136,8 +122,8 @@ export default function ActivityScreen() {
   );
 
   const categoryTotals = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const category of CATEGORY_META) counts.set(category.key, 0);
+    const idSets = new Map<string, Set<string>>();
+    for (const category of CATEGORY_META) idSets.set(category.key, new Set());
 
     // Use the same 7-day window as the weekly chart for consistent dashboard meaning.
     for (const record of repBasedRecords) {
@@ -145,13 +131,13 @@ export default function ActivityScreen() {
       if (Number.isNaN(recordDate.getTime())) continue;
       const dayKey = toLocalDateKey(recordDate);
       if (!weeklyKeySet.has(dayKey)) continue;
-      if (!counts.has(record.category)) continue;
-      counts.set(record.category, (counts.get(record.category) ?? 0) + 1);
+      if (!idSets.has(record.category)) continue;
+      idSets.get(record.category)!.add(record.exerciseId);
     }
 
     return CATEGORY_META.map((category) => ({
       ...category,
-      completed: counts.get(category.key) ?? 0,
+      completed: idSets.get(category.key)?.size ?? 0,
     }));
   }, [repBasedRecords, weeklyKeySet]);
 
@@ -160,10 +146,76 @@ export default function ActivityScreen() {
     ...categoryTotals.map((item) => item.completed)
   );
 
-  const recentCompleted = useMemo(
-    () => repBasedRecords.slice(0, 3),
-    [repBasedRecords]
-  );
+  // compliance calculations
+  const activeDays = useMemo(() => getActiveDays(records), [records]);
+
+  const complianceStats = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // active days in last 30
+    let daysActive = 0;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = toLocalDateKey(d);
+      if (activeDays.has(key)) daysActive++;
+    }
+
+    // current streak (consecutive days ending today or yesterday)
+    let streak = 0;
+    const startOffset = activeDays.has(toLocalDateKey(now)) ? 0 : 1;
+    for (let i = startOffset; i < 365; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      if (activeDays.has(toLocalDateKey(d))) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      daysActive,
+      rate: Math.round((daysActive / 30) * 100),
+      streak,
+    };
+  }, [activeDays]);
+
+  // calendar heat map data for current month
+  const calendarData = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthLabel = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+    const days: { day: number; key: string; active: boolean }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({ day: d, key, active: activeDays.has(key) });
+    }
+
+    return { firstDay, daysInMonth, monthLabel, days };
+  }, [activeDays]);
+
+  // sync compliance to Firestore
+  const lastSyncedRate = useRef<number | null>(null);
+  useEffect(() => {
+    if (!user?.uid || !token) return;
+    if (loading) return;
+    if (lastSyncedRate.current === complianceStats.rate) return;
+    lastSyncedRate.current = complianceStats.rate;
+
+    api.updateUser(user.uid, {
+      compliance_days_active: complianceStats.daysActive,
+      compliance_rate: complianceStats.rate,
+      compliance_updated_at: new Date().toISOString(),
+    }, token).catch((err) => {
+      console.error("[Activity] Failed to sync compliance:", err);
+    });
+  }, [user?.uid, token, loading, complianceStats]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background || beige }]}>
@@ -263,60 +315,73 @@ export default function ActivityScreen() {
           ))}
         </View>
 
-        {/* Weekly Activity */}
+        {/* Monthly Activity */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
-            <Ionicons name="stats-chart-outline" size={16} color={warmRed} />
-            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Weekly Activity</Text>
+            <Ionicons name="calendar-outline" size={16} color={warmRed} />
+            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Monthly Activity</Text>
           </View>
-          <Text style={[styles.sectionHint, { fontSize: scaled.h2 / 2 }]}>
-            Exercises completed each day
+
+          {/* streak stats */}
+          <View style={styles.complianceStatsRow}>
+            <View style={styles.complianceStat}>
+              <Text style={[styles.complianceValue, { fontSize: scaled.h2 }]}>
+                {complianceStats.daysActive}
+              </Text>
+              <Text style={[styles.complianceLabel, { fontSize: scaled.h2 / 2 }]}>
+                of 30 days
+              </Text>
+            </View>
+            <View style={styles.complianceStat}>
+              <Text style={[styles.complianceValue, { fontSize: scaled.h2, color: complianceStats.rate >= 70 ? "#1E7A3A" : complianceStats.rate >= 40 ? "#B8860B" : warmRed }]}>
+                {complianceStats.rate}%
+              </Text>
+              <Text style={[styles.complianceLabel, { fontSize: scaled.h2 / 2 }]}>
+                active rate
+              </Text>
+            </View>
+            <View style={styles.complianceStat}>
+              <Text style={[styles.complianceValue, { fontSize: scaled.h2 }]}>
+                {complianceStats.streak}
+              </Text>
+              <Text style={[styles.complianceLabel, { fontSize: scaled.h2 / 2 }]}>
+                day streak
+              </Text>
+            </View>
+          </View>
+
+          {/* calendar heat map */}
+          <Text style={[styles.calendarMonth, { fontSize: scaled.small }]}>
+            {calendarData.monthLabel}
           </Text>
-          <View style={styles.weeklyGraphWrap}>
-            <LineGraph data={weeklyGraphData} height={130} />
+          <View style={styles.calendarDayHeaders}>
+            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+              <Text key={i} style={styles.calendarDayHeader}>{d}</Text>
+            ))}
           </View>
-        </View>
-
-        {/* Recent Activity */}
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Ionicons name="time-outline" size={16} color={warmRed} />
-            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Recent Activity</Text>
-          </View>
-
-          {recentCompleted.length === 0 ? (
-            <Text style={[styles.emptyRecentText, { fontSize: scaled.small }]}>
-              No completed exercises yet.
-            </Text>
-          ) : (
-            recentCompleted.map((item) => (
-              <View key={item.id} style={styles.recentRow}>
-                <View style={styles.recentIconWrap}>
-                  <Ionicons
-                    name={
-                      item.category === "warmup"
-                        ? "sunny-outline"
-                        : item.category === "strength"
-                          ? "barbell-outline"
-                          : item.category === "balance"
-                            ? "accessibility-outline"
-                            : "fitness-outline"
-                    }
-                    size={16}
-                    color="#5B4636"
-                  />
-                </View>
-                <View style={styles.recentTextWrap}>
-                  <Text style={[styles.recentTitle, { fontSize: scaled.small }]}>
-                    Completed &quot;{item.exerciseName}&quot;
-                  </Text>
-                  <Text style={[styles.recentMeta, { fontSize: scaled.h2 / 2 }]}>
-                    {item.repCount} reps - {relativeTimeFromNow(item.completedAt)}
-                  </Text>
-                </View>
+          <View style={styles.calendarGrid}>
+            {/* empty cells for offset */}
+            {Array.from({ length: calendarData.firstDay }).map((_, i) => (
+              <View key={`empty-${i}`} style={styles.calendarCell} />
+            ))}
+            {calendarData.days.map((d) => (
+              <View
+                key={d.key}
+                style={[
+                  styles.calendarCell,
+                  d.active ? styles.calendarCellActive : styles.calendarCellInactive,
+                  d.key === todayKey && styles.calendarCellToday,
+                ]}
+              >
+                <Text style={[
+                  styles.calendarCellText,
+                  d.active && styles.calendarCellTextActive,
+                ]}>
+                  {d.day}
+                </Text>
               </View>
-            ))
-          )}
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -409,28 +474,69 @@ const styles = StyleSheet.create({
   },
   breakdownCount: { width: 20, textAlign: "right", color: "#5B4636", fontWeight: "800" },
 
-  weeklyGraphWrap: { marginTop: 12 },
-
-  recentRow: {
-    marginTop: 12,
+  complianceStatsRow: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 10,
+    marginTop: 12,
+  },
+  complianceStat: {
+    flex: 1,
     backgroundColor: beigeTile,
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: "center",
   },
-  recentIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 999,
+  complianceValue: { fontWeight: "900", color: "#5B4636" },
+  complianceLabel: { marginTop: 4, color: "#7A6659", textAlign: "center", fontWeight: "600" },
+
+  calendarMonth: {
+    marginTop: 14,
+    fontWeight: "900",
+    color: "#3F2F25",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  calendarDayHeaders: {
+    flexDirection: "row",
+    marginBottom: 4,
+  },
+  calendarDayHeader: {
+    flex: 1,
+    textAlign: "center",
+    fontWeight: "800",
+    color: "#7A6659",
+    fontSize: 12,
+  },
+  calendarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  calendarCell: {
+    width: `${100 / 7}%`,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F7E8DA",
   },
-  recentTextWrap: { flex: 1 },
-  recentTitle: { color: "#3F2F25", fontWeight: "700" },
-  recentMeta: { marginTop: 2, color: "#7A6659", fontWeight: "600" },
-  emptyRecentText: { marginTop: 10, color: "#7A6659", fontWeight: "600" },
+  calendarCellActive: {
+    backgroundColor: "#D4EDDA",
+    borderRadius: 8,
+  },
+  calendarCellInactive: {
+    backgroundColor: "#F0E8E0",
+    borderRadius: 8,
+  },
+  calendarCellToday: {
+    borderWidth: 2,
+    borderColor: warmRed,
+  },
+  calendarCellText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#7A6659",
+  },
+  calendarCellTextActive: {
+    color: "#1E7A3A",
+    fontWeight: "900",
+  },
 });
