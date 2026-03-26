@@ -1,12 +1,13 @@
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
 const { FIELD_MAPPINGS } = require("../config/fieldMappings");
 
 if (!admin.apps.length) {
     admin.initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore("ai-peer");
 
 let cachedConfig = null;
 
@@ -151,9 +152,14 @@ async function importToREDCap(rawRecords) {
         throw new Error ("Invalid JSON returned from REDCap import");
     }
 
+    console.log("[DEBUG] REDCap import response:", JSON.stringify(parsed));
+
     if (typeof parsed ==="number")
     {
         return parsed;
+    }
+    if (parsed && typeof parsed.count === "number") {
+        return parsed.count;
     }
     if (Array.isArray(parsed)) {
         return parsed.length;
