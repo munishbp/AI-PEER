@@ -22,6 +22,11 @@ import { MODEL_ASSET } from "@/src/vision/config";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
+import { getExerciseRules } from "@/src/vision/exercises";
+import {
+  appendExerciseCompletion,
+  ExerciseActivityCategory,
+} from "@/src/exercise-activity-storage";
 
 type CatKey = "warmup" | "strength" | "balance";
 
@@ -30,6 +35,22 @@ function prettyCat(cat?: string) {
   if (cat === "strength") return "Strength";
   if (cat === "balance") return "Balance";
   return "Exercise";
+}
+
+function toActivityCategory(
+  cat?: string,
+  fallbackCategory?: string
+): ExerciseActivityCategory {
+  if (cat === "warmup" || cat === "strength" || cat === "balance") return cat;
+  if (
+    fallbackCategory === "warmup" ||
+    fallbackCategory === "strength" ||
+    fallbackCategory === "balance" ||
+    fallbackCategory === "assessment"
+  ) {
+    return fallbackCategory;
+  }
+  return "other";
 }
 
 export default function ExerciseSessionPage() {
@@ -43,6 +64,12 @@ export default function ExerciseSessionPage() {
 
   const title = useMemo(() => prettyCat(params.cat), [params.cat]);
   const exerciseId = params.video || `${params.cat || "warmup"}-1`;
+  const exerciseRule = useMemo(() => getExerciseRules(exerciseId), [exerciseId]);
+  const exerciseName = params.label || exerciseRule?.name || exerciseId;
+  const activityCategory = useMemo(
+    () => toActivityCategory(params.cat, exerciseRule?.category),
+    [params.cat, exerciseRule?.category]
+  );
 
   // "default" delegate = CPU. CoreML delegate fails to load this model
   // on-device, so we fall back to CPU for reliable inference.
@@ -85,6 +112,8 @@ export default function ExerciseSessionPage() {
   // session stats — use refs so we don't re-render on every frame
   const scoresRef = useRef<number[]>([]);
   const violationCountRef = useRef<Record<string, number>>({});
+  const repCountRef = useRef(0);
+  const sessionStartedAtRef = useRef<number | null>(null);
   // trigger re-render for summary only
   const [summaryTick, setSummaryTick] = useState(0);
 
@@ -109,7 +138,23 @@ export default function ExerciseSessionPage() {
 
   // frame processor — runs inference on worklet, posts pose back to js
   // handlePoseResult runs form analysis and updates vision context state
-  const frameProcessor = useVisionFrameProcessor(model, handlePoseResult);
+  const handleFrameResult = useCallback(
+    (
+      pose: Parameters<typeof handlePoseResult>[0],
+      repCount: number | null
+    ) => {
+      handlePoseResult(pose);
+      if (typeof repCount === "number" && Number.isFinite(repCount)) {
+        // Keep the max seen in-session so brief model jitter does not erase reps.
+        repCountRef.current = Math.max(
+          repCountRef.current,
+          Math.max(0, Math.round(repCount))
+        );
+      }
+    },
+    [handlePoseResult]
+  );
+  const frameProcessor = useVisionFrameProcessor(model, handleFrameResult);
 
   const handleStartMonitoring = async () => {
     // request camera permission on first tap
@@ -124,12 +169,41 @@ export default function ExerciseSessionPage() {
     // reset session stats
     scoresRef.current = [];
     violationCountRef.current = {};
+    repCountRef.current = 0;
+    sessionStartedAtRef.current = Date.now();
     setShowSummary(false);
 
     startTracking(exerciseId);
   };
 
   const handleStopMonitoring = () => {
+    const nowMs = Date.now();
+    const startedAt = sessionStartedAtRef.current ?? nowMs;
+    const durationSec = Math.max(1, Math.round((nowMs - startedAt) / 1000));
+    const framesAnalyzedCount = scoresRef.current.length;
+    const repCount = repCountRef.current;
+    const avgScoreValue =
+      framesAnalyzedCount > 0
+        ? scoresRef.current.reduce((a, b) => a + b, 0) / framesAnalyzedCount
+        : null;
+
+    // Persist only sessions with detected reps (rep-counter-based completion).
+    if (repCount > 0) {
+      void appendExerciseCompletion({
+        exerciseId,
+        exerciseName,
+        category: activityCategory,
+        repCount,
+        durationSec,
+        avgScore: avgScoreValue,
+        framesAnalyzed: framesAnalyzedCount,
+      }).catch((error) => {
+        console.error("[ExerciseSession] Failed to save activity record:", error);
+      });
+    }
+
+    sessionStartedAtRef.current = null;
+    repCountRef.current = 0;
     stopTracking();
     setSummaryTick((t) => t + 1);
     setShowSummary(true);
@@ -138,6 +212,8 @@ export default function ExerciseSessionPage() {
   // cleanup on unmount
   useEffect(() => {
     return () => {
+      sessionStartedAtRef.current = null;
+      repCountRef.current = 0;
       stopTracking();
     };
   }, [stopTracking]);
@@ -176,6 +252,8 @@ export default function ExerciseSessionPage() {
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
+              sessionStartedAtRef.current = null;
+              repCountRef.current = 0;
               stopTracking();
               router.back();
             }}
@@ -192,7 +270,7 @@ export default function ExerciseSessionPage() {
 
         <Text style={styles.pageTitle}>{title} Session</Text>
         <Text style={styles.pageSub}>
-          {params.label || exerciseId}
+          {exerciseName}
         </Text>
 
         {/* camera / preview area */}

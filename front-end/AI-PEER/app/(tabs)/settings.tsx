@@ -20,7 +20,7 @@ import type { Prefs } from "../../src/prefs-context";
 import { usePrefs } from "../../src/prefs-context";
 import { useAuth } from "../../src/auth";
 
-type SettingsTab = "accessibility" | "devices" | "notifications";
+type SettingsTab = "accessibility" | "notifications";
 
 const beige = "#F7EDE4";
 const beigeTile = "#F4E3D6";
@@ -35,34 +35,6 @@ export default function SettingsScreen() {
     { id: "1", title: "Morning walk", time: "8:00 AM", enabled: true },
     { id: "2", title: "Take meds", time: "9:00 PM", enabled: true },
   ]);
-
-  // Mock connected devices
-  const devices = [
-    {
-      id: "1",
-      name: "Smartwatch",
-      type: "watch",
-      connected: true,
-      battery: 85,
-      lastSync: "2 minutes ago",
-    },
-    {
-      id: "2",
-      name: "Heart Rate Monitor",
-      type: "sensor",
-      connected: true,
-      battery: 60,
-      lastSync: "5 minutes ago",
-    },
-    {
-      id: "3",
-      name: "Fitness Band",
-      type: "band",
-      connected: false,
-      battery: null,
-      lastSync: "2 days ago",
-    },
-  ];
 
   function addReminder(title: string, time?: string) {
     const id = Date.now().toString();
@@ -159,13 +131,6 @@ export default function SettingsScreen() {
             scaled={scaled}
           />
           <SegmentButton
-            label="Devices"
-            icon="bluetooth-outline"
-            active={tab === "devices"}
-            onPress={() => setTab("devices")}
-            scaled={scaled}
-          />
-          <SegmentButton
             label="Alerts"
             icon="alarm-outline"
             active={tab === "notifications"}
@@ -178,7 +143,6 @@ export default function SettingsScreen() {
         {tab === "accessibility" && (
           <AccessibilityTab prefs={prefs} updatePrefs={updatePrefs} playAlert={playAlertPreview} scaled={scaled} />
         )}
-        {tab === "devices" && <DevicesTab devices={devices} scaled={scaled}/>}
         {tab === "notifications" && (
           <NotificationsTab
             reminders={reminders}
@@ -211,7 +175,7 @@ function AccessibilityTab({
 }) {
   const fontSizesLabels = ["Small (90%)", "Normal (100%)", "Large (120%)"];
   const contrastOptions = ["Light", "Dark", "High Contrast"];
-  const languages = ["English", "Espa帽ol", "Fran莽ais"];
+  const languages = ["English", "Espa鐢郸l", "Fran閼剧禈is"];
 
   return (
     <>
@@ -347,77 +311,6 @@ function AccessibilityTab({
             </Text>
           </TouchableOpacity>
         )}
-      </View>
-    </>
-  );
-}
-
-/* ===================== DEVICES TAB ===================== */
-
-function DevicesTab({ devices, scaled }: { devices: any[]; scaled: ReturnType<typeof scaleFontSizes>; }) {
-  return (
-    <>
-      <View style={styles.card}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Ionicons name="bluetooth-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Connected Devices</Text>
-        </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-          Manage your paired health devices
-        </Text>
-
-        {devices.map((device) => (
-          <View key={device.id} style={styles.deviceRow}>
-            <View style={styles.deviceIconWrapper}>
-              <Ionicons
-                name={
-                  device.type === "watch"
-                    ? "watch-outline"
-                    : device.type === "sensor"
-                      ? "pulse-outline"
-                      : "body-outline"
-                }
-                size={18}
-                color={device.connected ? "#3BAA56" : "#999"}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.deviceName, { fontSize: scaled.small }]}>{device.name}</Text>
-              <Text style={[styles.deviceStatus, { fontSize: scaled.h2/2 }]}> 
-                {device.connected ? (
-                  <>
-                    <Ionicons name="checkmark-circle" size={12} color="#3BAA56" />
-                    {" Connected 鈥?"}
-                    {device.battery}%
-                  </>
-                ) : (
-                  <>
-                    <Ionicons
-                      name="close-circle"
-                      size={12}
-                      color="#999"
-                    />
-                    {" Disconnected"}
-                  </>
-                )}
-              </Text>
-              <Text style={[styles.deviceSync, { fontSize: scaled.h2/2 }]}>Last sync: {device.lastSync}</Text>
-            </View>
-            <TouchableOpacity style={styles.deviceButton}>
-              <Ionicons name="chevron-forward" size={18} color="#999" />
-            </TouchableOpacity>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add-circle-outline" size={16} color="#fff" />
-          <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>Add New Device</Text>
-        </TouchableOpacity>
       </View>
     </>
   );
@@ -630,26 +523,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { fontWeight: "700", fontSize: 12 },
 
-  deviceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  deviceIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: beigeTile,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deviceName: { fontWeight: "700", color: "#3F2F25", fontSize: 13 },
-  deviceStatus: { fontSize: 11, color: "#5B4636", marginTop: 2 },
-  deviceSync: { fontSize: 10, color: "#999", marginTop: 1 },
-  deviceButton: { padding: 8 },
 
   notificationRow: {
     flexDirection: "row",
