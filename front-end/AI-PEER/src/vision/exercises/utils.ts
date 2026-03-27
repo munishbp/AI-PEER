@@ -141,6 +141,6 @@ export function midpoint(p1: Keypoint, p2: Keypoint): { x: number; y: number } {
 /**
  * Check if a keypoint has sufficient confidence to be used.
  */
-export function isConfident(keypoint: Keypoint, minConfidence: number = 0.5): boolean {
+export function isConfident(keypoint: Keypoint, minConfidence: number = 0.3): boolean {
   return keypoint.confidence >= minConfidence;
 }

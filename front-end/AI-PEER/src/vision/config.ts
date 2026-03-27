@@ -14,7 +14,7 @@ export const VISION_CONFIG: VisionConfig = {
   modelSizeBytes: 5.2 * 1024 * 1024,  // 5.2MB
 
   // Detection thresholds
-  minKeyPointConfidence: 0.5,  // Ignore keypoints below 50% confidence
+  minKeyPointConfidence: 0.3,  // Lowered for dark clothing / elderly users
   minPoseConfidence: 0.3,      // Ignore pose if overall confidence < 30%
 
   // Performance
