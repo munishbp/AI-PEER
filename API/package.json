@@ -1,7 +1,7 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "",
+  "description": "Express 5.1 backend for AI-PEER. Auth, user CRUD, video signed URLs, LLM model distribution. Deployed on Cloud Run.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
