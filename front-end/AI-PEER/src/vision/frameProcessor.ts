@@ -31,7 +31,7 @@ import { Pose } from './types';
 type OnPoseDetected = (pose: Pose | null, repCount: number | null) => void;
 
 // throttle to every 3rd frame (~10fps at 30fps camera)
-const FRAME_SKIP = 3;
+const FRAME_SKIP = 2;
 
 export function useVisionFrameProcessor(
   model: TensorflowModel | undefined,

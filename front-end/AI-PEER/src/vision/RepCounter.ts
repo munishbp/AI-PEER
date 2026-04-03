@@ -4,7 +4,7 @@ import { calculateAngle, isConfident } from './exercises/utils';
 
 type RepPhase = 'idle' | 'in_start' | 'in_end';
 
-const COOLDOWN_MS = 2000;
+const COOLDOWN_MS = 1200;
 
 export class RepCounter {
   private phase: RepPhase = 'idle';

@@ -1,6 +1,7 @@
 {
   "name": "aipeer",
   "version": "1.0.0",
+  "description": "AI-PEER React Native app. Fall prevention with on-device LLM, pose estimation, and exercise guidance.",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {

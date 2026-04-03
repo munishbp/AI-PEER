@@ -1,8 +1,8 @@
-# Empathy Training Pipeline for Qwen3-0.6B
+# Empathy Training Pipeline for Qwen3.5-0.8B
 
 ## Overview
 
-This document outlines a complete pipeline for fine-tuning the Qwen3-0.6B language model to generate more empathetic responses for the AI-PEER fall risk assessment application. The training uses a two-stage approach: Supervised Fine-Tuning (SFT) followed by Direct Preference Optimization (DPO).
+This document outlines a complete pipeline for fine-tuning the Qwen3.5-0.8B language model to generate more empathetic responses for the AI-PEER fall risk assessment application. The training uses a two-stage approach: Supervised Fine-Tuning (SFT) followed by Direct Preference Optimization (DPO).
 
 ### Why This Approach?
 
@@ -106,7 +106,7 @@ guidance. Keep responses concise and actionable when appropriate.
 
 ### Purpose
 
-SFT adapts the base Qwen3-0.6B model from general text completion to empathetic conversational responses. This stage teaches:
+SFT adapts the base Qwen3.5-0.8B model from general text completion to empathetic conversational responses. This stage teaches:
 
 - Domain vocabulary (healthcare, emotional support)
 - Response structure (acknowledgment → support → guidance)
@@ -118,10 +118,10 @@ SFT adapts the base Qwen3-0.6B model from general text completion to empathetic 
 
 | Approach | Trainable Params | VRAM Usage | Training Speed |
 |----------|------------------|------------|----------------|
-| Full Fine-Tuning | 600M (100%) | ~12GB | Slower |
-| LoRA (r=16) | ~4M (~0.7%) | ~6GB | 2-3x faster |
+| Full Fine-Tuning | 860M (100%) | ~16GB | Slower |
+| LoRA (r=16) | ~6.4M (~0.74%) | ~8GB | 2-3x faster |
 
-For a 0.6B model, full fine-tuning is feasible on your hardware, but LoRA provides:
+For a 0.8B model, full fine-tuning is feasible on your hardware, but LoRA provides:
 
 1. **Faster iteration** - Try more experiments in less time
 2. **Reduced overfitting risk** - Fewer parameters = stronger regularization
@@ -298,7 +298,7 @@ The key insight: The optimal reward model under the Bradley-Terry preference mod
 | Hyperparameter sensitivity | High (PPO has many knobs) | Low (mainly just β) |
 | Results quality | Slightly better ceiling | 95%+ of RLHF quality |
 
-For a 0.6B model on consumer hardware, DPO is the clear choice.
+For a 0.8B model on consumer hardware, DPO is the clear choice.
 
 ### DPO Hyperparameters
 
@@ -367,7 +367,7 @@ llama.rn (and llama.cpp) require models in GGUF format. Conversion steps:
 | Q8_0 | 8 | ~600 MB | Near-F16 | ~1.5x faster |
 | Q6_K | 6 | ~450 MB | Excellent | ~1.7x faster |
 | Q5_K_M | 5 | ~400 MB | Very good | ~2x faster |
-| Q4_K_M | 4 | ~350 MB | Good | ~2.5x faster |
+| Q4_K_M | 4 | ~505 MB | Good | ~2.5x faster |
 | Q4_0 | 4 | ~300 MB | Acceptable | ~2.5x faster |
 | Q2_K | 2 | ~200 MB | Degraded | ~3x faster |
 
@@ -426,7 +426,7 @@ For each prompt, evaluate:
 ### A/B Comparison
 
 Compare responses from:
-- Base Qwen3-0.6B
+- Base Qwen3.5-0.8B
 - SFT model (after Phase 2)
 - DPO model (after Phase 4)
 
@@ -582,14 +582,15 @@ Given your hardware headroom, you could:
 ## Appendix: Quick Reference Card
 
 ```
-=== SFT Training ===
-Model:          Qwen3-0.6B
+=== SFT Training (Completed) ===
+Model:          Qwen3.5-0.8B
 Method:         LoRA (r=16, alpha=16)
-Data:           90% train / 10% val
+Data:           3160 train / 352 val (90/10 split)
 Epochs:         3
 LR:             2e-4
 Batch:          4 (x4 accumulation = 16 effective)
-Precision:      FP16 + 4-bit base
+Precision:      BF16 + 4-bit base
+Hardware:       NVIDIA RTX 5090 (32GB VRAM)
 
 === DPO Training ===
 Base:           SFT checkpoint
@@ -602,11 +603,30 @@ Batch:          2 (x8 accumulation = 16 effective)
 
 === Export ===
 Format:         GGUF
-Quantization:   Q4_K_M
+Quantization:   Q4_K_M (~505MB)
 Target:         llama.rn (React Native)
+Storage:        gs://qwenfinetune/models/
 ```
 
 ---
 
-*Last Updated: January 2025*
+## Completion Notes
+
+SFT training was completed in April 2026 using the configuration above. DPO (Phase 4) was planned but not executed -- SFT alone produced acceptable results for the project scope.
+
+**Training Results:**
+
+| Epoch | Eval Loss | Train Loss (avg) |
+|-------|-----------|-------------------|
+| 1 | 1.9756 | 1.975 |
+| 2 | 1.8862 | 1.833 |
+| 3 | 1.8334 | 1.749 |
+
+- No overfitting observed (eval loss decreased every epoch).
+- Checkpoint-594 (epoch 3) was used for the final export.
+- Final model: `Qwen3.5-0.8B-aipeer-Q4_K_M.gguf` (~505MB), uploaded to `gs://qwenfinetune/models/`.
+- Training hardware: NVIDIA RTX 5090 (32GB VRAM), batch=4, grad_accum=4.
+- Total training time: ~58 minutes for epoch 3 (longer sequences caused slowdowns near end of each epoch due to VRAM pressure).
+
+*Last Updated: April 2026*
 *For AI-PEER Fall Risk Assessment Project - UCF Senior Design 2025-2026*

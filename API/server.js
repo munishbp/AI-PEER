@@ -43,6 +43,9 @@ app.use(verification);
 const videoRoutes = require('./routes/videosRoutes');
 app.use("/video", videoRoutes);
 
+const modelRoutes = require('./routes/modelRoutes');
+app.use("/model", modelRoutes);
+
 // Routes
 const userRoutes = require("./routes/userRoutes");
 app.use("/users", userRoutes);

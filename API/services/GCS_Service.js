@@ -40,11 +40,12 @@ if (isCloudRun) {
 //function to generate the signed URL for a video
 //takes the filename as input
 //use async because it needs to communicate with GCS
-async function generateSignedUrl(videoFileName){
+async function generateSignedUrl(videoFileName, overrideBucket){
     try{
-        //reference to specific video file in bucket
-        //access bucket for specific video
-        const file=storage.bucket(bucketName).file(videoFileName);
+        //reference to specific file in bucket
+        //overrideBucket allows using a different bucket (e.g. model bucket)
+        const targetBucket = overrideBucket || bucketName;
+        const file=storage.bucket(targetBucket).file(videoFileName);
 
 
         //config for the signed URL

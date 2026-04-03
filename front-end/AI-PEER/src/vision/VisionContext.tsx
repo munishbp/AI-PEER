@@ -18,6 +18,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { VisionState, Pose, FormFeedback } from './types';
 import { analyzePose } from './FormAnalyzer';
 import { RepCounter } from './RepCounter';
+import { PoseSmoothing } from './PoseSmoothing';
 import { getExerciseRules } from './exercises';
 
 type VisionContextValue = {
@@ -58,6 +59,7 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const pendingPoseRef = useRef<Pose | null>(null);
   const pendingFeedbackRef = useRef<FormFeedback | null>(null);
   const repCounterRef = useRef<RepCounter | null>(null);
+  const poseSmoothingRef = useRef<PoseSmoothing>(new PoseSmoothing());
 
   const setModelReady = useCallback((ready: boolean) => {
     setState((s) => ({ ...s, isModelLoaded: ready }));
@@ -66,6 +68,9 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const startTracking = useCallback((exerciseId: string) => {
     exerciseIdRef.current = exerciseId;
     isTrackingRef.current = true;
+
+    // reset smoother for new exercise session
+    poseSmoothingRef.current.reset();
 
     // set up rep counter if exercise has repConfig
     const rules = getExerciseRules(exerciseId);
@@ -106,8 +111,11 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   // handlePoseResult — takes a parsed pose from the frame processor
   // runs form analysis and throttles state updates
   const handlePoseResult = useCallback(
-    (pose: Pose | null) => {
+    (rawPose: Pose | null) => {
       if (!isTrackingRef.current) return;
+
+      // apply temporal smoothing to reduce jitter and carry forward dropped keypoints
+      const pose = rawPose ? poseSmoothingRef.current.smooth(rawPose) : null;
 
       let feedback: FormFeedback | null = null;
       if (pose && exerciseIdRef.current) {

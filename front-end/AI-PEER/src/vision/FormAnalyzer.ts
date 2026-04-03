@@ -42,7 +42,7 @@ export function analyzePose(pose:Pose, exerciseId:string):FormFeedback{
     return {
         violations,
         score,
-        isGoodForm: score >=70
+        isGoodForm: score >=60
     }
 
 }

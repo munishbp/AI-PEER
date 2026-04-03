@@ -38,7 +38,7 @@ export function mapToScreen(
   height: number,
   isFrontCamera: boolean,
 ): { x: number; y: number } | null {
-  if (kp.confidence < 0.5) return null;
+  if (kp.confidence < 0.3) return null;
 
   let nx = kp.x;
   let ny = kp.y;

@@ -2,7 +2,7 @@
  * LLMService.ts - Singleton service for llama.rn
  *
  * Why a Singleton?
- * - Loading a 378MB model into memory is expensive (several seconds)
+ * - Loading a ~533MB model into memory is expensive (several seconds)
  * - We want ONE instance that persists across component unmounts
  * - Prevents accidentally loading multiple copies (memory explosion)
  *
@@ -10,6 +10,8 @@
  * - Model initialization (loading into memory)
  * - Text generation (inference)
  * - Cleanup (releasing memory)
+ *
+ * Model: Qwen3.5-0.8B (non-thinking mode, finetuned on mental health data)
  */
 
 import { Platform } from 'react-native';

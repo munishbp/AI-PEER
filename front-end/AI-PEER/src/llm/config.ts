@@ -10,22 +10,19 @@
 import { InferenceConfig } from './types';
 
 /**
- * Model download URL
- * Using Qwen3 0.6B Q4_K_M quantization (~378MB)
- * Q4_K_M = 4-bit quantization, good balance of size vs quality
- *
- * HuggingFace page: https://huggingface.co/unsloth/Qwen3-0.6B-GGUF?show_file_info=Qwen3-0.6B-Q4_K_M.gguf
- *
- * TODO: For production, upload model to your GCS bucket for faster/reliable downloads
+ * Model download URL is fetched at runtime via a signed URL from the API.
+ * The API endpoint GET /model/getModelURL returns a 1-hour signed GCS URL.
+ * No hardcoded URL needed -- the bucket is private.
  */
-export const MODEL_URL =
-  'https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf';
 
 /** Filename for the downloaded model (stored in app's document directory) */
-export const MODEL_FILENAME = 'Qwen3-0.6B-Q4_K_M.gguf';
+export const MODEL_FILENAME = 'Qwen3.5-0.8B-aipeer-Q4_K_M.gguf';
 
-/** Expected model size in bytes (for download progress) - 378MB */
-export const MODEL_SIZE_BYTES = 378 * 1024 * 1024;
+/** Expected model size in bytes (for download progress) - ~505MB */
+export const MODEL_SIZE_BYTES = 505 * 1024 * 1024;
+
+/** Old model filenames to clean up when upgrading */
+export const OLD_MODEL_FILENAMES = ['Qwen3-0.6B-Q4_K_M.gguf'];
 
 /**
  * Inference configuration

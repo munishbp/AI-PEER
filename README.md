@@ -7,9 +7,9 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 ```
 ├── API/                         # Node.js backend (Cloud Run)
 │   ├── server.js                # Express entry point
-│   ├── routes/                  # Auth, user, & video endpoints
+│   ├── routes/                  # Auth, user, video, & model endpoints
 │   ├── services/                # GCS, Firebase, Auth services
-│   ├── controllers/             # Request handlers
+│   ├── controllers/             # Request handlers (user, video, model)
 │   ├── middleware/               # Firebase token verification
 │   └── config/                  # Firebase Admin init
 │
@@ -95,24 +95,23 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 **Implemented:**
 - Fall risk assessment with FRA matrix visualization
 - SMS 2FA authentication via Identity Platform
-- On-device AI chat (Qwen3-0.6B via llama.rn) - all processing stays on phone
+- On-device AI chat (Qwen3.5-0.8B finetuned on mental health counseling data, via llama.rn) - all processing stays on phone
 - Conversation history with 24-hour auto-archive
 - Secure video delivery with signed URLs (1-hour expiration)
 - Activity tracking and weekly summaries
 - Accessibility preferences (font scaling, high contrast)
 - Cloud Run deployment with SignBlob URL signing
 - YOLOv26n real-time pose estimation for exercise form monitoring
+- 24 exercises with real-time pose-based form analysis (3 assessment, 5 warmup, 5 strength, 11 balance)
+- Exercise recommendation system with compliance tracking
 - REDCap integration for clinical data sync (Firebase Cloud Function)
-
-**In Progress:**
-- Firebase auth persistence across app restarts
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
 | Mobile App | React Native, Expo bare workflow, TypeScript |
-| On-Device LLM | llama.rn, Qwen3-0.6B-Q4_K_M |
+| On-Device LLM | llama.rn, Qwen3.5-0.8B-aipeer-Q4_K_M (finetuned, ~505MB) |
 | Pose Estimation | YOLOv26n via TFLite (on-device) |
 | Backend | Node.js, Express, Cloud Run |
 | Cloud Functions | Firebase Functions (REDCap sync) |
@@ -140,3 +139,12 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 - Munish Persaud - https://www.linkedin.com/in/munish-persaud
 
 UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md) -- system diagram, data flows, Firestore schema, design decisions
+- [File Map](FILE_MAP.md) -- complete source file listing with descriptions
+- [API Reference](API/README.md) -- endpoints, environment variables, deployment
+- [Frontend](front-end/AI-PEER/README.md) -- setup, features, project structure
+- [Cloud Functions](functions/README.md) -- REDCap sync schedule, logic, field mapping
+- [Training Pipeline](Training/slm/EMPATHY_TRAINING_PIPELINE.md) -- LLM finetuning methodology
