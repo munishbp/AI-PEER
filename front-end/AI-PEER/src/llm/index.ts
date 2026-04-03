@@ -1,7 +1,7 @@
 /**
  * LLM Module - On-device language model for AI-PEER
  *
- * This module provides on-device LLM inference using Qwen3-0.6B.
+ * This module provides on-device LLM inference using Qwen3.5-0.8B.
  * All processing happens locally - no patient data leaves the phone.
  *
  * Usage:
@@ -28,7 +28,6 @@ export { useLLM } from './useLLM';
 
 // Config (for display/debugging)
 export {
-  MODEL_URL,
   MODEL_FILENAME,
   MODEL_SIZE_BYTES,
   INFERENCE_CONFIG,
@@ -40,6 +39,7 @@ export {
   isModelDownloaded,
   downloadModel,
   deleteModel,
+  cleanupOldModels,
   getModelPath,
   getModelSizeMB,
 } from './modelDownloader';

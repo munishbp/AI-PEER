@@ -1,2 +1,4 @@
-training data info
-EMPATHY_TRAINING_PIPELINE
+output/
+__pycache__/
+*.pyc
+*.gguf
