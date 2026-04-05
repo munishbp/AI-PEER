@@ -1,11 +1,13 @@
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
+const { FIELD_MAPPINGS } = require("../config/fieldMappings");
 
 if (!admin.apps.length) {
     admin.initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore("ai-peer");
 
 let cachedConfig = null;
 
@@ -36,7 +38,7 @@ async function loadREDCapConfig(){
     return cachedConfig;
 }
 
-function buildREDCapRecord({userID, phonenum, balanceTrackScore, fallFearScore})
+function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score, compliance_days_active, compliance_rate})
 {
     if (!userID)
     {
@@ -45,22 +47,32 @@ function buildREDCapRecord({userID, phonenum, balanceTrackScore, fallFearScore})
     if (typeof phonenum !=="string"){
         throw new Error ("Phone number must be a string");
     }
-    if (!Number.isInteger(balanceTrackScore) || !Number.isInteger(fallFearScore))
+    if (!Number.isInteger(btrack_score) || !Number.isInteger(fear_falling_score))
     {
-        throw new Error ("Scores must be an integer")
+        throw new Error ("Scores must be an integer");
     }
 
-    return{
+    const record = {
         record_id: userID,
-        b_track_score: balanceTrackScore,
-        phone_number: phonenum,
-        ff_score: fallFearScore
+        [FIELD_MAPPINGS.btrack_score]: btrack_score,
+        [FIELD_MAPPINGS.phoneNumber]: phonenum,
+        [FIELD_MAPPINGS.fear_falling_score]: fear_falling_score
     };
+
+    if (Number.isInteger(compliance_days_active)) {
+        record[FIELD_MAPPINGS.compliance_days_active] = compliance_days_active;
+    }
+    if (Number.isInteger(compliance_rate)) {
+        record[FIELD_MAPPINGS.compliance_rate] = compliance_rate;
+    }
+
+    return record;
 }
 
 async function exportFromREDCap() {
     const {apiToken, apiUrl} = await loadREDCapConfig();
-
+    console.log("[DEBUG] REDCap URL:", apiUrl);
+    console.log("[DEBUG] Token length:", apiToken?.length);
     const body = new URLSearchParams({
         token: apiToken,
         content: "record",
@@ -68,9 +80,9 @@ async function exportFromREDCap() {
         type: "flat",
         fields:[
             "record_id",
-            "b_track_score",
-            "phone_number",
-            "ff_score"
+            FIELD_MAPPINGS.btrack_score,
+            FIELD_MAPPINGS.phoneNumber,
+            FIELD_MAPPINGS.fear_falling_score
         ].join(",")
     });
 
@@ -97,9 +109,9 @@ async function exportFromREDCap() {
 
     return records.map(r=>({
         userID: r.record_id,
-        phonenum: String(r.phone_number||""),
-        balanceTrackScore: parseInt(r.b_track_score, 10),
-        fallFearScore: parseInt(r.ff_score, 10),
+        phonenum: String(r[FIELD_MAPPINGS.phoneNumber]||""),
+        btrack_score: parseInt(r[FIELD_MAPPINGS.btrack_score], 10) || null,
+        fear_falling_score: parseInt(r[FIELD_MAPPINGS.fear_falling_score], 10)|| null,
         source:"redcap",
         synced_at: new Date().toISOString()
     }));
@@ -149,9 +161,14 @@ async function importToREDCap(rawRecords) {
         throw new Error ("Invalid JSON returned from REDCap import");
     }
 
+    console.log("[DEBUG] REDCap import response:", JSON.stringify(parsed));
+
     if (typeof parsed ==="number")
     {
         return parsed;
+    }
+    if (parsed && typeof parsed.count === "number") {
+        return parsed.count;
     }
     if (Array.isArray(parsed)) {
         return parsed.length;

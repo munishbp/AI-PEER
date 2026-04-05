@@ -15,6 +15,7 @@
 import { useMemo, useCallback } from 'react';
 import { useLLMContext } from './LLMContext';
 import { ChatMessage, Conversation } from './types';
+import { useTranslation } from "react-i18next";
 
 export function useLLM() {
   const {
@@ -29,6 +30,7 @@ export function useLLM() {
     startNewConversation,
     deleteConversation,
   } = useLLMContext();
+  const { t } = useTranslation();
 
   /**
    * Whether the model needs to be downloaded
@@ -151,7 +153,7 @@ export function useLLM() {
         ? userMessage.content.substring(0, 50) + '...'
         : userMessage.content;
     }
-    return 'New conversation';
+    return t("chat-history.llm_newConversation");
   }, []);
 
   return {

@@ -12,15 +12,35 @@
  * - Cleanup (releasing memory)
  */
 
-import { initLlama, LlamaContext } from 'llama.rn';
+import { Platform } from 'react-native';
 import { INFERENCE_CONFIG } from './config';
 import { getModelPath } from './modelDownloader';
 import { formatPrompt } from './systemPrompt';
 import { ChatMessage } from './types';
 
+type LlamaContextLike = {
+  completion: (params: {
+    prompt: string;
+    n_predict: number;
+    temperature: number;
+    top_p: number;
+    stop: string[];
+  }) => Promise<{ text: string }>;
+  release: () => Promise<void>;
+};
+
+type LlamaModule = {
+  initLlama: (params: {
+    model: string;
+    n_ctx: number;
+    n_threads: number;
+    n_gpu_layers: number;
+  }) => Promise<LlamaContextLike>;
+};
+
 class LLMService {
   private static instance: LLMService;
-  private context: LlamaContext | null = null;
+  private context: LlamaContextLike | null = null;
   private isInitializing = false;
 
   /** Private constructor enforces singleton pattern */
@@ -49,6 +69,10 @@ class LLMService {
    * This is slow (~5-10 seconds) so call it once at app start
    */
   async initialize(): Promise<void> {
+    if (Platform.OS === 'web') {
+      throw new Error('On-device LLM is not available on web builds.');
+    }
+
     if (this.context) {
       console.log('LLM already initialized');
       return;
@@ -65,8 +89,9 @@ class LLMService {
     try {
       console.log('Initializing LLM with model:', modelPath);
       const startTime = Date.now();
+      const llamaModule = (await import('llama.rn')) as unknown as LlamaModule;
 
-      this.context = await initLlama({
+      this.context = await llamaModule.initLlama({
         model: modelPath,
         n_ctx: INFERENCE_CONFIG.contextSize,
         n_threads: 4, // Use 4 CPU threads for inference

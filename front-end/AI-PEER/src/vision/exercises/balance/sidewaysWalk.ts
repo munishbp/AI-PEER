@@ -9,6 +9,9 @@ export const sidewaysWalkRules: ExerciseRule = {
   id: 'balance-3',
   name: 'Sideways Walk',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Place your phone so the camera can see your full body. Walk sideways across the camera\'s view.',
   checks: [
     {
       type: 'alignment',

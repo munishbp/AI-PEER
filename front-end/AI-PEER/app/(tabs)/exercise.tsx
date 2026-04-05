@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePrefs } from "../../src/prefs-context";
 import { getExerciseVideos } from "@/src/video";
+import { getTodaysWorkout } from "@/src/daily-workout";
+import { WorkoutCombo } from "@/src/workout-combos";
+import { getExerciseRules } from "@/src/vision/exercises";
 import { useTranslation } from "react-i18next";
 
 type CategoryKey = "warmup" | "strength" | "balance";
@@ -26,40 +29,49 @@ type Category = {
   iconBg: string;
 };
 
-const CATEGORIES: Category[] = [
-  {
-    key: "warmup",
-    title: "Warm-Up",
-    subtitle: "Gentle movements to loosen muscles",
-    purpose: "Light activities to prepare for exercise",
-    score: 92,
-    icon: "flame-outline",
-    iconBg: "#FFE9DA",
-  },
-  {
-    key: "strength",
-    title: "Strength",
-    subtitle: "Targeted exercises to increase strength",
-    purpose: "Builds muscle power",
-    score: 88,
-    icon: "barbell-outline",
-    iconBg: "#E8F0FF",
-  },
-  {
-    key: "balance",
-    title: "Balance",
-    subtitle: "Exercises to enhance balance and prevent falls",
-    purpose: "Improves stability and coordination",
-    score: 90,
-    icon: "walk-outline",
-    iconBg: "#F0E9FF",
-  },
-];
+function exerciseName(id: string): string {
+  return getExerciseRules(id)?.name ?? id;
+}
 
 export default function ExercisePage() {
   const router = useRouter();
   const { scaled } = usePrefs();
   const { t } = useTranslation();
+  const [todaysWorkout, setTodaysWorkout] = useState<WorkoutCombo | null>(null);
+
+  const CATEGORIES: Category[] = [
+    {
+      key: "warmup",
+      title: t("exercise.warmupTitle"),
+      subtitle: t("exercise.warmupSubtitle"),
+      purpose: t("exercise.warmupPurpose"),
+      score: 92,
+      icon: "flame-outline",
+      iconBg: "#FFE9DA",
+    },
+    {
+      key: "strength",
+      title: t("exercise.strengthTitle"),
+      subtitle: t("exercise.strengthSubtitle"),
+      purpose: t("exercise.strengthPurpose"),
+      score: 88,
+      icon: "barbell-outline",
+      iconBg: "#E8F0FF",
+    },
+    {
+      key: "balance",
+      title: t("exercise.balanceTitle"),
+      subtitle: t("exercise.balanceSubtitle"),
+      purpose: t("exercise.balancePurpose"),
+      score: 90,
+      icon: "walk-outline",
+      iconBg: "#F0E9FF",
+    },
+  ];
+
+  useEffect(() => {
+    getTodaysWorkout().then(setTodaysWorkout).catch(console.error);
+  }, []);
 
   const [openFolders, setOpenFolders] = useState<Record<CategoryKey, boolean>>({
     warmup: false,
@@ -135,6 +147,40 @@ export default function ExercisePage() {
           <Text style={styles.centerSub}>{t("exercise.categoriesDescription")}</Text>
         </View>
 
+        {/* Today's Workout */}
+        {todaysWorkout && (
+          <View style={styles.todayCard}>
+            <View style={styles.todayHeader}>
+              <View style={[styles.iconCircle, { backgroundColor: "#FFE9DA" }]}>
+                <Ionicons name="fitness-outline" size={18} color="#8A5A3C" />
+              </View>
+              <Text style={styles.todayTitle}>{t("exercise.todayWorkout")}</Text>
+            </View>
+
+            {([
+              { label: t("exercise.warmupTitle"), ids: todaysWorkout.warmup, cat: "warmup" as CategoryKey },
+              { label: t("exercise.strengthTitle"), ids: todaysWorkout.strength, cat: "strength" as CategoryKey },
+              { label: t("exercise.balanceTitle"), ids: todaysWorkout.balance, cat: "balance" as CategoryKey },
+            ]).map((group) => (
+              <View key={group.label} style={styles.todayGroup}>
+                <Text style={styles.todayGroupLabel}>{group.label}</Text>
+                {group.ids.map((id) => (
+                  <TouchableOpacity
+                    key={id}
+                    style={styles.todayExercise}
+                    activeOpacity={0.8}
+                    onPress={() => openVideo(group.cat, id, exerciseName(id))}
+                  >
+                    <Ionicons name="play-circle-outline" size={18} color="#2E5AAC" />
+                    <Text style={styles.todayExerciseText}>{exerciseName(id)}</Text>
+                    <Ionicons name="chevron-forward" size={14} color="#8C7A6C" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Category cards */}
         <View style={{ gap: 18 }}>
           {CATEGORIES.map((c) => {
@@ -160,13 +206,6 @@ export default function ExercisePage() {
                     <Text style={styles.infoText}>
                       <Text style={styles.infoLabel}>{t("exercise.purpose")}</Text> {c.purpose}
                     </Text>
-                    <Text style={styles.infoText}>
-                      <Text style={styles.infoLabel}>{t("exercise.recommendationScore")}</Text>
-                    </Text>
-                  </View>
-
-                  <View style={styles.scorePill}>
-                    <Text style={styles.scoreText}>{c.score} / 100</Text>
                   </View>
                 </View>
 
@@ -399,4 +438,35 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   startText: { color: "#FFF", fontWeight: "900" },
+
+  todayCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 18,
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+      android: { elevation: 1.5 },
+    }),
+  },
+  todayHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  todayTitle: { fontSize: 16, fontWeight: "900", color: "#3D2F27" },
+  todayGroup: { marginBottom: 10 },
+  todayGroupLabel: { fontSize: 12, fontWeight: "900", color: "#6B5E55", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 },
+  todayExercise: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F7F2EE",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+  },
+  todayExerciseText: { flex: 1, fontWeight: "800", color: "#3D2F27" },
 });

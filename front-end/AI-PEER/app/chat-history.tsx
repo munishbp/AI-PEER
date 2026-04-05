@@ -90,7 +90,7 @@ export default function ChatHistoryScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { fontSize: scaled.h3 }]}>{t("chat-history.title")}</Text>
           <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-            {conversations.length} {conversations.length !== 1 ? t("chat-history.conversations") : t("chat-history.conversation")}
+            {t("chat-history.conversation", { count: conversations.length })}
           </Text>
         </View>
 
@@ -190,7 +190,7 @@ function ConversationCard({
           <Text style={[styles.cardTime, { fontSize: scaled.base*0.75 }]}>{timeAgo}</Text>
           <Text style={[styles.cardDot, { fontSize: scaled.base*0.75 }]}>•</Text>
           <Text style={[styles.cardCount, { fontSize: scaled.base*0.75 }]}>
-            {messageCount} message{messageCount !== 1 ? "s" : ""}
+            {t("chat-history.message", { count: messageCount })}
           </Text>
         </View>
       </View>
@@ -214,7 +214,7 @@ function ConversationCard({
  * This function takes a timestamp (milliseconds since 1970) and returns
  * a human-readable string like "Just now", "5 minutes ago", "2 hours ago"
  */
-function formatTimeAgo(timestamp: number, t: (key: string) => string): string {
+function formatTimeAgo(timestamp: number, t: (key: string, options?: any) => string): string {
   const now = Date.now();
   const diffMs = now - timestamp;
 
@@ -227,13 +227,13 @@ function formatTimeAgo(timestamp: number, t: (key: string) => string): string {
   if (diffSeconds < 60) {
     return t("chat-history.justNow");
   } else if (diffMinutes < 60) {
-    return `${diffMinutes} ${t("chat-history.minutesAgo")}`;
+    return t("chat-history.minutesAgo", { count: diffMinutes });
   } else if (diffHours < 24) {
-    return `${diffHours} ${t("chat-history.hoursAgo")}`;
+    return t("chat-history.hoursAgo", { count: diffHours });
   } else if (diffDays === 1) {
     return t("chat-history.yesterday");
   } else {
-    return `${diffDays} ${t("chat-history.daysAgo")}`;
+    return t("chat-history.daysAgo", { count: diffDays });
   }
 }
 

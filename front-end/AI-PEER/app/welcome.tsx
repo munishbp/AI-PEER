@@ -20,17 +20,6 @@ export default function Welcome({ onComplete }: WelcomeProps) {
     const { scaled, colors, prefs, updatePrefs } = usePrefs();
     const { t } = useTranslation();
 
-    const previewText = useMemo(() => {
-        switch (prefs.language) {
-            case "es":
-                return "¡Bienvenido a AI PEER! Este es un texto de vista previa.";
-            case "ht":
-                return "Bienvenue sur AI PEER ! Ceci est un exemple de texte.";
-            default:
-                return "Welcome to AI PEER! This is a preview of your settings.";
-        }
-    }, [prefs.language]);
-
 
     function goNext() {
         if (step >= StepCount) {
@@ -131,7 +120,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                             </View>
 
                             <View style={styles.previewBox}>
-                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
+                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
                                 <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>{t("welcome.previewNote")}</Text>
                             </View>
                         </View>
@@ -166,7 +155,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                             </View>
 
                             <View style={[styles.previewBox, { backgroundColor: colors.background }]}>
-                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
+                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
                                 <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>{t("welcome.previewContrastNote")}</Text>
                             </View>
                         </View>
@@ -199,7 +188,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                             </View>
 
                             <View style={styles.previewBox}>
-                                  <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
+                                  <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
                             </View>
                         </View>
                     )}
@@ -225,7 +214,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                             </TouchableOpacity>
 
                             <View style={styles.previewBox}>
-                                    <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
+                                    <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
                                     <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>
                                     {t("welcome.toggleSoundNote")}
                                 </Text>

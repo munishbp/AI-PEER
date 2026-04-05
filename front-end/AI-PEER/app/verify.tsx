@@ -4,6 +4,7 @@ import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpa
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { signInWithCustomToken } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../src/firebaseClient";
 import { api } from "../src/api";
 import { colors, spacing, radii, fontSizes } from "../src/theme";
@@ -34,12 +35,15 @@ export default function Verify() {
 
       // Sign in with the custom token from the backend
       await signInWithCustomToken(auth, res.customToken);
+      // Store refresh token for persistent login (30-day session)
+      await AsyncStorage.setItem("refreshToken", res.refreshToken);
+      console.log('[Auth] Refresh token stored after 2FA verification');
 
       // Navigate based on mode
       if (res.isNewUser || mode === 'create') {
-        router.replace("/welcome");
+        router.replace("/tutorial?next=welcome");
       } else {
-        router.replace("/(tabs)");
+        router.replace("/tutorial?next=tabs");
       }
     } catch (e: any) {
       setErr(e.message || t("verify.invalidCode"));

@@ -69,6 +69,20 @@ export type DistanceCheck = {
 /** Union of all check types */
 export type FormCheck = AngleCheck | AlignmentCheck | PositionCheck | DistanceCheck;
 
+/** Configuration for rep-counted exercises */
+export type RepConfig = {
+  /** Three keypoint names [p1, vertex, p3] — angle measured at vertex */
+  keypoints: [string, string, string];
+  /** "Start" zone of the rep (e.g., standing position) */
+  startMin: number;
+  startMax: number;
+  /** "End" zone of the rep (e.g., bent position) */
+  endMin: number;
+  endMax: number;
+  /** Number of reps per set */
+  targetReps: number;
+};
+
 /** Complete rule set for an exercise */
 export type ExerciseRule = {
   /** Unique identifier (e.g., 'balance-1') */
@@ -81,4 +95,14 @@ export type ExerciseRule = {
   checks: FormCheck[];
   /** Minimum confidence to trust keypoints for this exercise */
   minConfidence?: number;
+  /** Rep-counting config (mutually exclusive with timerSeconds) */
+  repConfig?: RepConfig;
+  /** Duration per set in seconds for timed exercises */
+  timerSeconds?: number;
+  /** Number of sets (default 3) */
+  totalSets?: number;
+  /** Whether this exercise is performed one side at a time (left then right) */
+  unilateral?: boolean;
+  /** Camera positioning guidance shown before exercise starts */
+  cameraPrompt?: string;
 };

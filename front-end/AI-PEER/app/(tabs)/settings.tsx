@@ -20,13 +20,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { scaleFontSizes } from "../../src/theme";
 import type { Prefs } from "../../src/prefs-context";
 import { usePrefs } from "../../src/prefs-context";
+import { useAuth } from "../../src/auth";
 import {
   requestReminderPermissions,
   scheduleReminderNotification,
   cancelReminderNotification,
 } from "../../src/reminder-notifications";
 
-type SettingsTab = "accessibility" | "devices" | "notifications";
+type SettingsTab = "accessibility" | "notifications";
 type Reminder = {
   id: string;
   title: string;
@@ -45,38 +46,11 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
   const { prefs, updatePrefs, scaled, colors } = usePrefs();
+  const { logout } = useAuth();
   const REMINDERS_KEY = "user_reminders_v1";
   const [reminders, setReminders] = useState<Reminder[]>([]);
 
   const [remindersLoaded, setRemindersLoaded] = useState(false);
-
-  // Mock connected devices
-  const devices = [
-    {
-      id: "1",
-      name: "Smartwatch",
-      type: "watch",
-      connected: true,
-      battery: 85,
-      lastSync: "2 minutes ago",
-    },
-    {
-      id: "2",
-      name: "Heart Rate Monitor",
-      type: "sensor",
-      connected: true,
-      battery: 60,
-      lastSync: "5 minutes ago",
-    },
-    {
-      id: "3",
-      name: "Fitness Band",
-      type: "band",
-      connected: false,
-      battery: null,
-      lastSync: "2 days ago",
-    },
-  ];
 
   async function addReminder(title: string, hour: number, minute: number) {
     const permissionGranted = await requestReminderPermissions();
@@ -207,8 +181,7 @@ export default function SettingsScreen() {
   }
 
   function handleLogout() {
-    // Change this if your login route is not app/index.tsx
-    const LOGIN_ROUTE = "/";
+    const LOGIN_ROUTE = "../login";
 
     Alert.alert(t("settings.logout"), t("settings.logoutConfirmation"), [
       { text: t("settings.cancel"), style: "cancel" },
@@ -217,6 +190,7 @@ export default function SettingsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
+            await logout();
             const mod = await import("@react-native-async-storage/async-storage");
             await mod.default.removeItem("token");
             await mod.default.removeItem("user");
@@ -259,13 +233,6 @@ export default function SettingsScreen() {
             scaled={scaled}
           />
           <SegmentButton
-            label={t("settings.devices")}
-            icon="bluetooth-outline"
-            active={tab === "devices"}
-            onPress={() => setTab("devices")}
-            scaled={scaled}
-          />
-          <SegmentButton
             label={t("settings.alerts")}
             icon="alarm-outline"
             active={tab === "notifications"}
@@ -278,7 +245,6 @@ export default function SettingsScreen() {
         {tab === "accessibility" && (
           <AccessibilityTab prefs={prefs} updatePrefs={updatePrefs} playAlert={playAlertPreview} scaled={scaled} />
         )}
-        {tab === "devices" && <DevicesTab devices={devices} scaled={scaled}/>}
         {tab === "notifications" && (
           <NotificationsTab
             reminders={reminders}
@@ -309,14 +275,14 @@ function AccessibilityTab({
   playAlert: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
 }) {
-  const fontSizesLabels = ["Small (90%)", "Normal (100%)", "Large (120%)"];
-  const contrastOptions = ["Light", "Dark", "High Contrast"];
-  const languages = ["English", "Español", "Kreyòl Ayisyen"];
   const { t } = useTranslation();
+  const fontSizesLabels = t("settings.fontSizes", { returnObjects: true }) as string[];
+  const contrastOptions = t("settings.contrastModes", { returnObjects: true }) as string[];
+  const languages = ["English", "Español", "Kreyòl Ayisyen"];
 
   return (
     <>
-      {/* Font Scale */}
+      {/* Font Scale - 90% 100% 110%*/}
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="text-outline" size={16} color={warmRed} />
@@ -342,7 +308,7 @@ function AccessibilityTab({
                   { fontSize: scaled.base*0.75 },
                 ]}
               >
-                {size.split(" ")[0]}
+                {size}
               </Text>
             </TouchableOpacity>
           ))}
@@ -453,79 +419,6 @@ function AccessibilityTab({
   );
 }
 
-/* ===================== DEVICES TAB ===================== */
-
-function DevicesTab({ devices, scaled }: { devices: any[]; scaled: ReturnType<typeof scaleFontSizes>; }) {
-  const { t } = useTranslation();
-
-  return (
-    <>
-      <View style={styles.card}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Ionicons name="bluetooth-outline" size={16} color={warmRed} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.connectedDevices")}</Text>
-        </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-          {t("settings.devicesDescription")}
-        </Text>
-
-        {devices.map((device) => (
-          <View key={device.id} style={styles.deviceRow}>
-            <View style={styles.deviceIconWrapper}>
-              <Ionicons
-                name={
-                  device.type === "watch"
-                    ? "watch-outline"
-                    : device.type === "sensor"
-                      ? "pulse-outline"
-                      : "body-outline"
-                }
-                size={18}
-                color={device.connected ? "#3BAA56" : "#999"}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.deviceName, { fontSize: scaled.small }]}>{device.name}</Text>
-              <Text style={[styles.deviceStatus, { fontSize: scaled.h2/2 }]}> 
-                {device.connected ? (
-                  <>
-                    <Ionicons name="checkmark-circle" size={12} color="#3BAA56" />
-                    {" Connected • "}
-                    {device.battery}%
-                  </>
-                ) : (
-                  <>
-                    <Ionicons
-                      name="close-circle"
-                      size={12}
-                      color="#999"
-                    />
-                    {" Disconnected"}
-                  </>
-                )}
-              </Text>
-              <Text style={[styles.deviceSync, { fontSize: scaled.h2/2 }]}>{t("settings.lastSynced")} {device.lastSync}</Text>
-            </View>
-            <TouchableOpacity style={styles.deviceButton}>
-              <Ionicons name="chevron-forward" size={18} color="#999" />
-            </TouchableOpacity>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add-circle-outline" size={16} color="#fff" />
-          <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>{t("settings.addNewDevice")}</Text>
-        </TouchableOpacity>
-      </View>
-    </>
-  );
-}
-
 /* ===================== NOTIFICATIONS TAB ===================== */
 
 function NotificationsTab({
@@ -585,7 +478,7 @@ function NotificationsTab({
               <Ionicons name="time-outline" size={16} color={warmRed} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.notificationLabel, { fontSize: scaled.small }]}>{rem.title}</Text>
-                <Text style={[styles.notificationDescription, { fontSize: scaled.h2 / 2 }]}>
+                <Text style={[styles.notificationDescription, { fontSize: scaled.h2/2}]}>
                   {String(rem.hour).padStart(2, "0")}:{String(rem.minute).padStart(2, "0")}
                 </Text>
               </View>
@@ -762,26 +655,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { fontWeight: "700", fontSize: 12 },
 
-  deviceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  deviceIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: beigeTile,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deviceName: { fontWeight: "700", color: "#3F2F25", fontSize: 13 },
-  deviceStatus: { fontSize: 11, color: "#5B4636", marginTop: 2 },
-  deviceSync: { fontSize: 10, color: "#999", marginTop: 1 },
-  deviceButton: { padding: 8 },
 
   notificationRow: {
     flexDirection: "row",
@@ -830,3 +703,4 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
 });
+

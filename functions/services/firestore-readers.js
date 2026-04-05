@@ -1,10 +1,11 @@
 const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore("ai-peer");
 
 async function getUsersForSync() {
   const snapshot = await db.collection("users").get();
@@ -19,15 +20,15 @@ async function getUsersForSync() {
 
       // Required fields
       const userID = doc.id;
-      const phonenum = data.phone_number;
-      const balanceTrackScore = data.balance_track_score;
-      const fallFearScore = data.fall_fear_score;
+      const phonenum = data.phoneNumber;
+      const btrack_score = data.btrack_score;
+      const fear_falling_score = data.fear_falling_score;
 
       // Validate minimal requirements
       if (
         typeof phonenum !== "string" ||
-        !Number.isInteger(balanceTrackScore) ||
-        !Number.isInteger(fallFearScore)
+        !Number.isInteger(btrack_score) ||
+        !Number.isInteger(fear_falling_score)
       ) {
         return null; // skip invalid records safely
       }
@@ -35,8 +36,10 @@ async function getUsersForSync() {
       return {
         userID,
         phonenum,
-        balanceTrackScore,
-        fallFearScore,
+        btrack_score,
+        fear_falling_score,
+        compliance_days_active: Number.isInteger(data.compliance_days_active) ? data.compliance_days_active : null,
+        compliance_rate: Number.isInteger(data.compliance_rate) ? data.compliance_rate : null,
         updatedAt: data.updatedAt || null
       };
     })

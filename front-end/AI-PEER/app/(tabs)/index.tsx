@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -7,42 +7,82 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { scaleFontSizes } from "../../src/theme";
 import { usePrefs } from "../../src/prefs-context";
+import { useAuth } from "../../src/auth";
+import { api } from "../../src/api";
 import FRAMatrixCard from "../../components/FRAMatrixCard";
-import LineGraph from "../../components/graphs/LineGraph";
+import { getQuestionnaireResult } from "../../src/fra-storage";
 
 export default function Home() {
   const router = useRouter();
-  const { t } = useTranslation();
-
-  // status label derived from your FRA result
-  // (keep your real logic here if you already have it elsewhere)
-
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
+  const { user, token: authToken } = useAuth();
+  const [fesI, setFesI] = useState<number | null>(null);
+  const [btrackScore, setBtrackScore] = useState<number | null>(null);
 
-  const week = [
-    { label: "Mon", activities: 2 },
-    { label: "Tue", activities: 1 },
-    { label: "Wed", activities: 3 },
-    { label: "Thu", activities: 1 },
-    { label: "Fri", activities: 2 },
-    { label: "Sat", activities: 1 },
-    { label: "Today", activities: 1 },
-  ];
+  const userId = user?.uid;
 
-  const lineData = useMemo(
-    () => week.map((d) => ({ label: d.label, value: d.activities })),
-    [week]
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      (async () => {
+        try {
+          const latest = await getQuestionnaireResult();
+          if (isMounted) setFesI(latest?.fesI ?? null);
+        } catch {
+          if (isMounted) setFesI(null);
+        }
+
+        // Load btrack score from backend
+        if (userId && authToken) {
+          try {
+            const res = await api.getUser(userId, authToken);
+            if (isMounted && typeof res.user?.btrack_score === "number") {
+              setBtrackScore(res.user.btrack_score);
+            }
+          } catch (e) {
+            console.log("[Home] Failed to load user:", e);
+          }
+        }
+      })();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [userId, authToken])
   );
+
+  const handleBtrackUpdate = async (newScore: number) => {
+    console.log('[Home] BTrack update called with:', newScore);
+    setBtrackScore(newScore);
+    if (userId && authToken) {
+      try {
+        await api.updateUser(userId, { btrack_score: newScore }, authToken);
+      } catch (e) {
+        console.log("[Home] Failed to save btrack:", e);
+      }
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { paddingBottom: tabBarHeight + insets.bottom + 32 },
+        ]}
+        scrollIndicatorInsets={{ bottom: tabBarHeight + insets.bottom + 32 }}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -76,23 +116,21 @@ export default function Home() {
         </View>
 
         {/* FRA Matrix card */}
-        <View>
-          {/* ✅ Replace old title with "FRA Matrix" */}
-          <FRAMatrixCard />
-        </View>
+        <FRAMatrixCard
+          inputs={{
+            ...(typeof btrackScore === "number" && { btrackScore }),
+            ...(typeof fesI === "number" && { fesI }),
+          }}
+          onBtrackUpdate={handleBtrackUpdate}
+        />
 
         {/* Action Row 1 */}
         <View style={styles.rowTwo}>
-          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {} } scaled={scaled} />
+          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {router.push("/(tabs)/balance-test")}} scaled={scaled} />
           <PillButton icon="clipboard-outline" label={t("home.questionnaire")} onPress={() => {router.push("/questionnaire")}} scaled={scaled} />
         </View>
 
-        {/* Action Row 2: Exercise Mode (full width) */}
-        <View style={styles.rowOne}>
-          <PillButton icon="heart-outline" label={t("home.exerciseMode")} onPress={() => {}} full scaled={scaled} />
-        </View>
-
-        {/* Let’s Chat */}
+        {/* Let's Chat */}
         <View style={styles.rowOne}>
           <PillButton
             icon="chatbubble-ellipses-outline"
@@ -102,8 +140,6 @@ export default function Home() {
             scaled={scaled}
           />
         </View>
-
-        <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -140,7 +176,7 @@ const warmRed = "#D84535";
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
-  container: { paddingHorizontal: 16, paddingBottom: 12, gap: 14 },
+  container: { paddingHorizontal: 16, gap: 14 },
 
   header: { paddingTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },

@@ -9,6 +9,9 @@ export const backwardsWalkRules: ExerciseRule = {
   id: 'balance-4',
   name: 'Backwards Walk',
   category: 'balance',
+  timerSeconds: 30,
+  totalSets: 3,
+  cameraPrompt: 'Place your phone so the camera can see your full body. Walk away from and back toward the camera.',
   checks: [
     {
       type: 'alignment',

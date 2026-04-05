@@ -1,29 +1,89 @@
-const {onSchedule} = require("firebase-functions/v2/scheduler");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
+const { importToREDCap, exportFromREDCap } = require("./services/REDCap_Service");
+const { getUsersForSync } = require("./services/firestore-readers");
+const { REDCAP_TO_FIRESTORE } = require("./config/fieldMappings");
 
-admin.initializeApp();
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
 
-const{getUsersforSync} = require("./services/firestore-readers");
-const{importtoREDCap} = require("./services/REDCap_Service");
+const db = getFirestore("ai-peer");
 
 exports.redcapSync = onSchedule(
     {
-        schedule: "0 2 * * *",
-        timeZone: "America/New_York"
+        schedule: "0 2 * * *",       // 2am daily
+        timeZone: "America/New_York",
+        timeoutSeconds: 300,         // 5 min timeout for ~50 users
+        retryCount: 3,                // retry up to 3 times on failure
+        serviceAccount: "munish@research-ai-peer-dev.iam.gserviceaccount.com"
     },
-    async ()=>{
-        try{
-            const users = await getUsersforSync();
-            if (users.length===0)
-            {
-                console.log("REDCap Sync: No users to sync");
+    async (event) => {
+        console.log("[SYNC] Starting REDCap sync...");
+        try {
+            // -------------------------------------------------------
+            // STEP 1: Pull scores from REDCap into Firestore
+            // -------------------------------------------------------
+            console.log("[SYNC] Fetching records from REDCap...");
+            const redcapRecords = await exportFromREDCap();
+
+            // Write btrack_score and fear_falling_score back to Firestore
+            // for any user whose scores originated in REDCap
+            const batch = db.batch();
+            let redcapUpdateCount = 0;
+
+            for (const record of redcapRecords) {
+                // Match REDCap record to Firestore user by phone number
+                const snapshot = await db.collection("users")
+                    .where("phoneNumber", "==", record.phonenum)
+                    .limit(1)
+                    .get();
+
+                if (snapshot.empty) continue;
+
+                const userRef = snapshot.docs[0].ref;
+                const userData = snapshot.docs[0].data();
+
+                // Only update if Firestore still has null (don't overwrite
+                // a score the user submitted in-app with a stale REDCap value)
+                if (userData.btrack_score === null || userData.fear_falling_score === null) {
+                    batch.update(userRef, {
+                        [REDCAP_TO_FIRESTORE.b_track_score]: record.btrack_score ?? userData.btrack_score,
+                        [REDCAP_TO_FIRESTORE.ff_score]: record.fear_falling_score ?? userData.fear_falling_score,
+                        updatedAt: new Date().toISOString()
+                    });
+                    redcapUpdateCount++;
+                }
+            }
+
+            await batch.commit();
+            console.log(`[SYNC] Updated ${redcapUpdateCount} Firestore users from REDCap.`);
+
+            // -------------------------------------------------------
+            // STEP 2: Push Firestore scores to REDCap
+            // -------------------------------------------------------
+            console.log("[SYNC] Fetching users from Firestore...");
+            const users = await getUsersForSync();
+
+            // Filter out users whose scores are still null
+            const readyToSync = users.filter(u =>
+                u.btrack_score !== null &&
+                u.fear_falling_score !== null
+            );
+
+            if (readyToSync.length === 0) {
+                console.log("[SYNC] No users ready to sync to REDCap.");
                 return;
             }
 
-            const importedCount = await importtoREDCap(users);
-            console.log(`REDCap sync completed: ${importedCount} records`)
+            const importedCount = await importToREDCap(readyToSync);
+            console.log(`[SYNC] Pushed ${importedCount} records to REDCap.`);
+
         } catch (error) {
-            console.error("REDCap sync error:", error);
+            // Log error without exposing any PHI
+            console.error("[SYNC] Sync failed:", error.message);
+            throw error; // rethrow so Cloud Functions marks the run as failed
         }
     }
 );

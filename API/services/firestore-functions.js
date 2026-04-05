@@ -31,7 +31,7 @@ module.exports = {
   async updateUser(id,data){
 
     try {
-      const res = await db.collection('users').doc(id).set(data);
+      const res = await db.collection('users').doc(id).update(data);
 
       return res;
     }

@@ -18,13 +18,6 @@ import { useTranslation } from "react-i18next";
 
 type CatKey = "warmup" | "strength" | "balance";
 
-function prettyCat(cat?: string) {
-  if (cat === "warmup") return "Warm-Up";
-  if (cat === "strength") return "Strength";
-  if (cat === "balance") return "Balance";
-  return "Exercise";
-}
-
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -40,9 +33,15 @@ export default function VideoConfirmPage() {
     video?: string;
     label?: string;
   }>();
+  const prettyCat = (cat?: string) => {
+    if (cat === "warmup") return t("exercise.warmupTitle");
+    if (cat === "strength") return t("exercise.strengthTitle");
+    if (cat === "balance") return t("exercise.balanceTitle");
+    return t("exercise.exercise");
+  }
 
   const catTitle = useMemo(() => prettyCat(params.cat), [params.cat]);
-  const exerciseLabel = params.label ?? "Exercise";
+  const exerciseLabel = params.label ?? t("exercise.exercise");
 
   const [videoData, setVideoData] = useState<VideoResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +109,7 @@ export default function VideoConfirmPage() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.replace("/(tabs)/exercise")}
             style={styles.backBtn}
             activeOpacity={0.85}
           >
@@ -172,7 +171,7 @@ export default function VideoConfirmPage() {
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.9}
-            onPress={() => router.back()}
+            onPress={() => router.replace("/(tabs)/exercise")}
           >
             <Ionicons name="refresh-outline" size={16} color="#5B4636" />
             <Text style={styles.secondaryText}>{t("video-confirm.chooseDifferent")}</Text>
