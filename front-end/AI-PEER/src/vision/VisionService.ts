@@ -1,7 +1,7 @@
 //
 // VisionService.ts — pose parsing utilities
 //
-// parsePoseFromOutput extracts the best-confidence pose from raw yolo26l
+// parsePoseFromOutput extracts the best-confidence pose from raw yolo26s
 // model output (8400 detections x 56 values in column-major layout).
 //
 // marked as a worklet so it can run directly inside VisionCamera's frame
