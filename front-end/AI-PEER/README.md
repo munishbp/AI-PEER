@@ -12,8 +12,11 @@ React Native mobile app for fall risk assessment and exercise interventions. Bui
 
 ```bash
 npm install
-cp .env.example .env    # Fill in Firebase and API credentials
+cd ios && pod install && cd ..   # iOS native dependencies
+cp .env.example .env             # Fill in Firebase and API credentials
 ```
+
+> **Note:** `react-native-worklets-core` is a required direct dependency. It enables VisionCamera frame processors, which are what the custom MediaPipe Swift plugin (`PoseLandmarkerPlugin.swift`) builds on top of. It's distinct from the newer `react-native-worklets` package — both are needed but only `worklets-core` exposes VisionCamera's `FrameProcessorPlugin.h` headers to native code. If you ever see a "VisionCamera/FrameProcessorPlugin.h file not found" build error, the cause is `react-native-worklets-core` being missing from `node_modules`.
 
 ## Running the App
 

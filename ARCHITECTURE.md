@@ -85,6 +85,8 @@ The core design principle is that all ML inference stays on-device. The LLM (Qwe
 8. Form score is calculated from violation count. Score of 60+ = "good form".
 9. All processing runs on-device. No frame data leaves the device.
 
+> **Build dependency note:** The custom Swift plugin only compiles because `react-native-worklets-core` is declared as a direct npm dependency in `front-end/AI-PEER/package.json`. VisionCamera's frame processor support is gated on this package — without it, VisionCamera does not expose `FrameProcessorPlugin.h` and `PoseLandmarkerPlugin.swift` fails to compile.
+
 ## Data Flow: REDCap Sync
 
 1. Firebase Cloud Function `redcapSync` runs daily at 2:00 AM Eastern via Cloud Scheduler.
