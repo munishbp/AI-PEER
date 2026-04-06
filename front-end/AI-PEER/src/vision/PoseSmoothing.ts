@@ -12,8 +12,8 @@
 import { Pose, Keypoint } from './types';
 
 // smoothing factor: 0 = full smooth (ignores new data), 1 = no smooth (raw data)
-// 0.4 at ~15fps means a step change reaches 90% in ~5 frames (~330ms)
-const EMA_ALPHA = 0.4;
+// 0.6 = more responsive than before, still kills worst jitter
+const EMA_ALPHA = 0.6;
 
 // carry forward a lost keypoint for up to 3 frames before giving up
 const MAX_CARRY_FRAMES = 3;
@@ -22,7 +22,7 @@ const MAX_CARRY_FRAMES = 3;
 const MIN_CARRY_CONFIDENCE = 0.15;
 
 // keypoints at or above this confidence are considered "good" for smoothing
-const GOOD_CONFIDENCE = 0.3;
+const GOOD_CONFIDENCE = 0.4;
 
 export class PoseSmoothing {
   private prevKeypoints: Map<string, Keypoint> = new Map();

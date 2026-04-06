@@ -10,9 +10,9 @@ export const hipAbductorRules: ExerciseRule = {
   name: 'Hip Abductor',
   category: 'strength',
   repConfig: {
-    keypoints: ['left_shoulder', 'left_hip', 'left_ankle'],
-    startMin: 156, startMax: 180,
-    endMin: 110, endMax: 155,
+    keypoints: ['left_shoulder', 'left_hip', 'left_knee'],
+    startMin: 160, startMax: 180,
+    endMin: 120, endMax: 155,
     targetReps: 10,
   },
   totalSets: 3,

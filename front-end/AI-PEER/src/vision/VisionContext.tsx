@@ -20,13 +20,17 @@ import { analyzePose } from './FormAnalyzer';
 import { RepCounter } from './RepCounter';
 import { PoseSmoothing } from './PoseSmoothing';
 import { getExerciseRules } from './exercises';
+import { swapExerciseSide } from './exercises/utils';
+import { ExerciseRule } from './exercises/types';
 
 type VisionContextValue = {
   state: VisionState;
   repCount: number | null;
   targetReps: number | null;
+  debugAngle: number | null;
+  debugPhase: string | null;
   setModelReady: (ready: boolean) => void;
-  startTracking: (exerciseId: string) => void;
+  startTracking: (exerciseId: string, side?: 'left' | 'right') => void;
   stopTracking: () => void;
   // accepts an already-parsed pose from the frame processor worklet
   handlePoseResult: (pose: Pose | null) => void;
@@ -51,6 +55,8 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<VisionState>(initialState);
   const [repCount, setRepCount] = useState<number | null>(null);
   const [targetReps, setTargetReps] = useState<number | null>(null);
+  const [debugAngle, setDebugAngle] = useState<number | null>(null);
+  const [debugPhase, setDebugPhase] = useState<string | null>(null);
 
   // refs for stable callback identity
   const isTrackingRef = useRef(false);
@@ -59,21 +65,25 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const pendingPoseRef = useRef<Pose | null>(null);
   const pendingFeedbackRef = useRef<FormFeedback | null>(null);
   const repCounterRef = useRef<RepCounter | null>(null);
+  const activeRulesRef = useRef<ExerciseRule | null>(null);
   const poseSmoothingRef = useRef<PoseSmoothing>(new PoseSmoothing());
 
   const setModelReady = useCallback((ready: boolean) => {
     setState((s) => ({ ...s, isModelLoaded: ready }));
   }, []);
 
-  const startTracking = useCallback((exerciseId: string) => {
+  const startTracking = useCallback((exerciseId: string, side?: 'left' | 'right') => {
     exerciseIdRef.current = exerciseId;
     isTrackingRef.current = true;
-
-    // reset smoother for new exercise session
     poseSmoothingRef.current.reset();
 
     // set up rep counter if exercise has repConfig
-    const rules = getExerciseRules(exerciseId);
+    let rules = getExerciseRules(exerciseId);
+    if (rules && side === 'right' && rules.unilateral) {
+      rules = swapExerciseSide(rules);
+    }
+    activeRulesRef.current = rules ?? null;
+
     if (rules?.repConfig) {
       repCounterRef.current = new RepCounter(rules.repConfig);
       setRepCount(0);
@@ -114,18 +124,19 @@ export function VisionProvider({ children }: { children: ReactNode }) {
     (rawPose: Pose | null) => {
       if (!isTrackingRef.current) return;
 
-      // apply temporal smoothing to reduce jitter and carry forward dropped keypoints
       const pose = rawPose ? poseSmoothingRef.current.smooth(rawPose) : null;
 
       let feedback: FormFeedback | null = null;
       if (pose && exerciseIdRef.current) {
-        feedback = analyzePose(pose, exerciseIdRef.current);
+        feedback = analyzePose(pose, exerciseIdRef.current, activeRulesRef.current ?? undefined);
       }
 
       // update rep counter
       if (pose && repCounterRef.current) {
         const count = repCounterRef.current.update(pose);
         setRepCount(count);
+        setDebugAngle(repCounterRef.current.lastAngle);
+        setDebugPhase(repCounterRef.current.currentPhase);
       }
 
       pendingPoseRef.current = pose;
@@ -163,6 +174,8 @@ export function VisionProvider({ children }: { children: ReactNode }) {
         state,
         repCount,
         targetReps,
+        debugAngle,
+        debugPhase,
         setModelReady,
         startTracking,
         stopTracking,

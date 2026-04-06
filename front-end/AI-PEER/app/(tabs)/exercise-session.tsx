@@ -87,6 +87,8 @@ export default function ExerciseSessionPage() {
     currentFeedback,
     repCount,
     targetReps: visionTargetReps,
+    debugAngle,
+    debugPhase,
     error: visionError,
     setModelReady,
     startTracking,
@@ -203,7 +205,7 @@ export default function ExerciseSessionPage() {
     sessionStartedAtRef.current = Date.now();
     setShowSummary(false);
 
-    startTracking(exerciseId);
+    startTracking(exerciseId, currentSide?.toLowerCase() as 'left' | 'right' | undefined);
 
     // start countdown timer if exercise has a duration
     if (timerDuration) {
@@ -275,7 +277,7 @@ export default function ExerciseSessionPage() {
     repCountRef.current = 0;
     sessionStartedAtRef.current = Date.now();
 
-    startTracking(exerciseId);
+    startTracking(exerciseId, currentSide?.toLowerCase() as 'left' | 'right' | undefined);
 
     if (timerDuration) {
       setSecondsLeft(timerDuration);
@@ -288,10 +290,21 @@ export default function ExerciseSessionPage() {
     }
   }, [hasPermission, requestPermission, modelReady, startTracking, exerciseId, timerDuration]);
 
+  // rep counted flash
+  const [repFlash, setRepFlash] = useState(false);
+  const prevRepCountRef = useRef<number | null>(null);
+
   // sync VisionContext repCount into ref for persistence
   useEffect(() => {
     if (typeof repCount === "number") {
       repCountRef.current = Math.max(repCountRef.current, repCount);
+
+      // flash when a new rep is counted
+      if (prevRepCountRef.current !== null && repCount > prevRepCountRef.current) {
+        setRepFlash(true);
+        setTimeout(() => setRepFlash(false), 800);
+      }
+      prevRepCountRef.current = repCount;
     }
   }, [repCount]);
 
@@ -448,6 +461,20 @@ export default function ExerciseSessionPage() {
             </View>
           )}
 
+          {/* debug angle overlay */}
+          {isTracking && debugAngle !== null && (
+            <View style={styles.debugOverlay}>
+              <Text style={styles.debugText}>Angle: {debugAngle}°</Text>
+              <Text style={styles.debugText}>Phase: {debugPhase}</Text>
+              <Text style={styles.debugTextSmall}>
+                Start: {exerciseRule?.repConfig?.startMin}–{exerciseRule?.repConfig?.startMax}°
+              </Text>
+              <Text style={styles.debugTextSmall}>
+                End: {exerciseRule?.repConfig?.endMin}–{exerciseRule?.repConfig?.endMax}°
+              </Text>
+            </View>
+          )}
+
           {/* timer overlay */}
           {isTracking && secondsLeft !== null && (
             <View style={styles.timerOverlay}>
@@ -490,10 +517,13 @@ export default function ExerciseSessionPage() {
 
         {/* rep counter below camera */}
         {isTracking && visionTargetReps !== null && repCount !== null && (
-          <View style={styles.repCounterBar}>
+          <View style={[styles.repCounterBar, repFlash && styles.repCounterFlash]}>
             <Text style={[styles.repCounterText, repCount >= visionTargetReps && { color: warmRed }]}>
               {repCount} / {visionTargetReps} reps
             </Text>
+            {repFlash && (
+              <Text style={styles.repCountedLabel}>Rep counted!</Text>
+            )}
           </View>
         )}
 
@@ -693,6 +723,19 @@ const styles = StyleSheet.create({
   scoreText: { fontSize: 28, fontWeight: "900" },
   scoreLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
 
+  debugOverlay: {
+    position: "absolute",
+    top: 60,
+    left: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+  },
+  debugText: { fontSize: 32, fontWeight: "900", color: "#0F0" },
+  debugTextSmall: { fontSize: 22, fontWeight: "700", color: "#AAA", marginTop: 6 },
+
   timerOverlay: {
     position: "absolute",
     top: 12,
@@ -752,6 +795,12 @@ const styles = StyleSheet.create({
     }),
   },
   repCounterText: { fontSize: 50, fontWeight: "900", color: "#222" },
+  repCounterFlash: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#1E7A3A",
+    borderWidth: 2,
+  },
+  repCountedLabel: { fontSize: 14, fontWeight: "900", color: "#1E7A3A", marginTop: 2 },
 
   violationsOverlay: {
     position: "absolute",

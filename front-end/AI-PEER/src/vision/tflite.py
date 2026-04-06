@@ -1,16 +1,15 @@
 from ultralytics import YOLO
-import tensorflow as tf
 import shutil
+import os
 
-# Load the YOLO26 model
-model = YOLO("yolo26n.pt")
+# Load the YOLO26 large pose model (downloads automatically)
+model = YOLO("yolo26l-pose.pt")
 
-# Export the model to TFLite format
-exported_path=model.export(format="tflite")  # creates 'yolo26n_float32.tflite'
+# Export to TFLite with float16 quantization
+exported_path = model.export(format="tflite", half=True)
 
-destination = '/Users/munish/Desktop/AI-PEER/front-end/AI-PEER/src/vision/yolo26n_float32.tflite'
-
+# Copy to the models directory
+destination = os.path.join(os.path.dirname(__file__), 'models', 'yolo26l_float16.tflite')
 
 shutil.copy(exported_path, destination)
-print("File copied successfully")
-
+print(f"Model exported and copied to {destination}")

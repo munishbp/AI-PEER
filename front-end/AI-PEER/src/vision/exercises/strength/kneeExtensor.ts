@@ -11,8 +11,8 @@ export const kneeExtensorRules: ExerciseRule = {
   category: 'strength',
   repConfig: {
     keypoints: ['left_hip', 'left_knee', 'left_ankle'],
-    startMin: 50, startMax: 130,
-    endMin: 135, endMax: 180,
+    startMin: 50, startMax: 125,
+    endMin: 140, endMax: 180,
     targetReps: 10,
   },
   totalSets: 3,

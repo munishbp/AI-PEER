@@ -6,6 +6,7 @@
  */
 
 import { Keypoint } from '../types';
+import { ExerciseRule } from './types';
 
 /**
  * Calculate angle between three points in degrees.
@@ -141,6 +142,36 @@ export function midpoint(p1: Keypoint, p2: Keypoint): { x: number; y: number } {
 /**
  * Check if a keypoint has sufficient confidence to be used.
  */
-export function isConfident(keypoint: Keypoint, minConfidence: number = 0.3): boolean {
+export function isConfident(keypoint: Keypoint, minConfidence: number = 0.4): boolean {
   return keypoint.confidence >= minConfidence;
+}
+
+/**
+ * Swap left↔right in a keypoint name.
+ */
+function swapSide(name: string): string {
+  if (name.startsWith('left_')) return name.replace('left_', 'right_');
+  if (name.startsWith('right_')) return name.replace('right_', 'left_');
+  return name;
+}
+
+/**
+ * Return a copy of an ExerciseRule with all left/right keypoint references swapped.
+ * Used for unilateral exercises when switching to the opposite side.
+ */
+export function swapExerciseSide(rule: ExerciseRule): ExerciseRule {
+  return {
+    ...rule,
+    repConfig: rule.repConfig ? {
+      ...rule.repConfig,
+      keypoints: rule.repConfig.keypoints.map(swapSide) as [string, string, string],
+    } : undefined,
+    checks: rule.checks.map(check => {
+      if (check.type === 'angle') return { ...check, keypoints: check.keypoints.map(swapSide) as [string, string, string] };
+      if (check.type === 'alignment') return { ...check, keypoints: check.keypoints.map(swapSide) as [string, string] };
+      if (check.type === 'position') return { ...check, keypoint: swapSide(check.keypoint), reference: swapSide(check.reference) };
+      if (check.type === 'distance') return { ...check, keypoints: check.keypoints.map(swapSide) as [string, string], referenceKeypoints: check.referenceKeypoints.map(swapSide) as [string, string] };
+      return check;
+    }),
+  };
 }
