@@ -10,6 +10,8 @@ export type Keypoint = {
     x:number;
     y:number;
     confidence:number;
+    z?:number;          // depth from MediaPipe (relative to hip midpoint)
+    visibility?:number; // MediaPipe raw visibility score
 };
 
 

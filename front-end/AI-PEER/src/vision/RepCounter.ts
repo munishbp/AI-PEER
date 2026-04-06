@@ -1,19 +1,17 @@
 import { Pose } from './types';
 import { RepConfig } from './exercises/types';
-import { calculateAngle, isConfident } from './exercises/utils';
+import { calculateAngle, calculateAngle3D, isConfident } from './exercises/utils';
 
 type RepPhase = 'idle' | 'in_start' | 'in_end';
 
 const COOLDOWN_MS = 1200;
 
 // must stay in a zone for this many consecutive frames before transitioning
-const REQUIRED_FRAMES = 3;
+const REQUIRED_FRAMES = 2;
 
-// angle must travel at least this far between start and end to count as a real rep
-const MIN_MOVEMENT_DEGREES = 15;
-
-// moving average window size for angle smoothing
-const ANGLE_BUFFER_SIZE = 5;
+// measurement must travel at least this far between start and end to count
+const MIN_MOVEMENT_ANGLE = 15;    // degrees for angle mode
+const MIN_MOVEMENT_DISTANCE = 0.05; // ratio for distance mode
 
 export class RepCounter {
   private phase: RepPhase = 'idle';
@@ -21,17 +19,13 @@ export class RepCounter {
   private config: RepConfig;
   private lastRepTime = 0;
 
-  // frame persistence: how many consecutive frames the angle has been in the target zone
+  // frame persistence
   private framesInZone = 0;
   private lastInZone: 'start' | 'end' | 'none' = 'none';
 
-  // movement tracking: angle when we confirmed entry into the start phase
-  private startEntryAngle: number | null = null;
-  // track the peak angle reached during the end phase
-  private endPeakAngle: number | null = null;
-
-  // angle smoothing: rolling buffer of recent angle readings
-  private angleBuffer: number[] = [];
+  // movement tracking
+  private startEntryValue: number | null = null;
+  private endPeakValue: number | null = null;
 
   constructor(config: RepConfig) {
     this.config = config;
@@ -40,36 +34,63 @@ export class RepCounter {
   get count() { return this._count; }
   get targetReps() { return this.config.targetReps; }
 
-  // debug: last calculated angle and current phase (for on-screen display)
+  // debug
   private _lastAngle: number | null = null;
+  private _debugConfidences: string = '';
+  private _debugPositions: string = '';
   get lastAngle() { return this._lastAngle; }
   get currentPhase() { return this.phase; }
+  get debugConfidences() { return this._debugConfidences; }
+  get debugPositions() { return this._debugPositions; }
 
-  private smoothAngle(rawAngle: number): number {
-    this.angleBuffer.push(rawAngle);
-    if (this.angleBuffer.length > ANGLE_BUFFER_SIZE) {
-      this.angleBuffer.shift();
+  private computeValue(pose: Pose): number | null {
+    const { keypoints, mode } = this.config;
+    const [kp1Name, kp2Name, kp3Name] = keypoints;
+
+    const kp1 = pose.keypoints.find(k => k.name === kp1Name);
+    const kp2 = pose.keypoints.find(k => k.name === kp2Name);
+    const kp3 = pose.keypoints.find(k => k.name === kp3Name);
+
+    if (!kp1 || !kp2 || !kp3) return null;
+
+    this._debugConfidences = `${kp1Name}:${kp1.confidence.toFixed(2)} ${kp2Name}:${kp2.confidence.toFixed(2)} ${kp3Name}:${kp3.confidence.toFixed(2)}`;
+
+    if (!isConfident(kp1) || !isConfident(kp2) || !isConfident(kp3)) return null;
+
+    if (mode === 'distance') {
+      // kp1 = moving knee, kp2 = anchor knee, kp3 = reference (hip) for normalization
+      const dx = Math.abs(kp1.x - kp2.x);
+      const dy = Math.abs(kp1.y - kp2.y);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const torsoHeight = Math.abs(kp3.y - kp2.y);
+      const ratio = torsoHeight > 0.01 ? dist / torsoHeight : 0;
+      this._debugPositions = `dx:${dx.toFixed(3)} dy:${dy.toFixed(3)} dist:${dist.toFixed(3)} norm:${ratio.toFixed(3)}`;
+      return ratio;
     }
-    const sum = this.angleBuffer.reduce((a, b) => a + b, 0);
-    return sum / this.angleBuffer.length;
+
+    if (mode === 'angle3d') {
+      const angle3d = calculateAngle3D(kp1, kp2, kp3);
+      this._debugPositions = `3D ${kp3Name}: (${kp3.x.toFixed(3)}, ${kp3.y.toFixed(3)}, z:${(kp3.z ?? 0).toFixed(3)})`;
+      return angle3d;
+    }
+
+    // default: angle mode (2D)
+    const angle = calculateAngle(kp1, kp2, kp3);
+    this._debugPositions = `${kp3Name}: (${kp3.x.toFixed(3)}, ${kp3.y.toFixed(3)})`;
+    return angle;
   }
 
   update(pose: Pose): number {
-    const { keypoints, startMin, startMax, endMin, endMax } = this.config;
-    const [p1Name, vertexName, p3Name] = keypoints;
+    const { startMin, startMax, endMin, endMax, mode } = this.config;
+    const minMovement = mode === 'distance' ? MIN_MOVEMENT_DISTANCE : MIN_MOVEMENT_ANGLE;
 
-    const p1 = pose.keypoints.find(k => k.name === p1Name);
-    const vertex = pose.keypoints.find(k => k.name === vertexName);
-    const p3 = pose.keypoints.find(k => k.name === p3Name);
+    const value = this.computeValue(pose);
+    if (value === null) return this._count;
 
-    if (!p1 || !vertex || !p3) return this._count;
-    if (!isConfident(p1) || !isConfident(vertex) || !isConfident(p3)) return this._count;
+    this._lastAngle = Math.round(value * (mode === 'distance' ? 1000 : 10)) / (mode === 'distance' ? 1000 : 10);
 
-    const rawAngle = calculateAngle(p1, vertex, p3);
-    const angle = this.smoothAngle(rawAngle);
-    this._lastAngle = Math.round(angle * 10) / 10;
-    const inStart = angle >= startMin && angle <= startMax;
-    const inEnd = angle >= endMin && angle <= endMax;
+    const inStart = value >= startMin && value <= startMax;
+    const inEnd = value >= endMin && value <= endMax;
 
     // track consecutive frames in the same zone
     const currentZone: 'start' | 'end' | 'none' = inStart ? 'start' : inEnd ? 'end' : 'none';
@@ -87,44 +108,39 @@ export class RepCounter {
       case 'idle':
         if (confirmedInStart) {
           this.phase = 'in_start';
-          this.startEntryAngle = angle;
-          this.endPeakAngle = null;
+          this.startEntryValue = value;
+          this.endPeakValue = null;
         }
         break;
 
       case 'in_start':
         if (confirmedInEnd) {
           this.phase = 'in_end';
-          this.endPeakAngle = angle;
+          this.endPeakValue = value;
         }
         break;
 
       case 'in_end':
-        // track the furthest the angle gets into the end zone
-        if (inEnd && this.endPeakAngle !== null) {
-          // for exercises where end < start (e.g. knee bends), peak is the minimum
-          // for exercises where end > start (e.g. sit-to-stand), peak is the maximum
+        if (inEnd && this.endPeakValue !== null) {
           if (endMin < startMin) {
-            this.endPeakAngle = Math.min(this.endPeakAngle, angle);
+            this.endPeakValue = Math.min(this.endPeakValue, value);
           } else {
-            this.endPeakAngle = Math.max(this.endPeakAngle, angle);
+            this.endPeakValue = Math.max(this.endPeakValue, value);
           }
         }
 
         if (confirmedInStart && Date.now() - this.lastRepTime >= COOLDOWN_MS) {
-          // verify real movement occurred
-          const traveled = this.startEntryAngle !== null && this.endPeakAngle !== null
-            ? Math.abs(this.startEntryAngle - this.endPeakAngle)
+          const traveled = this.startEntryValue !== null && this.endPeakValue !== null
+            ? Math.abs(this.startEntryValue - this.endPeakValue)
             : 0;
 
-          if (traveled >= MIN_MOVEMENT_DEGREES) {
+          if (traveled >= minMovement) {
             this._count++;
             this.lastRepTime = Date.now();
           }
-          // reset for next rep regardless
           this.phase = 'in_start';
-          this.startEntryAngle = angle;
-          this.endPeakAngle = null;
+          this.startEntryValue = value;
+          this.endPeakValue = null;
         }
         break;
     }
@@ -138,8 +154,7 @@ export class RepCounter {
     this.lastRepTime = 0;
     this.framesInZone = 0;
     this.lastInZone = 'none';
-    this.startEntryAngle = null;
-    this.endPeakAngle = null;
-    this.angleBuffer = [];
+    this.startEntryValue = null;
+    this.endPeakValue = null;
   }
 }
