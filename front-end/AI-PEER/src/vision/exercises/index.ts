@@ -21,8 +21,11 @@ import { ankleMovementsRules } from './warmup/ankleMovements';
 
 // Strength exercises
 import { kneeExtensorRules } from './strength/kneeExtensor';
+import { kneeExtensorRightRules } from './strength/kneeExtensorRight';
 import { kneeFlexorRules } from './strength/kneeFlexor';
+import { kneeFlexorRightRules } from './strength/kneeFlexorRight';
 import { hipAbductorRules } from './strength/hipAbductor';
+import { hipAbductorRightRules } from './strength/hipAbductorRight';
 import { calfRaisesRules } from './strength/calfRaises';
 import { toeRaisesRules } from './strength/toeRaises';
 
@@ -33,6 +36,7 @@ import { sidewaysWalkRules } from './balance/sidewaysWalk';
 import { backwardsWalkRules } from './balance/backwardsWalk';
 import { walkAndTurnRules } from './balance/walkAndTurn';
 import { oneLegStandRules } from './balance/oneLegStand';
+import { oneLegStandRightRules } from './balance/oneLegStandRight';
 import { heelToeStandRules } from './balance/heelToeStand';
 import { heelToeWalkRules } from './balance/heelToeWalk';
 import { heelWalkingRules } from './balance/heelWalking';
@@ -56,10 +60,13 @@ export const exerciseRegistry: Record<string, ExerciseRule> = {
   'warmup-4': trunkMovementsRules,
   'warmup-5': ankleMovementsRules,
 
-  // Strength (5)
+  // Strength (5 + 3 right-side)
   'strength-1': kneeExtensorRules,
+  'strength-1-right': kneeExtensorRightRules,
   'strength-2': kneeFlexorRules,
+  'strength-2-right': kneeFlexorRightRules,
   'strength-3': hipAbductorRules,
+  'strength-3-right': hipAbductorRightRules,
   'strength-4': calfRaisesRules,
   'strength-5': toeRaisesRules,
 
@@ -70,6 +77,7 @@ export const exerciseRegistry: Record<string, ExerciseRule> = {
   'balance-4': backwardsWalkRules,
   'balance-5': walkAndTurnRules,
   'balance-6': oneLegStandRules,
+  'balance-6-right': oneLegStandRightRules,
   'balance-7': heelToeStandRules,
   'balance-8': heelToeWalkRules,
   'balance-9': heelWalkingRules,

@@ -42,7 +42,7 @@ Or open `android/` or `ios/` directly in Android Studio / Xcode.
 - SMS 2FA authentication via Google Identity Platform
 - On-device AI chat powered by Qwen3.5-0.8B (finetuned on mental health counseling data, ~505MB, no data leaves phone)
 - Conversation history with 24-hour auto-archive
-- Real-time pose estimation via YOLOv26n TFLite (~6MB model bundled in app)
+- Real-time pose estimation via MediaPipe Pose Landmarker (~9MB model, GPU-accelerated, custom native plugin)
 - 24 exercises with pose-based form analysis (3 assessment, 5 warmup, 5 strength, 11 balance)
 - Rep counting with form scoring (angle, alignment, position checks)
 - Exercise video library with signed URL delivery from GCS
@@ -98,7 +98,7 @@ src/
     types.ts                   # ChatMessage, Conversation, LLMState
 
   vision/
-    VisionService.ts           # YOLOv26n output parsing (worklet)
+    VisionService.ts           # MediaPipe landmark → COCO keypoint mapper
     VisionContext.tsx           # React Context for tracking state
     FormAnalyzer.ts            # Angle/alignment/position rule checking
     RepCounter.ts              # Rep state machine (1.2s cooldown)
@@ -113,8 +113,10 @@ src/
     components/
       GuideOverlay.tsx         # Camera positioning guide
       SkeletonOverlay.tsx      # Skeleton visualization
-    models/
-      yolo26s_float16.tflite   # Bundled pose model (~20MB)
+  ios/AIPEER/
+    PoseLandmarkerPlugin.swift   # Custom VisionCamera plugin (MediaPipe, iOS)
+    PoseLandmarkerPlugin.m       # ObjC registration for the Swift plugin
+    pose_landmarker_full.task    # MediaPipe model (~9MB)
 
 components/
   ModelDownloadModal.tsx       # LLM download dialog with progress bar
@@ -134,7 +136,7 @@ Configuration in `src/llm/config.ts`:
 
 ## Pose Estimation
 
-Real-time exercise form monitoring using YOLOv26n (TFLite float16, ~6MB). The model is bundled in the app binary and detects 17 COCO keypoints per person. Each of the 24 exercises has specific form rules (angle ranges, alignment tolerances, position requirements) defined in `src/vision/exercises/`. The RepCounter tracks reps using a state machine with 1.2-second cooldown to prevent double-counting. Form scores of 60+ indicate good form.
+Real-time exercise form monitoring using Google MediaPipe Pose Landmarker (~9MB model). A custom native VisionCamera frame processor plugin (`PoseLandmarkerPlugin.swift` on iOS) runs MediaPipe inference with GPU acceleration (Metal). The model detects 33 3D landmarks per person, which are mapped to 17 COCO-compatible keypoints. Each of the 24 exercises has specific form rules (angle ranges, alignment tolerances, position requirements) defined in `src/vision/exercises/`. The RepCounter tracks reps using a state machine with 1.2-second cooldown to prevent double-counting. Form scores of 60+ indicate good form. The iOS Podfile requires `MediaPipeTasksVision` pod with xcframework linker workarounds (see Podfile comments).
 
 ## Environment Variables
 

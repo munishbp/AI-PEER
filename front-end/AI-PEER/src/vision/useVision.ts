@@ -14,6 +14,8 @@ export function useVision() {
     targetReps,
     debugAngle,
     debugPhase,
+    debugConfidences,
+    debugPositions,
     setModelReady,
     startTracking,
     stopTracking,
@@ -41,6 +43,8 @@ export function useVision() {
     targetReps,
     debugAngle,
     debugPhase,
+    debugConfidences,
+    debugPositions,
 
     // actions
     setModelReady,

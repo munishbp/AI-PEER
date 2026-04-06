@@ -17,9 +17,7 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import { useTensorflowModel } from "react-native-fast-tflite";
 import { useVision } from "@/src/vision";
-import { MODEL_ASSET } from "@/src/vision/config";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
@@ -72,13 +70,11 @@ export default function ExerciseSessionPage() {
     [params.cat, exerciseRule?.category]
   );
 
-  // "default" delegate = CPU. CoreML delegate fails to load this model
-  // on-device, so we fall back to CPU for reliable inference.
-  const plugin = useTensorflowModel(MODEL_ASSET, "default");
-  const model = plugin.state === "loaded" ? plugin.model : undefined;
-  const modelReady = plugin.state === "loaded";
-  const isModelLoading = plugin.state === "loading";
-  const modelError = plugin.state === "error" ? plugin.error : null;
+  // MediaPipe model loads automatically via usePoseDetection hook in frameProcessor.
+  // We consider it ready immediately since the hook handles initialization internally.
+  const modelReady = true;
+  const isModelLoading = false;
+  const [modelError, setModelError] = useState<Error | null>(null);
 
   // vision hook
   const {
@@ -89,6 +85,8 @@ export default function ExerciseSessionPage() {
     targetReps: visionTargetReps,
     debugAngle,
     debugPhase,
+    debugConfidences,
+    debugPositions,
     error: visionError,
     setModelReady,
     startTracking,
@@ -102,14 +100,6 @@ export default function ExerciseSessionPage() {
     setSetComplete(false);
     setShowSummary(false);
   }, [exerciseId]);
-
-  // debug: log model plugin state changes
-  useEffect(() => {
-    console.log('[ExerciseSession] model plugin state:', plugin.state);
-    if (plugin.state === 'error') {
-      console.error('[ExerciseSession] model load error:', plugin.error);
-    }
-  }, [plugin.state]);
 
   // sync model ready state into vision context
   useEffect(() => {
@@ -130,6 +120,10 @@ export default function ExerciseSessionPage() {
   const currentSide = isUnilateral
     ? currentSet <= setsPerSide ? "Left" : "Right"
     : null;
+  // exercise ID with -right suffix for right-side sets
+  const trackingExerciseId = isUnilateral && currentSide === "Right"
+    ? `${exerciseId}-right`
+    : exerciseId;
   // next set's side (for display in between-set screen)
   const nextSide = isUnilateral
     ? (currentSet + 1) <= setsPerSide ? "Left" : "Right"
@@ -186,7 +180,7 @@ export default function ExerciseSessionPage() {
     },
     [handlePoseResult]
   );
-  const frameProcessor = useVisionFrameProcessor(model, handleFrameResult);
+  const frameProcessor = useVisionFrameProcessor(modelReady, handleFrameResult);
 
   const handleStartMonitoring = async () => {
     // request camera permission on first tap
@@ -205,7 +199,8 @@ export default function ExerciseSessionPage() {
     sessionStartedAtRef.current = Date.now();
     setShowSummary(false);
 
-    startTracking(exerciseId, currentSide?.toLowerCase() as 'left' | 'right' | undefined);
+    setStartedAtRef.current = Date.now();
+    startTracking(trackingExerciseId);
 
     // start countdown timer if exercise has a duration
     if (timerDuration) {
@@ -262,7 +257,8 @@ export default function ExerciseSessionPage() {
   }, [currentSet, totalSets, clearTimer, stopTracking, exerciseId, exerciseName, activityCategory]);
 
   const handleNextSet = useCallback(async () => {
-    setCurrentSet((s) => s + 1);
+    const nextSet = currentSet + 1;
+    setCurrentSet(nextSet);
     setSetComplete(false);
 
     if (!hasPermission) {
@@ -277,7 +273,12 @@ export default function ExerciseSessionPage() {
     repCountRef.current = 0;
     sessionStartedAtRef.current = Date.now();
 
-    startTracking(exerciseId, currentSide?.toLowerCase() as 'left' | 'right' | undefined);
+    // compute tracking exercise ID from the NEW set number
+    const nextTrackingId = isUnilateral && nextSet > setsPerSide
+      ? `${exerciseId}-right`
+      : exerciseId;
+    setStartedAtRef.current = Date.now();
+    startTracking(nextTrackingId);
 
     if (timerDuration) {
       setSecondsLeft(timerDuration);
@@ -288,7 +289,7 @@ export default function ExerciseSessionPage() {
         });
       }, 1000);
     }
-  }, [hasPermission, requestPermission, modelReady, startTracking, exerciseId, timerDuration]);
+  }, [currentSet, isUnilateral, setsPerSide, hasPermission, requestPermission, modelReady, startTracking, exerciseId, timerDuration]);
 
   // rep counted flash
   const [repFlash, setRepFlash] = useState(false);
@@ -316,9 +317,14 @@ export default function ExerciseSessionPage() {
   }, [secondsLeft, isTracking, handleSetComplete]);
 
   // auto-stop when target reps reached
+  // guard against stale repCount firing immediately after starting a new set
+  const setStartedAtRef = useRef<number>(0);
   useEffect(() => {
     if (visionTargetReps && repCount !== null && repCount >= visionTargetReps && isTracking) {
-      handleSetComplete();
+      // only auto-stop if we've been tracking for at least 2 seconds
+      if (Date.now() - setStartedAtRef.current > 2000) {
+        handleSetComplete();
+      }
     }
   }, [repCount, visionTargetReps, isTracking, handleSetComplete]);
 
@@ -462,18 +468,37 @@ export default function ExerciseSessionPage() {
           )}
 
           {/* debug angle overlay */}
-          {isTracking && debugAngle !== null && (
-            <View style={styles.debugOverlay}>
-              <Text style={styles.debugText}>Angle: {debugAngle}°</Text>
-              <Text style={styles.debugText}>Phase: {debugPhase}</Text>
-              <Text style={styles.debugTextSmall}>
-                Start: {exerciseRule?.repConfig?.startMin}–{exerciseRule?.repConfig?.startMax}°
-              </Text>
-              <Text style={styles.debugTextSmall}>
-                End: {exerciseRule?.repConfig?.endMin}–{exerciseRule?.repConfig?.endMax}°
-              </Text>
-            </View>
-          )}
+          {isTracking && debugAngle !== null && (() => {
+            const activeRule = getExerciseRules(trackingExerciseId);
+            return (
+              <View style={styles.debugOverlay}>
+                <Text style={styles.debugText}>Angle: {debugAngle}°</Text>
+                <Text style={styles.debugText}>Phase: {debugPhase}</Text>
+                <Text style={styles.debugTextSmall}>
+                  ID: {trackingExerciseId}
+                </Text>
+                <Text style={styles.debugTextSmall}>
+                  KP: {activeRule?.repConfig?.keypoints?.join(' → ')}
+                </Text>
+                <Text style={styles.debugTextSmall}>
+                  Start: {activeRule?.repConfig?.startMin}–{activeRule?.repConfig?.startMax}°
+                </Text>
+                <Text style={styles.debugTextSmall}>
+                  End: {activeRule?.repConfig?.endMin}–{activeRule?.repConfig?.endMax}°
+                </Text>
+                {debugConfidences && (
+                  <Text style={styles.debugTextSmall}>
+                    {debugConfidences}
+                  </Text>
+                )}
+                {debugPositions && (
+                  <Text style={styles.debugTextSmall}>
+                    {debugPositions}
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
 
           {/* timer overlay */}
           {isTracking && secondsLeft !== null && (

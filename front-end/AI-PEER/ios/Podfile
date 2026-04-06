@@ -7,7 +7,7 @@ podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties
 def ccache_enabled?(podfile_properties)
   # Environment variable takes precedence
   return ENV['USE_CCACHE'] == '1' if ENV['USE_CCACHE']
-  
+
   # Fall back to Podfile properties
   podfile_properties['apple.ccacheEnabled'] == 'true'
 end
@@ -22,6 +22,9 @@ prepare_react_native_project!
 
 target 'AIPEER' do
   use_expo_modules!
+
+  # MediaPipe Pose Landmarker — used by our custom VisionCamera plugin
+  pod 'MediaPipeTasksVision', '~> 0.10.14'
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
@@ -38,9 +41,6 @@ target 'AIPEER' do
 
   config = use_native_modules!(config_command)
 
-  use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
-  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
-
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
@@ -56,5 +56,32 @@ target 'AIPEER' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Fix MediaPipeTasksVision xcframework resolution for the main app target.
+    # The app imports MediaPipeTasksVision directly from Swift (our custom plugin),
+    # so the framework search paths must point at the xcframework slices.
+    xcf_vision = '${PODS_ROOT}/MediaPipeTasksVision/frameworks/MediaPipeTasksVision.xcframework'
+    xcf_common = '${PODS_ROOT}/MediaPipeTasksCommon/frameworks/MediaPipeTasksCommon.xcframework'
+
+
+    # Fix MediaPipe linker flags and search paths in the main app target's xcconfigs.
+    # CocoaPods generates -l"MediaPipeTasksCommon" but the binary is inside a .framework
+    # wrapper, so it needs -framework "MediaPipeTasksCommon" instead.
+    xcf_common_graphs = '${PODS_ROOT}/MediaPipeTasksCommon/frameworks/graph_libraries'
+    Dir.glob(File.join(installer.sandbox.root, 'Target Support Files', 'Pods-AIPEER', '*.xcconfig')).each do |xcconfig_path|
+      config = File.read(xcconfig_path)
+
+      # Replace -l (library) flags with -framework flags
+      config = config.gsub('-l"MediaPipeTasksCommon"', '-framework "MediaPipeTasksCommon"')
+      config = config.gsub('-l"MediaPipeTasksVision"', '-framework "MediaPipeTasksVision"')
+
+      # Add xcframework slice paths so Swift can find the modules for compilation
+      # AND the linker can find the frameworks
+      unless config.include?('MediaPipeTasksVision.xcframework/ios-arm64')
+        config += "\nFRAMEWORK_SEARCH_PATHS = $(inherited) \"#{xcf_vision}/ios-arm64\" \"#{xcf_common}/ios-arm64\""
+      end
+
+      File.write(xcconfig_path, config)
+    end
   end
 end

@@ -49,12 +49,8 @@ export type VisionState= {
 
 
 export type VisionConfig = {
-    modelURL:string;
-    modelFileName:string;
-    modelSizeBytes:number;
     minKeyPointConfidence:number;
     minPoseConfidence:number;
     targetFPS:number;
-    inputSize:number;
 };
 
