@@ -114,7 +114,7 @@ src/
       GuideOverlay.tsx         # Camera positioning guide
       SkeletonOverlay.tsx      # Skeleton visualization
     models/
-      yolo26n_float16.tflite   # Bundled pose model (~6MB)
+      yolo26l_float16.tflite   # Bundled pose model (~50MB)
 
 components/
   ModelDownloadModal.tsx       # LLM download dialog with progress bar

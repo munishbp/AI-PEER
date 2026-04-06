@@ -59,6 +59,7 @@ coverage/
 *.npy
 *.pb
 yolo26n_saved_model/
+yolo26l-pose_saved_model/
 tflite.py
 
 # ===== Claude =====

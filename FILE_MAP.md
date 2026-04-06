@@ -140,7 +140,7 @@ Complete source file listing for the AI-PEER repository. UCF Senior Design 2025-
 
 | File | Purpose |
 |------|---------|
-| yolo26n_float16.tflite | YOLOv26n pose estimation model (~6MB). Bundled in the app binary. |
+| yolo26l_float16.tflite | YOLOv26l pose estimation model (~50MB). Bundled in the app binary. |
 
 ### UI Components (components/)
 

@@ -10,8 +10,8 @@ import { VisionConfig } from './types';
 export const VISION_CONFIG: VisionConfig = {
   // Model settings
   modelURL: '',  // Not used - model is bundled locally
-  modelFileName: 'yolo26n_float16.tflite',
-  modelSizeBytes: 5.2 * 1024 * 1024,  // 5.2MB
+  modelFileName: 'yolo26l_float16.tflite',
+  modelSizeBytes: 50.1 * 1024 * 1024,  // 50.1MB
 
   // Detection thresholds
   minKeyPointConfidence: 0.4,  // Balanced: 0.5 was too strict, 0.3 too noisy
@@ -27,4 +27,4 @@ export const MODEL_FILENAME = VISION_CONFIG.modelFileName;
 export const MODEL_SIZE_BYTES = VISION_CONFIG.modelSizeBytes;
 
 // Reference to the bundled model asset
-export const MODEL_ASSET = require('./models/yolo26n_float16.tflite'); 
+export const MODEL_ASSET = require('./models/yolo26l_float16.tflite'); 
