@@ -30,13 +30,13 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 │   ├── src/
 │   │   ├── auth/                # Firebase auth context
 │   │   ├── llm/                 # On-device LLM module (llama.rn)
-│   │   └── vision/              # YOLOv26n pose estimation
-│   │       ├── VisionService.ts # TFLite inference singleton
+│   │   └── vision/              # MediaPipe Pose Landmarker
+│   │       ├── VisionService.ts # MediaPipe landmark → COCO keypoint mapper
 │   │       ├── VisionContext.tsx # React Context provider
 │   │       ├── FormAnalyzer.ts  # Joint angle calculation + rule matching
 │   │       ├── frameProcessor.ts # Camera frame processing
 │   │       ├── exercises/       # Per-exercise form rules
-│   │       └── models/          # TFLite model files
+│   │       └── components/      # Skeleton + guide overlays
 │   ├── components/              # Reusable UI components
 │   └── android/                 # Native Android project
 │
@@ -47,7 +47,7 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 │
 ├── Training/                    # ML model training
 │   ├── slm/                     # SLM empathy training pipeline
-│   └── yolo/                    # YOLOv26n pose model training
+│   └── yolo/                    # Legacy YOLO pose model training (replaced by MediaPipe)
 │
 ├── firebase.json                # Firebase project config
 └── .firebaserc                  # Firebase project aliases
@@ -101,7 +101,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 - Activity tracking and weekly summaries
 - Accessibility preferences (font scaling, high contrast)
 - Cloud Run deployment with SignBlob URL signing
-- YOLOv26n real-time pose estimation for exercise form monitoring
+- MediaPipe Pose Landmarker real-time pose estimation for exercise form monitoring
 - 24 exercises with real-time pose-based form analysis (3 assessment, 5 warmup, 5 strength, 11 balance)
 - Exercise recommendation system with compliance tracking
 - REDCap integration for clinical data sync (Firebase Cloud Function)
@@ -112,7 +112,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 |-----------|------------|
 | Mobile App | React Native, Expo bare workflow, TypeScript |
 | On-Device LLM | llama.rn, Qwen3.5-0.8B-aipeer-Q4_K_M (finetuned, ~505MB) |
-| Pose Estimation | YOLOv26n via TFLite (on-device) |
+| Pose Estimation | MediaPipe Pose Landmarker (on-device, GPU-accelerated) |
 | Backend | Node.js, Express, Cloud Run |
 | Cloud Functions | Firebase Functions (REDCap sync) |
 | Database | Firestore |
@@ -122,7 +122,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 ## Security & HIPAA Compliance
 
 - All LLM inference runs on-device (no patient data sent to external APIs)
-- Pose estimation runs on-device via TFLite (no video leaves the phone)
+- Pose estimation runs on-device via MediaPipe (no video leaves the phone)
 - Videos served via time-limited signed URLs (1-hour expiration)
 - SMS 2FA required for all logins
 - Conversations auto-delete after 24 hours

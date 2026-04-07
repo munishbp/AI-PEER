@@ -48,6 +48,33 @@ export function calculateAngle(p1: Keypoint, p2: Keypoint, p3: Keypoint): number
 }
 
 /**
+ * Calculate angle between three points in 3D space using x, y, z coordinates.
+ * Falls back to 2D calculation if z is not available.
+ */
+export function calculateAngle3D(p1: Keypoint, p2: Keypoint, p3: Keypoint): number {
+  const z1 = p1.z ?? 0;
+  const z2 = p2.z ?? 0;
+  const z3 = p3.z ?? 0;
+
+  const v1x = p1.x - p2.x;
+  const v1y = p1.y - p2.y;
+  const v1z = z1 - z2;
+
+  const v2x = p3.x - p2.x;
+  const v2y = p3.y - p2.y;
+  const v2z = z3 - z2;
+
+  const dot = v1x * v2x + v1y * v2y + v1z * v2z;
+  const mag1 = Math.sqrt(v1x * v1x + v1y * v1y + v1z * v1z);
+  const mag2 = Math.sqrt(v2x * v2x + v2y * v2y + v2z * v2z);
+
+  if (mag1 === 0 || mag2 === 0) return 0;
+
+  const cosAngle = Math.max(-1, Math.min(1, dot / (mag1 * mag2)));
+  return Math.acos(cosAngle) * (180 / Math.PI);
+}
+
+/**
  * Calculate the angle a line makes with vertical (y-axis).
  * 0 degrees = perfectly vertical, 90 degrees = horizontal
  *
@@ -141,6 +168,7 @@ export function midpoint(p1: Keypoint, p2: Keypoint): { x: number; y: number } {
 /**
  * Check if a keypoint has sufficient confidence to be used.
  */
-export function isConfident(keypoint: Keypoint, minConfidence: number = 0.3): boolean {
+export function isConfident(keypoint: Keypoint, minConfidence: number = 0.4): boolean {
   return keypoint.confidence >= minConfidence;
 }
+

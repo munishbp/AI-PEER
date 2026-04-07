@@ -71,12 +71,15 @@ export type FormCheck = AngleCheck | AlignmentCheck | PositionCheck | DistanceCh
 
 /** Configuration for rep-counted exercises */
 export type RepConfig = {
-  /** Three keypoint names [p1, vertex, p3] — angle measured at vertex */
+  /** Measurement mode: 'angle' (default), 'distance', or 'angle3d' (uses z-coordinate) */
+  mode?: 'angle' | 'distance' | 'angle3d';
+  /** For angle mode: [p1, vertex, p3] — angle measured at vertex */
+  /** For distance mode: [movingKp, anchorKp, referenceKp1] — tracks horizontal distance between movingKp and anchorKp, normalized by referenceKp1-to-anchorKp vertical height */
   keypoints: [string, string, string];
-  /** "Start" zone of the rep (e.g., standing position) */
+  /** "Start" zone of the rep (angle in degrees, or normalized distance ratio) */
   startMin: number;
   startMax: number;
-  /** "End" zone of the rep (e.g., bent position) */
+  /** "End" zone of the rep (angle in degrees, or normalized distance ratio) */
   endMin: number;
   endMax: number;
   /** Number of reps per set */

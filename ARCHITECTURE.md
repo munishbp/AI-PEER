@@ -4,7 +4,7 @@
 
 AI-PEER is a HIPAA-compliant mobile application for fall risk assessment and exercise intervention. The system has four components: a React Native mobile app (bare workflow with Expo libraries), an Express API on Cloud Run, Firebase services (Firestore, Auth, Cloud Functions), and Google Cloud Storage.
 
-The core design principle is that all ML inference stays on-device. The LLM (Qwen3.5-0.8B) and pose estimation model (YOLOv26n) both run locally on the phone. No patient conversation data or video frames leave the device.
+The core design principle is that all ML inference stays on-device. The LLM (Qwen3.5-0.8B) and pose estimation model (MediaPipe Pose Landmarker) both run locally on the phone. No patient conversation data or video frames leave the device.
 
 ## System Diagram
 
@@ -15,7 +15,7 @@ The core design principle is that all ML inference stays on-device. The LLM (Qwe
   |                           | HTTPS  |   aipeer-api (Express 5.1)     |
   |  Expo Router (screens)    |------->|   /auth   - SMS 2FA            |
   |  llama.rn (Qwen3.5-0.8B) |<-------|   /users  - CRUD               |
-  |  TFLite (YOLOv26n)        |        |   /video  - signed URLs        |
+  |  MediaPipe Pose Landmarker |        |   /video  - signed URLs        |
   |  AsyncStorage (local)     |        |   /model  - LLM download URL   |
   +---------------------------+        +---------------+----------------+
                                                        |
@@ -71,20 +71,21 @@ The core design principle is that all ML inference stays on-device. The LLM (Qwe
 
 ## Data Flow: Pose Estimation
 
-1. `VisionCamera` captures frames at up to 30 FPS.
-2. `vision-camera-resize-plugin` resizes each frame to 640x640 RGB float32.
-3. `react-native-fast-tflite` runs YOLOv26n inference on-device (~6MB model bundled in the app).
-4. `VisionService.parsePoseFromOutput()` extracts the highest-confidence pose from 8400 detections (56 values each: 5 box + 51 keypoint values for 17 COCO keypoints).
-5. Platform quirk: iOS swaps X/Y axes due to landscape camera orientation. The parser handles this.
-6. `PoseSmoothing` applies temporal filtering to reduce keypoint jitter (important for elderly users with slower movements).
-7. `FormAnalyzer` checks the current pose against exercise-specific rules:
+1. `VisionCamera` captures frames from the front-facing camera.
+2. A custom native frame processor plugin (`PoseLandmarkerPlugin.swift` on iOS) receives each frame as a CMSampleBuffer.
+3. Google MediaPipe Pose Landmarker runs on-device with GPU acceleration (Metal on iOS). The model file (`pose_landmarker_full.task`, ~9MB) is bundled in the app.
+4. MediaPipe returns 33 3D landmarks (x, y, z, visibility) per detected person.
+5. `VisionService.mapMediaPipeToPose()` maps the 33 MediaPipe landmarks to 17 COCO-compatible keypoints, applying coordinate rotation for the iOS front camera orientation.
+6. `FormAnalyzer` checks the current pose against exercise-specific rules:
    - Angle checks (e.g., knee bend must be 160-180 degrees)
    - Alignment checks (e.g., spine must be vertical within tolerance)
    - Position checks (e.g., nose must be above hip)
    - Distance checks (e.g., feet separation)
-8. `RepCounter` tracks repetition state machine: idle -> in_start -> in_end -> idle. Cooldown of 1.2 seconds between reps prevents double-counting.
-9. Form score is calculated from violation count. Score of 60+ = "good form".
-10. All processing runs inside the VisionCamera frame processor worklet. No frame data leaves the device.
+7. `RepCounter` tracks repetition state machine: idle -> in_start -> in_end -> idle. Cooldown of 1.2 seconds between reps prevents double-counting. Supports angle, distance, and 3D angle measurement modes.
+8. Form score is calculated from violation count. Score of 60+ = "good form".
+9. All processing runs on-device. No frame data leaves the device.
+
+> **Build dependency note:** The custom Swift plugin only compiles because `react-native-worklets-core` is declared as a direct npm dependency in `front-end/AI-PEER/package.json`. VisionCamera's frame processor support is gated on this package — without it, VisionCamera does not expose `FrameProcessorPlugin.h` and `PoseLandmarkerPlugin.swift` fails to compile.
 
 ## Data Flow: REDCap Sync
 
@@ -150,7 +151,7 @@ Database name: `ai-peer` (named database, not the default)
 
 ## Key Design Decisions
 
-1. **Bare React Native workflow** (not Expo managed) -- required because `llama.rn` and `react-native-fast-tflite` need native module linking that Expo Go cannot provide.
+1. **Bare React Native workflow** (not Expo managed) -- required because `llama.rn` and the custom MediaPipe native plugin need native module linking that Expo Go cannot provide.
 
 2. **CPU-only LLM inference** (`n_gpu_layers=0`) -- ensures the model runs on any device regardless of GPU capabilities. The 0.8B model is small enough for acceptable CPU performance.
 

@@ -84,13 +84,12 @@ Complete source file listing for the AI-PEER repository. UCF Senior Design 2025-
 
 | File | Purpose |
 |------|---------|
-| VisionService.ts | Parses YOLOv26n TFLite output into Pose keypoints. Runs as worklet. Handles iOS X/Y swap. |
+| VisionService.ts | Maps MediaPipe 33 landmarks to 17 COCO keypoints. Handles iOS coordinate rotation and left/right label correction. |
 | VisionContext.tsx | React Context for vision state, form analysis results, rep counting. |
 | FormAnalyzer.ts | Evaluates current pose against exercise rules (angle, alignment, position, distance checks). |
-| RepCounter.ts | State machine for counting reps (idle -> in_start -> in_end). 1.2s cooldown. |
-| PoseSmoothing.ts | Temporal smoothing filter to reduce keypoint jitter across frames. |
-| frameProcessor.ts | VisionCamera frame processor bridge. Resizes frame, runs TFLite, parses pose. |
-| config.ts | YOLO model config: 640x640 input, 0.3 confidence threshold, model file path. |
+| RepCounter.ts | State machine for counting reps (idle -> in_start -> in_end). 1.2s cooldown. Supports angle, distance, and 3D angle modes. |
+| frameProcessor.ts | VisionCamera frame processor bridge. Calls native MediaPipe plugin, passes landmarks to JS. |
+| config.ts | Vision module config: confidence thresholds, FPS settings. |
 | constants.ts | COCO keypoint names (17 points), skeleton connection pairs. |
 | types.ts | Keypoint, Pose, FormViolation, FormFeedback, ExerciseState type definitions. |
 | useVision.ts | React hook for components to access vision state and controls. |
@@ -140,7 +139,9 @@ Complete source file listing for the AI-PEER repository. UCF Senior Design 2025-
 
 | File | Purpose |
 |------|---------|
-| yolo26n_float16.tflite | YOLOv26n pose estimation model (~6MB). Bundled in the app binary. |
+| ios/AIPEER/PoseLandmarkerPlugin.swift | Custom VisionCamera frame processor plugin wrapping MediaPipe Pose Landmarker (iOS). GPU-accelerated via Metal. |
+| ios/AIPEER/PoseLandmarkerPlugin.m | ObjC registration file for the Swift plugin (VISION_EXPORT_SWIFT_FRAME_PROCESSOR macro). |
+| ios/AIPEER/pose_landmarker_full.task | MediaPipe Pose Landmarker model (~9MB). Bundled in the iOS app. |
 
 ### UI Components (components/)
 

@@ -10,10 +10,10 @@ import {AngleCheck, AlignmentCheck, PositionCheck, FormCheck} from "@/src/vision
 import {calculateAngle, angleFromVertical, angleFromHorizontal, isAbove, isBelow} from "@/src/vision/exercises/utils"
 
 
-export function analyzePose(pose:Pose, exerciseId:string):FormFeedback{
+export function analyzePose(pose:Pose, exerciseId:string, overrideRules?:import('./exercises/types').ExerciseRule):FormFeedback{
     const violations:FormViolation[]=[];
 
-    const rules=getExerciseRules(exerciseId);
+    const rules=overrideRules ?? getExerciseRules(exerciseId);
 
     if(rules){
         for(const check of rules.checks){
