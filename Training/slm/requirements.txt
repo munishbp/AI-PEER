@@ -1,6 +1,6 @@
-# Fine-tuning Qwen3.5-0.8B for AI-PEER
+# Fine-tuning Qwen3.5-2B-Instruct for AI-PEER
 # Install: pip install -r requirements.txt
-# Requires: CUDA-capable GPU with >= 8GB VRAM
+# Requires: CUDA-capable GPU with >= 12GB VRAM (RTX 3060 12GB or better)
 
 unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
 torch>=2.4.0
