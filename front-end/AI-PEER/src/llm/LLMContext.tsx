@@ -28,6 +28,7 @@ import {
   isModelDownloaded,
   downloadModel,
 } from './modelDownloader';
+import { useAuth } from '../auth';
 
 /** Context value type */
 type LLMContextValue = {
@@ -85,6 +86,7 @@ function filterExpiredConversations(conversations: Conversation[]): Conversation
 }
 
 export function LLMProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth();
   const [state, setState] = useState<LLMState>({
     isModelDownloaded: false,
     isModelLoaded: false,
@@ -177,10 +179,13 @@ export function LLMProvider({ children }: { children: ReactNode }) {
 
   /** Start downloading the model */
   const startDownload = useCallback(async () => {
+    if (!token) {
+      throw new Error('Not authenticated - cannot download model');
+    }
     setState((s) => ({ ...s, error: null, downloadProgress: 0 }));
 
     try {
-      await downloadModel((progress) => {
+      await downloadModel(token, (progress) => {
         setState((s) => ({ ...s, downloadProgress: progress }));
       });
       setState((s) => ({ ...s, isModelDownloaded: true, downloadProgress: 100 }));
@@ -193,7 +198,7 @@ export function LLMProvider({ children }: { children: ReactNode }) {
       }));
       throw error;
     }
-  }, []);
+  }, [token]);
 
   /** Initialize the model (load into memory) */
   const initializeModel = useCallback(async () => {

@@ -7,9 +7,9 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 ```
 ├── API/                         # Node.js backend (Cloud Run)
 │   ├── server.js                # Express entry point
-│   ├── routes/                  # Auth, user, & video endpoints
+│   ├── routes/                  # Auth, user, video, & model endpoints
 │   ├── services/                # GCS, Firebase, Auth services
-│   ├── controllers/             # Request handlers
+│   ├── controllers/             # Request handlers (user, video, model)
 │   ├── middleware/               # Firebase token verification
 │   └── config/                  # Firebase Admin init
 │
@@ -30,13 +30,13 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 │   ├── src/
 │   │   ├── auth/                # Firebase auth context
 │   │   ├── llm/                 # On-device LLM module (llama.rn)
-│   │   └── vision/              # YOLOv26n pose estimation
-│   │       ├── VisionService.ts # TFLite inference singleton
+│   │   └── vision/              # MediaPipe Pose Landmarker
+│   │       ├── VisionService.ts # MediaPipe landmark → COCO keypoint mapper
 │   │       ├── VisionContext.tsx # React Context provider
 │   │       ├── FormAnalyzer.ts  # Joint angle calculation + rule matching
 │   │       ├── frameProcessor.ts # Camera frame processing
 │   │       ├── exercises/       # Per-exercise form rules
-│   │       └── models/          # TFLite model files
+│   │       └── components/      # Skeleton + guide overlays
 │   ├── components/              # Reusable UI components
 │   └── android/                 # Native Android project
 │
@@ -47,7 +47,7 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 │
 ├── Training/                    # ML model training
 │   ├── slm/                     # SLM empathy training pipeline
-│   └── yolo/                    # YOLOv26n pose model training
+│   └── yolo/                    # Legacy YOLO pose model training (replaced by MediaPipe)
 │
 ├── firebase.json                # Firebase project config
 └── .firebaserc                  # Firebase project aliases
@@ -95,25 +95,24 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 **Implemented:**
 - Fall risk assessment with FRA matrix visualization
 - SMS 2FA authentication via Identity Platform
-- On-device AI chat (Qwen3-0.6B via llama.rn) - all processing stays on phone
+- On-device AI chat (Qwen3.5-0.8B finetuned on mental health counseling data, via llama.rn) - all processing stays on phone
 - Conversation history with 24-hour auto-archive
 - Secure video delivery with signed URLs (1-hour expiration)
 - Activity tracking and weekly summaries
 - Accessibility preferences (font scaling, high contrast)
 - Cloud Run deployment with SignBlob URL signing
-- YOLOv26n real-time pose estimation for exercise form monitoring
+- MediaPipe Pose Landmarker real-time pose estimation for exercise form monitoring
+- 24 exercises with real-time pose-based form analysis (3 assessment, 5 warmup, 5 strength, 11 balance)
+- Exercise recommendation system with compliance tracking
 - REDCap integration for clinical data sync (Firebase Cloud Function)
-
-**In Progress:**
-- Firebase auth persistence across app restarts
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
 | Mobile App | React Native, Expo bare workflow, TypeScript |
-| On-Device LLM | llama.rn, Qwen3-0.6B-Q4_K_M |
-| Pose Estimation | YOLOv26n via TFLite (on-device) |
+| On-Device LLM | llama.rn, Qwen3.5-0.8B-aipeer-Q4_K_M (finetuned, ~505MB) |
+| Pose Estimation | MediaPipe Pose Landmarker (on-device, GPU-accelerated) |
 | Backend | Node.js, Express, Cloud Run |
 | Cloud Functions | Firebase Functions (REDCap sync) |
 | Database | Firestore |
@@ -123,7 +122,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 ## Security & HIPAA Compliance
 
 - All LLM inference runs on-device (no patient data sent to external APIs)
-- Pose estimation runs on-device via TFLite (no video leaves the phone)
+- Pose estimation runs on-device via MediaPipe (no video leaves the phone)
 - Videos served via time-limited signed URLs (1-hour expiration)
 - SMS 2FA required for all logins
 - Conversations auto-delete after 24 hours
@@ -140,3 +139,12 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 - Munish Persaud - https://www.linkedin.com/in/munish-persaud
 
 UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md) -- system diagram, data flows, Firestore schema, design decisions
+- [File Map](FILE_MAP.md) -- complete source file listing with descriptions
+- [API Reference](API/README.md) -- endpoints, environment variables, deployment
+- [Frontend](front-end/AI-PEER/README.md) -- setup, features, project structure
+- [Cloud Functions](functions/README.md) -- REDCap sync schedule, logic, field mapping
+- [Training Pipeline](Training/slm/EMPATHY_TRAINING_PIPELINE.md) -- LLM finetuning methodology

@@ -34,7 +34,7 @@ export { VisionProvider, useVisionContext } from './VisionContext';
 export { useVision } from './useVision';
 
 // Config
-export { VISION_CONFIG, MODEL_FILENAME, MODEL_ASSET } from './config';
+export { VISION_CONFIG } from './config';
 
 // Constants
 export { keypoint_names, skeleton_connections } from './constants';
@@ -42,8 +42,8 @@ export { keypoint_names, skeleton_connections } from './constants';
 // Form analyzer (if needed directly)
 export { analyzePose } from './FormAnalyzer';
 
-// Pose parser (standalone, usable from worklet context)
-export { parsePoseFromOutput } from './VisionService';
+// MediaPipe landmark mapper
+export { mapMediaPipeToPose } from './VisionService';
 
 // Exercise registry
 export { getExerciseRules, getAllExerciseIds, getExercisesByCategory } from './exercises';

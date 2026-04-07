@@ -1,73 +1,65 @@
 //
-// VisionService.ts — pose parsing utilities
+// VisionService.ts — MediaPipe Pose Landmarker parser
 //
-// parsePoseFromOutput extracts the best-confidence pose from raw yolo26n
-// model output (8400 detections x 56 values in column-major layout).
-//
-// marked as a worklet so it can run directly inside VisionCamera's frame
-// processor — the babel worklet plugin captures NUM_DETECTIONS, keypoint_names,
-// etc. into the worklet closure. this avoids sending the raw ArrayBuffer
-// across the thread boundary (ArrayBuffers are not serializable as shared values).
+// Converts MediaPipe's 33 landmark output to our 17-keypoint COCO-compatible
+// Pose format. Handles the iOS coordinate transform (landscape → portrait)
+// and left/right label correction for the front camera mirror.
 //
 
-import { Platform } from 'react-native';
 import { Pose, Keypoint } from './types';
-import { keypoint_names } from './constants';
 
-const NUM_DETECTIONS = 8400;
-const VALUES_PER_DETECTION = 56;
-const MIN_DATA_LENGTH = NUM_DETECTIONS * VALUES_PER_DETECTION;
+// Maps MediaPipe 33 landmark indices to COCO 17 keypoint names.
+// Left/right labels are swapped because the coordinate transform
+// (x: lm.y, y: lm.x) mirrors the body on the iOS front camera.
+// MediaPipe's "left" landmarks appear on the user's right side on screen.
+const MEDIAPIPE_TO_COCO: Array<[number, string]> = [
+  [0,  'nose'],
+  [2,  'right_eye'],
+  [5,  'left_eye'],
+  [7,  'right_ear'],
+  [8,  'left_ear'],
+  [11, 'right_shoulder'],
+  [12, 'left_shoulder'],
+  [13, 'right_elbow'],
+  [14, 'left_elbow'],
+  [15, 'right_wrist'],
+  [16, 'left_wrist'],
+  [23, 'right_hip'],
+  [24, 'left_hip'],
+  [25, 'right_knee'],
+  [26, 'left_knee'],
+  [27, 'right_ankle'],
+  [28, 'left_ankle'],
+];
 
-// iOS camera hardware delivers frames in landscape orientation regardless of
-// device rotation, so the model's x/y axes are swapped relative to portrait
-// screen-space. Android frames are already oriented correctly.
-const SWAP_XY = Platform.OS === 'ios';
+export type MediaPipeLandmark = {
+  x: number;
+  y: number;
+  z: number;
+  visibility?: number;
+  presence?: number;
+};
 
-export function parsePoseFromOutput(data: Float32Array): Pose | null {
-  'worklet';
-  if (!data || data.length < MIN_DATA_LENGTH) {
-    if (__DEV__) console.warn('invalid model output, expected', MIN_DATA_LENGTH, 'got', data?.length);
-    return null;
-  }
+/**
+ * Convert MediaPipe Pose Landmarker output (33 landmarks) to our Pose format.
+ * MediaPipe coordinates are normalized 0-1 in the raw iOS landscape frame space.
+ * We rotate 90° CW (x: lm.y, y: lm.x) to map landscape → portrait.
+ */
+export function mapMediaPipeToPose(landmarks: MediaPipeLandmark[]): Pose | null {
+  if (!landmarks || landmarks.length < 33) return null;
 
-  let bestConfidence = 0;
-  let bestIndex = -1;
+  const keypoints: Keypoint[] = MEDIAPIPE_TO_COCO.map(([mpIndex, name]) => {
+    const lm = landmarks[mpIndex];
+    return {
+      name,
+      x: lm.y,
+      y: lm.x,
+      confidence: lm.visibility ?? 0.5,
+      z: lm.z,
+      visibility: lm.visibility ?? 0.5,
+    };
+  });
 
-  for (let i = 0; i < NUM_DETECTIONS; i++) {
-    // confidence at index 4
-    const confidence = data[4 * NUM_DETECTIONS + i];
-    if (confidence > bestConfidence) {
-      bestConfidence = confidence;
-      bestIndex = i;
-    }
-  }
-
-  // no good detection
-  if (bestIndex === -1 || bestConfidence < 0.3) {
-    return null;
-  }
-
-  // extract keypoints for best detection
-  const keypoints: Keypoint[] = [];
-  for (let k = 0; k < 17; k++) {
-    // keypoints start at index 5, each has x,y,confidence
-    const baseIndex = (5 + k * 3) * NUM_DETECTIONS + bestIndex;
-
-    const rawX = data[baseIndex];
-    const rawY = data[baseIndex + NUM_DETECTIONS];
-
-    keypoints.push({
-      name: keypoint_names[k],
-      x: SWAP_XY ? rawY : rawX,
-      y: SWAP_XY ? rawX : rawY,
-      confidence: data[baseIndex + 2 * NUM_DETECTIONS],
-    });
-  }
-  const average_confidence = keypoints.reduce((sum, kp) => sum + kp.confidence, 0) / 17;
-
-  return {
-    keypoints,
-    timestamp: Date.now(),
-    confidence: average_confidence,
-  };
+  const average_confidence = keypoints.reduce((sum, kp) => sum + kp.confidence, 0) / keypoints.length;
+  return { keypoints, timestamp: Date.now(), confidence: average_confidence };
 }

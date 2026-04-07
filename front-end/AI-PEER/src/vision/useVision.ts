@@ -12,6 +12,10 @@ export function useVision() {
     state,
     repCount,
     targetReps,
+    debugAngle,
+    debugPhase,
+    debugConfidences,
+    debugPositions,
     setModelReady,
     startTracking,
     stopTracking,
@@ -37,6 +41,10 @@ export function useVision() {
     isGoodForm,
     repCount,
     targetReps,
+    debugAngle,
+    debugPhase,
+    debugConfidences,
+    debugPositions,
 
     // actions
     setModelReady,

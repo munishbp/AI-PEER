@@ -10,6 +10,8 @@ export type Keypoint = {
     x:number;
     y:number;
     confidence:number;
+    z?:number;          // depth from MediaPipe (relative to hip midpoint)
+    visibility?:number; // MediaPipe raw visibility score
 };
 
 
@@ -47,12 +49,8 @@ export type VisionState= {
 
 
 export type VisionConfig = {
-    modelURL:string;
-    modelFileName:string;
-    modelSizeBytes:number;
     minKeyPointConfidence:number;
     minPoseConfidence:number;
     targetFPS:number;
-    inputSize:number;
 };
 

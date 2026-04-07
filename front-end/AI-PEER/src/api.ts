@@ -79,6 +79,12 @@ export const api = {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ id, ...data }),
     }),
+
+  getModelURL: (token: string) =>
+    requestJSON<{ modelUrl: string; filename: string; expiresIn: number }>(
+      "/model/getModelURL",
+      { method: "GET", headers: { Authorization: `Bearer ${token}` } }
+    ),
 };
 
 export { BASE };
