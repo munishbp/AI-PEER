@@ -10,7 +10,9 @@
     "ios": "open ios/AIPEER.xcworkspace",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ios:doctor": "bash scripts/ios-doctor.sh",
+    "ios:clean": "bash scripts/ios-clean.sh"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",

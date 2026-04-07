@@ -4,19 +4,54 @@ React Native mobile app for fall risk assessment and exercise interventions. Bui
 
 ## Requirements
 
-- Node.js 20+
-- Android Studio (for Android builds)
-- Xcode (for iOS builds, macOS only)
+- **Node.js 24** — pinned via `.nvmrc`. Use `nvm use` (or `fnm use`/`asdf install`) to match.
+- **Xcode 26 or later** — for iOS builds, macOS only.
+- **CocoaPods 1.16+** — install via Homebrew: `brew install cocoapods`. (We intentionally don't use bundler/Gemfile — macOS system Ruby is too old, and managing a separate Ruby toolchain is more failure-prone than just using Homebrew's standalone CocoaPods.)
+- **Android Studio** — for Android builds.
 
 ## Setup
 
 ```bash
-npm install
-cd ios && pod install && cd ..   # iOS native dependencies
-cp .env.example .env             # Fill in Firebase and API credentials
+nvm use                                # Use pinned Node version (.nvmrc)
+npm install                            # JS dependencies
+cd ios && pod install && cd ..         # iOS native dependencies
+cp .env.example .env                   # Fill in Firebase and API credentials
+npm run ios:doctor                     # Verify environment is healthy
 ```
 
+If `ios:doctor` reports any failures, fix them before attempting an iOS build. See **iOS Troubleshooting** below.
+
+> **After pulling new changes** that touch `ios/Podfile`, `package.json`, or any native code: re-run `npm install`, then `cd ios && pod install && cd ..`, then `npm run ios:doctor`. If the build still misbehaves, `npm run ios:clean` is the one-command recovery.
+
 > **Note:** `react-native-worklets-core` is a required direct dependency. It enables VisionCamera frame processors, which are what the custom MediaPipe Swift plugin (`PoseLandmarkerPlugin.swift`) builds on top of. It's distinct from the newer `react-native-worklets` package — both are needed but only `worklets-core` exposes VisionCamera's `FrameProcessorPlugin.h` headers to native code. If you ever see a "VisionCamera/FrameProcessorPlugin.h file not found" build error, the cause is `react-native-worklets-core` being missing from `node_modules`.
+
+## iOS Troubleshooting
+
+If an iOS build fails with C++ template errors (`Unknown type name 'requires'`, `JSArgT`, `ReturnT`), variable template errors, or any "works on my machine" weirdness, the cause is almost always environmental drift — stale Pods, wrong Command Line Tools selection, or a Clang module cache that predates a Podfile change.
+
+**First, diagnose:**
+```bash
+npm run ios:doctor
+```
+
+This prints PASS/FAIL for every required piece of the iOS environment (Xcode version, Command Line Tools selection, Node version, CocoaPods, `Pods/`, `.env`, `react-native-worklets-core`). It is read-only and never modifies anything.
+
+**Then, if doctor passes but the build still fails, nuke and rebuild:**
+```bash
+npm run ios:clean
+```
+
+This deintegrates and reinstalls Pods, wipes `~/Library/Developer/Xcode/DerivedData`, and reinstalls native dependencies from scratch. After it finishes, open Xcode → **Product → Clean Build Folder** (Cmd+Shift+K), then build.
+
+> **Note:** `ios:clean` wipes DerivedData for **all** Xcode projects on this machine, not just AI-PEER. Other projects will rebuild from scratch on next open.
+
+> **Why this happens:** VisionCamera and several other React Native libraries use C++20 features (concepts via `requires`, variable templates). Our `ios/Podfile` `post_install` hook forces `CLANG_CXX_LANGUAGE_STANDARD = c++20` on every pod target, but Xcode caches compiled headers in DerivedData and the Clang module cache — those caches can persist after Podfile changes and cause headers to be parsed against an older standard. `ios:clean` clears those caches.
+
+**Common doctor failures:**
+- *"Command Line Tools points at /Library/Developer/CommandLineTools"* — fix with `sudo xcode-select -s /Applications/Xcode.app`. This is the most common silent cause of toolchain drift.
+- *"Node version mismatch"* — run `nvm use` (or `nvm install` if you don't have the pinned version).
+- *"react-native-worklets-core missing"* — run `npm install`. It's a direct dependency required by the custom MediaPipe Swift plugin.
+- *"pod not found"* or *"CocoaPods version too old"* — run `brew install cocoapods` or `brew upgrade cocoapods`.
 
 ## Running the App
 
