@@ -57,6 +57,30 @@ target 'AIPEER' do
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
 
+    # Force C++20 across all pod targets. VisionCamera (and several other RN
+    # libraries) use C++20 features (concepts via `requires`, variable templates).
+    # We don't trust the default RN pod scripts to apply C++20 to every target —
+    # see the README iOS Troubleshooting section ("14 VisionCamera template errors").
+    #
+    # Two layers of enforcement:
+    #   1. Target build settings in Pods.xcodeproj (overrides xcconfig at build time)
+    #   2. Per-pod xcconfig files (so the base config also agrees — defense in depth,
+    #      and avoids confusion when someone greps a xcconfig for the C++ standard)
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
+        config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+      end
+    end
+
+    Dir.glob(File.join(installer.sandbox.root, 'Target Support Files', '**', '*.xcconfig')).each do |xcconfig_path|
+      contents = File.read(xcconfig_path)
+      patched = contents.gsub(/CLANG_CXX_LANGUAGE_STANDARD = (?:"?(?:gnu\+\+14|gnu\+\+17|c\+\+14|c\+\+17)"?)/, 'CLANG_CXX_LANGUAGE_STANDARD = c++20')
+      if patched != contents
+        File.write(xcconfig_path, patched)
+      end
+    end
+
     # Fix MediaPipeTasksVision xcframework resolution for the main app target.
     # The app imports MediaPipeTasksVision directly from Swift (our custom plugin),
     # so the framework search paths must point at the xcframework slices.
