@@ -25,6 +25,7 @@ export default function RootLayout() {
             <Stack>
               {/* Landing (Login) */}
               <Stack.Screen name="login" options={{ headerShown: false }} />
+              <Stack.Screen name="index" options={{ headerShown: false }} />
 
               {/* Welcome - Accessibility Changes */}
               <Stack.Screen name="welcome" options={{ headerShown: false }} />
