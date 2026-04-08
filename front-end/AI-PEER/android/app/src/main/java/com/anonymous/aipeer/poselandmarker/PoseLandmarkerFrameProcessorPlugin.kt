@@ -174,20 +174,21 @@ class PoseLandmarkerFrameProcessorPlugin(
         if (landmarks.size < 33) return null
 
         // ── Build JS-bridge-friendly output ────────────────────────────────
-        // Must be List<Map<String, Any>> with String keys and primitive Float
-        // values (NOT Double) to match the iOS dict shape exactly. Java
-        // ArrayList → JS Array, HashMap → JS Object via the JSI bridge.
-        // NormalizedLandmark.x/y/z/visibility return primitive float, so
-        // putting them into HashMap<String, Any> auto-boxes to java.lang.Float.
+        // Must be List<Map<String, Any>> with String keys and Double values.
+        // VisionCamera v4's JSI bridge on Android does NOT support java.lang.Float
+        // ("Cannot convert Java type 'class java.lang.Float' to jsi::Value!") so
+        // we explicitly upcast each primitive float to Double before boxing into
+        // the map. JS receives plain `number` either way, so iOS parity is
+        // preserved at the contract level.
         val output = ArrayList<Map<String, Any>>(landmarks.size)
         for (lm in landmarks) {
             val dict = HashMap<String, Any>(4)
-            dict["x"] = lm.x()
-            dict["y"] = lm.y()
-            dict["z"] = lm.z()
+            dict["x"] = lm.x().toDouble()
+            dict["y"] = lm.y().toDouble()
+            dict["z"] = lm.z().toDouble()
             // NormalizedLandmark.visibility() returns java.util.Optional<Float>.
             // Match iOS: include the key only when visibility is present.
-            lm.visibility().ifPresent { dict["visibility"] = it }
+            lm.visibility().ifPresent { dict["visibility"] = it.toDouble() }
             output.add(dict)
         }
         return output

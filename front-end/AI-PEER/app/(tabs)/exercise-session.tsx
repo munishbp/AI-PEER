@@ -467,8 +467,8 @@ export default function ExerciseSessionPage() {
             </View>
           )}
 
-          {/* debug angle overlay */}
-          {isTracking && debugAngle !== null && (() => {
+          {/* debug angle overlay — disabled for device testing */}
+          {/* {isTracking && debugAngle !== null && (() => {
             const activeRule = getExerciseRules(trackingExerciseId);
             return (
               <View style={styles.debugOverlay}>
@@ -498,7 +498,7 @@ export default function ExerciseSessionPage() {
                 )}
               </View>
             );
-          })()}
+          })()} */}
 
           {/* timer overlay */}
           {isTracking && secondsLeft !== null && (
