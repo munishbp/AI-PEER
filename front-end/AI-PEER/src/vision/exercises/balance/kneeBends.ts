@@ -11,8 +11,9 @@ export const kneeBendsRules: ExerciseRule = {
   category: 'balance',
   repConfig: {
     keypoints: ['left_hip', 'left_knee', 'left_ankle'],
-    startMin: 150, startMax: 180,
-    endMin: 75, endMax: 139,
+    secondaryKeypoints: ['right_hip', 'right_knee', 'right_ankle'],
+    startMin: 165, startMax: 180,
+    endMin: 90, endMax: 120,
     targetReps: 10,
   },
   totalSets: 3,

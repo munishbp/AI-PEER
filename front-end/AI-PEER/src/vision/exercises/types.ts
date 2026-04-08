@@ -76,6 +76,11 @@ export type RepConfig = {
   /** For angle mode: [p1, vertex, p3] — angle measured at vertex */
   /** For distance mode: [movingKp, anchorKp, referenceKp1] — tracks horizontal distance between movingKp and anchorKp, normalized by referenceKp1-to-anchorKp vertical height */
   keypoints: [string, string, string];
+  /** Optional second triplet for bilateral exercises (e.g. squats). When set,
+   *  the rep counter computes the angle on both sides and uses their average
+   *  as the gating value. Both sides must have confident keypoints or the
+   *  frame is dropped. Only supported in default 'angle' mode. */
+  secondaryKeypoints?: [string, string, string];
   /** "Start" zone of the rep (angle in degrees, or normalized distance ratio) */
   startMin: number;
   startMax: number;
