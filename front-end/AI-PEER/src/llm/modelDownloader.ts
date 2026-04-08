@@ -9,7 +9,7 @@
  * - Cleaning up old model files when upgrading
  *
  * Uses expo-file-system legacy API for proper streaming download
- * support with large files (~505MB model).
+ * support with large files (~1.2GB model).
  */
 
 import {

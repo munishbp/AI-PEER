@@ -95,7 +95,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 **Implemented:**
 - Fall risk assessment with FRA matrix visualization
 - SMS 2FA authentication via Identity Platform
-- On-device AI chat (Qwen3.5-0.8B finetuned on mental health counseling data, via llama.rn) - all processing stays on phone
+- On-device AI chat (Qwen3.5-2B finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0), via llama.rn) - all processing stays on phone
 - Conversation history with 24-hour auto-archive
 - Secure video delivery with signed URLs (1-hour expiration)
 - Activity tracking and weekly summaries
@@ -111,7 +111,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 | Component | Technology |
 |-----------|------------|
 | Mobile App | React Native, Expo bare workflow, TypeScript |
-| On-Device LLM | llama.rn, Qwen3.5-0.8B-aipeer-Q4_K_M (finetuned, ~505MB) |
+| On-Device LLM | llama.rn, Qwen3.5-2B-aipeer-Q4_K_M (finetuned, ~1.2GB) |
 | Pose Estimation | MediaPipe Pose Landmarker (on-device, GPU-accelerated) |
 | Backend | Node.js, Express, Cloud Run |
 | Cloud Functions | Firebase Functions (REDCap sync) |

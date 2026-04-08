@@ -1,12 +1,14 @@
 """
-Fine-tune Qwen3.5-2B-Instruct on YsK-dev/geriatric-health-advice.
+Fine-tune Qwen/Qwen3.5-2B on YsK-dev/geriatric-health-advice.
 
 Why this approach:
-- Qwen3.5-2B-Instruct is the smallest "decent" instruction-tuned model
-  that can hold a coherent multi-turn conversation. The 0.8B finetune
-  on mental_health_counseling_conversations produced rambling,
-  repetitive output. The 2B has more capacity to follow nuanced
-  system prompt rules.
+- Qwen/Qwen3.5-2B is the smallest Qwen 3.5 model that can hold a coherent
+  multi-turn conversation while still quantizing down to a size acceptable
+  for on-device inference. The Qwen 3.5 lineage dropped the "-Instruct"
+  suffix from its earlier naming — the 2B repo is instruction-tuned by
+  default. Note: Qwen3.5-2B is technically a vision-language model; the
+  GGUF export produces both the text LM file we ship and an mmproj file
+  we ignore.
 - YsK-dev/geriatric-health-advice is purpose-built for elderly health
   coaching: short responses (~80 words avg, 3 sentences), Apache 2.0
   license, covers fall prevention, mobility, exercise, sleep, anxiety,
@@ -35,7 +37,7 @@ import torch
 # -----------------------------------------------
 # Configuration
 # -----------------------------------------------
-MODEL_NAME = "Qwen/Qwen3.5-2B-Instruct"
+MODEL_NAME = "Qwen/Qwen3.5-2B"
 DATASET_NAME = "YsK-dev/geriatric-health-advice"
 OUTPUT_DIR = "./output/sft_geriatric"
 GGUF_DIR = "./output/gguf_geriatric"
@@ -270,3 +272,7 @@ def main():
     print("  1. Update upload_to_gcs.py to point at the new GGUF file")
     print("  2. python upload_to_gcs.py --bucket qwenfinetune")
     print("  3. Update front-end/AI-PEER/src/llm/config.ts with the new filename and size")
+
+
+if __name__ == "__main__":
+    main()
