@@ -17,7 +17,7 @@ import React, {
 import { AppState, AppStateStatus } from 'react-native';
 import { VisionState, Pose, FormFeedback } from './types';
 import { analyzePose } from './FormAnalyzer';
-import { RepCounter } from './RepCounter';
+import { RepCounter, RepHistoryEntry } from './RepCounter';
 import { getExerciseRules } from './exercises';
 import { ExerciseRule } from './exercises/types';
 
@@ -34,6 +34,11 @@ type VisionContextValue = {
   stopTracking: () => void;
   // accepts an already-parsed pose from the frame processor worklet
   handlePoseResult: (pose: Pose | null) => void;
+  // returns a snapshot of the current rep counter's per-rep history. callers
+  // must invoke this BEFORE stopTracking() since stopTracking resets the
+  // counter and discards the history. exposed as a getter (not a state field)
+  // to avoid re-rendering every consumer on each rep increment.
+  getRepHistory: () => RepHistoryEntry[];
 };
 
 const VisionContext = createContext<VisionContextValue | null>(null);
@@ -97,6 +102,10 @@ export function VisionProvider({ children }: { children: ReactNode }) {
       currentFeedback: null,
       error: null,
     }));
+  }, []);
+
+  const getRepHistory = useCallback((): RepHistoryEntry[] => {
+    return repCounterRef.current?.getRepHistory() ?? [];
   }, []);
 
   const stopTracking = useCallback(() => {
@@ -178,6 +187,7 @@ export function VisionProvider({ children }: { children: ReactNode }) {
         startTracking,
         stopTracking,
         handlePoseResult,
+        getRepHistory,
       }}
     >
       {children}

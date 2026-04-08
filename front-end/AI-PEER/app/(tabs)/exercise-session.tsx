@@ -27,6 +27,7 @@ import { getExerciseRules } from "@/src/vision/exercises";
 import {
   submitCompletedActivity,
   ExerciseActivityCategory,
+  AngleSummarySet,
 } from "@/src/exercise-activity-storage";
 import { useAuth } from "@/src/auth";
 
@@ -96,6 +97,7 @@ export default function ExerciseSessionPage() {
     startTracking,
     stopTracking,
     handlePoseResult,
+    getRepHistory,
   } = useVision();
 
   // activity-scoped accumulators (span all sets of the current activity).
@@ -107,12 +109,14 @@ export default function ExerciseSessionPage() {
   const activitySetDurationsRef = useRef<number[]>([]);
   const activityScoresRef = useRef<number[]>([]);
   const activityViolationsRef = useRef<Record<string, number>>({});
+  const activitySetAngleSummariesRef = useRef<AngleSummarySet[]>([]);
 
   const resetActivityAccumulators = useCallback(() => {
     activityRepsPerSetRef.current = [];
     activitySetDurationsRef.current = [];
     activityScoresRef.current = [];
     activityViolationsRef.current = {};
+    activitySetAngleSummariesRef.current = [];
   }, []);
 
   // reset sets when exercise changes
@@ -262,9 +266,27 @@ export default function ExerciseSessionPage() {
     const setFramesCount = scoresRef.current.length;
     const setReps = repCountRef.current;
 
+    // grab the rep counter's per-rep angle history BEFORE stopTracking()
+    // resets and discards it. for bilateral-averaged exercises (knee bends),
+    // this is one entry per rep with the averaged angle; flag it so the
+    // analysis layer knows the angles aren't a single side.
+    const setRepHistory = getRepHistory();
+    const repConfigHasSecondary =
+      !!exerciseRule?.repConfig?.secondaryKeypoints;
+    const setSide: "left" | "right" | "both" = isUnilateral
+      ? currentSide === "Right"
+        ? "right"
+        : "left"
+      : repConfigHasSecondary
+        ? "both"
+        : "left";
+
     // accumulate this set's data into the activity-scoped refs. these are NOT
     // reset between sets — we only persist the activity record once all sets
-    // are done, so we need the union of every set's data here.
+    // are done, so we need the union of every set's data here. setIndex is
+    // pulled from the current length so it always matches the slot this set
+    // will occupy in repsPerSet.
+    const setIndex = activityRepsPerSetRef.current.length;
     activityRepsPerSetRef.current.push(setReps);
     activitySetDurationsRef.current.push(setDurationSec);
     activityScoresRef.current.push(...scoresRef.current);
@@ -272,6 +294,12 @@ export default function ExerciseSessionPage() {
       activityViolationsRef.current[k] =
         (activityViolationsRef.current[k] || 0) + v;
     }
+    activitySetAngleSummariesRef.current.push({
+      setIndex,
+      side: setSide,
+      reps: setRepHistory,
+      ...(repConfigHasSecondary ? { bilateralAveraged: true } : {}),
+    });
 
     sessionStartedAtRef.current = null;
     repCountRef.current = 0;
@@ -308,7 +336,7 @@ export default function ExerciseSessionPage() {
             totalReps,
             repsPerSet: [...activityRepsPerSetRef.current],
             unilateral: isUnilateral,
-            angleSummaries: [],
+            angleSummaries: [...activitySetAngleSummariesRef.current],
             feedbackEvents: [],
             avgScore: activityAvgScore,
             framesAnalyzed: totalFrames,
@@ -338,6 +366,9 @@ export default function ExerciseSessionPage() {
     exerciseName,
     activityCategory,
     isUnilateral,
+    currentSide,
+    exerciseRule,
+    getRepHistory,
     token,
     resetActivityAccumulators,
     router,

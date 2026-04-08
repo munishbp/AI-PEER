@@ -24,7 +24,10 @@ import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
-import { submitCompletedActivity } from "@/src/exercise-activity-storage";
+import {
+  submitCompletedActivity,
+  AngleSummarySet,
+} from "@/src/exercise-activity-storage";
 import { useAuth } from "@/src/auth";
 
 const TEST_DURATION_SEC = 30;
@@ -65,6 +68,7 @@ export default function ChairRiseTestPage() {
     startTracking,
     stopTracking,
     handlePoseResult,
+    getRepHistory,
   } = useVision();
 
   useEffect(() => {
@@ -155,6 +159,14 @@ export default function ChairRiseTestPage() {
         ? scoresRef.current.reduce((a, b) => a + b, 0) / framesAnalyzedCount
         : null;
 
+    // grab the rep counter's per-rep angle history before stopTracking() resets it.
+    // chair rise is single-shot, single-side (left_hip / left_knee / left_ankle),
+    // so we record one AngleSummarySet at index 0 with side='left'.
+    const repHistory = getRepHistory();
+    const angleSummaries: AngleSummarySet[] = [
+      { setIndex: 0, side: "left", reps: repHistory },
+    ];
+
     void submitCompletedActivity(
       {
         exerciseId: EXERCISE_ID,
@@ -166,7 +178,7 @@ export default function ChairRiseTestPage() {
         totalReps: finalRepCount,
         repsPerSet: [finalRepCount],
         unilateral: false,
-        angleSummaries: [],
+        angleSummaries,
         feedbackEvents: [],
         avgScore: avgScoreValue,
         framesAnalyzed: framesAnalyzedCount,
@@ -189,7 +201,7 @@ export default function ChairRiseTestPage() {
     const band = fallRiskBand(finalRepCount);
     Speech.stop();
     Speech.speak(`Test complete. ${finalRepCount} reps. ${band.label}.`);
-  }, [clearTimer, stopTracking, token]);
+  }, [clearTimer, stopTracking, token, getRepHistory]);
 
   const handleStart = useCallback(async () => {
     if (!hasPermission) {

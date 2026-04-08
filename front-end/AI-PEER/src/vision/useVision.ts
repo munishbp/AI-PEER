@@ -20,6 +20,7 @@ export function useVision() {
     startTracking,
     stopTracking,
     handlePoseResult,
+    getRepHistory,
   } = useVisionContext();
 
   const isReady: boolean = state.isModelLoaded;
@@ -51,5 +52,6 @@ export function useVision() {
     startTracking,
     stopTracking,
     handlePoseResult,
+    getRepHistory,
   };
 }
