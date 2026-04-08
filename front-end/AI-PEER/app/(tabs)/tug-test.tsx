@@ -24,7 +24,8 @@ import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
 import { calculateAngle3D, isConfident } from "@/src/vision/exercises/utils";
-import { appendExerciseCompletion } from "@/src/exercise-activity-storage";
+import { submitCompletedActivity } from "@/src/exercise-activity-storage";
+import { useAuth } from "@/src/auth";
 
 const EXERCISE_ID = "assessment-3";
 const EXERCISE_NAME = "Timed Up and Go";
@@ -68,6 +69,7 @@ function stateLabel(state: TugState): string {
 
 export default function TugTestPage() {
   const router = useRouter();
+  const { token } = useAuth();
 
   const exerciseRule = useMemo(() => getExerciseRules(EXERCISE_ID), []);
 
@@ -233,15 +235,27 @@ export default function TugTestPage() {
       setFinalElapsed(elapsedSeconds);
       setTugState("done");
 
-      void appendExerciseCompletion({
-        exerciseId: EXERCISE_ID,
-        exerciseName: EXERCISE_NAME,
-        category: "assessment",
-        repCount: 0,
-        durationSec: elapsedSeconds,
-        avgScore: elapsedSeconds, // the test score IS the time
-        framesAnalyzed: 0,
-      }).catch((error) => {
+      // TUG has no reps and no form score — the test result is durationSec.
+      // dropped the previous avgScore=elapsedSeconds hack since durationSec
+      // already carries that information cleanly.
+      void submitCompletedActivity(
+        {
+          exerciseId: EXERCISE_ID,
+          exerciseName: EXERCISE_NAME,
+          category: "assessment",
+          setsCompleted: 1,
+          setsTarget: 1,
+          durationSec: elapsedSeconds,
+          totalReps: 0,
+          repsPerSet: [0],
+          unilateral: false,
+          angleSummaries: [],
+          feedbackEvents: [],
+          avgScore: null,
+          framesAnalyzed: 0,
+        },
+        token
+      ).catch((error) => {
         console.error("[TugTest] Failed to save activity record:", error);
       });
 
@@ -256,7 +270,7 @@ export default function TugTestPage() {
 
       stopTracking();
     },
-    [stopTracking]
+    [stopTracking, token]
   );
 
   const handleStart = useCallback(async () => {

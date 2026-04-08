@@ -25,9 +25,10 @@ import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
 import {
-  appendExerciseCompletion,
+  submitCompletedActivity,
   ExerciseActivityCategory,
 } from "@/src/exercise-activity-storage";
+import { useAuth } from "@/src/auth";
 
 type CatKey = "warmup" | "strength" | "balance";
 
@@ -56,6 +57,7 @@ function toActivityCategory(
 
 export default function ExerciseSessionPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const params = useLocalSearchParams<{
     cat?: CatKey;
     video?: string;
@@ -96,12 +98,30 @@ export default function ExerciseSessionPage() {
     handlePoseResult,
   } = useVision();
 
+  // activity-scoped accumulators (span all sets of the current activity).
+  // these are reset only when a new activity starts (handleStartMonitoring or
+  // exerciseId change), NOT between sets — so the final activity record can
+  // include the union of every set's reps, scores, frames, and violations.
+  // declared up here so the exerciseId-reset effect below can call the reset.
+  const activityRepsPerSetRef = useRef<number[]>([]);
+  const activitySetDurationsRef = useRef<number[]>([]);
+  const activityScoresRef = useRef<number[]>([]);
+  const activityViolationsRef = useRef<Record<string, number>>({});
+
+  const resetActivityAccumulators = useCallback(() => {
+    activityRepsPerSetRef.current = [];
+    activitySetDurationsRef.current = [];
+    activityScoresRef.current = [];
+    activityViolationsRef.current = {};
+  }, []);
+
   // reset sets when exercise changes
   useEffect(() => {
     setCurrentSet(1);
     setSetComplete(false);
     setShowSummary(false);
-  }, [exerciseId]);
+    resetActivityAccumulators();
+  }, [exerciseId, resetActivityAccumulators]);
 
   // sync model ready state into vision context
   useEffect(() => {
@@ -211,11 +231,13 @@ export default function ExerciseSessionPage() {
     // model loads automatically via useTensorflowModel hook
     if (!modelReady) return;
 
-    // reset session stats
+    // reset per-set stats AND activity-scoped accumulators — this is set 1
+    // of a new activity, so we start fresh on both granularities.
     scoresRef.current = [];
     violationCountRef.current = {};
     repCountRef.current = 0;
     sessionStartedAtRef.current = Date.now();
+    resetActivityAccumulators();
     setShowSummary(false);
 
     setStartedAtRef.current = Date.now();
@@ -236,27 +258,19 @@ export default function ExerciseSessionPage() {
   const handleSetComplete = useCallback(() => {
     const nowMs = Date.now();
     const startedAt = sessionStartedAtRef.current ?? nowMs;
-    const durationSec = Math.max(1, Math.round((nowMs - startedAt) / 1000));
-    const framesAnalyzedCount = scoresRef.current.length;
-    const finalRepCount = repCountRef.current;
-    const avgScoreValue =
-      framesAnalyzedCount > 0
-        ? scoresRef.current.reduce((a, b) => a + b, 0) / framesAnalyzedCount
-        : null;
+    const setDurationSec = Math.max(1, Math.round((nowMs - startedAt) / 1000));
+    const setFramesCount = scoresRef.current.length;
+    const setReps = repCountRef.current;
 
-    // Persist sessions with detected reps
-    if (finalRepCount > 0) {
-      void appendExerciseCompletion({
-        exerciseId,
-        exerciseName,
-        category: activityCategory,
-        repCount: finalRepCount,
-        durationSec,
-        avgScore: avgScoreValue,
-        framesAnalyzed: framesAnalyzedCount,
-      }).catch((error) => {
-        console.error("[ExerciseSession] Failed to save activity record:", error);
-      });
+    // accumulate this set's data into the activity-scoped refs. these are NOT
+    // reset between sets — we only persist the activity record once all sets
+    // are done, so we need the union of every set's data here.
+    activityRepsPerSetRef.current.push(setReps);
+    activitySetDurationsRef.current.push(setDurationSec);
+    activityScoresRef.current.push(...scoresRef.current);
+    for (const [k, v] of Object.entries(violationCountRef.current)) {
+      activityViolationsRef.current[k] =
+        (activityViolationsRef.current[k] || 0) + v;
     }
 
     sessionStartedAtRef.current = null;
@@ -266,14 +280,68 @@ export default function ExerciseSessionPage() {
     setSummaryTick((t) => t + 1);
 
     if (currentSet >= totalSets) {
-      // all sets done — go back to exercise tab
+      // all sets done — build the activity record and submit it (locally + backend),
+      // then navigate back to the exercise tab. partial activities are NEVER
+      // persisted; if the user bails out before this branch, no record is written.
+      const totalReps = activityRepsPerSetRef.current.reduce((a, b) => a + b, 0);
+      const totalDurationSec = activitySetDurationsRef.current.reduce(
+        (a, b) => a + b,
+        0
+      );
+      const totalFrames = activityScoresRef.current.length;
+      const activityAvgScore =
+        totalFrames > 0
+          ? activityScoresRef.current.reduce((a, b) => a + b, 0) / totalFrames
+          : null;
+
+      // only persist activities where at least one rep was counted across the
+      // whole session — guards against accidental empty completions
+      if (totalReps > 0) {
+        void submitCompletedActivity(
+          {
+            exerciseId,
+            exerciseName,
+            category: activityCategory,
+            setsCompleted: totalSets,
+            setsTarget: totalSets,
+            durationSec: totalDurationSec,
+            totalReps,
+            repsPerSet: [...activityRepsPerSetRef.current],
+            unilateral: isUnilateral,
+            angleSummaries: [],
+            feedbackEvents: [],
+            avgScore: activityAvgScore,
+            framesAnalyzed: totalFrames,
+          },
+          token
+        ).catch((error) => {
+          console.error(
+            "[ExerciseSession] Failed to save activity record:",
+            error
+          );
+        });
+      }
+
+      resetActivityAccumulators();
       router.replace("/(tabs)/exercise");
       return;
     } else {
       // more sets to go — show between-set screen
       setSetComplete(true);
     }
-  }, [currentSet, totalSets, clearTimer, stopTracking, exerciseId, exerciseName, activityCategory]);
+  }, [
+    currentSet,
+    totalSets,
+    clearTimer,
+    stopTracking,
+    exerciseId,
+    exerciseName,
+    activityCategory,
+    isUnilateral,
+    token,
+    resetActivityAccumulators,
+    router,
+  ]);
 
   const handleNextSet = useCallback(async () => {
     const nextSet = currentSet + 1;

@@ -50,6 +50,9 @@ app.use("/model", modelRoutes);
 const userRoutes = require("./routes/userRoutes");
 app.use("/users", userRoutes);
 
+const activitiesRoutes = require('./routes/activitiesRoutes');
+app.use("/activities", activitiesRoutes);
+
 
 
 const PORT=process.env.PORT||3000;

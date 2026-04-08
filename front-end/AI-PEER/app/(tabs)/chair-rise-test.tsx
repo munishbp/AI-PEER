@@ -24,7 +24,8 @@ import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
-import { appendExerciseCompletion } from "@/src/exercise-activity-storage";
+import { submitCompletedActivity } from "@/src/exercise-activity-storage";
+import { useAuth } from "@/src/auth";
 
 const TEST_DURATION_SEC = 30;
 const EXERCISE_ID = "assessment-1";
@@ -43,6 +44,7 @@ function fallRiskBand(reps: number): { label: string; color: string } {
 
 export default function ChairRiseTestPage() {
   const router = useRouter();
+  const { token } = useAuth();
 
   const exerciseRule = useMemo(() => getExerciseRules(EXERCISE_ID), []);
 
@@ -153,15 +155,24 @@ export default function ChairRiseTestPage() {
         ? scoresRef.current.reduce((a, b) => a + b, 0) / framesAnalyzedCount
         : null;
 
-    void appendExerciseCompletion({
-      exerciseId: EXERCISE_ID,
-      exerciseName: EXERCISE_NAME,
-      category: "assessment",
-      repCount: finalRepCount,
-      durationSec: elapsedSec,
-      avgScore: avgScoreValue,
-      framesAnalyzed: framesAnalyzedCount,
-    }).catch((error) => {
+    void submitCompletedActivity(
+      {
+        exerciseId: EXERCISE_ID,
+        exerciseName: EXERCISE_NAME,
+        category: "assessment",
+        setsCompleted: 1,
+        setsTarget: 1,
+        durationSec: elapsedSec,
+        totalReps: finalRepCount,
+        repsPerSet: [finalRepCount],
+        unilateral: false,
+        angleSummaries: [],
+        feedbackEvents: [],
+        avgScore: avgScoreValue,
+        framesAnalyzed: framesAnalyzedCount,
+      },
+      token
+    ).catch((error) => {
       console.error("[ChairRiseTest] Failed to save activity record:", error);
     });
 
@@ -178,7 +189,7 @@ export default function ChairRiseTestPage() {
     const band = fallRiskBand(finalRepCount);
     Speech.stop();
     Speech.speak(`Test complete. ${finalRepCount} reps. ${band.label}.`);
-  }, [clearTimer, stopTracking]);
+  }, [clearTimer, stopTracking, token]);
 
   const handleStart = useCallback(async () => {
     if (!hasPermission) {
