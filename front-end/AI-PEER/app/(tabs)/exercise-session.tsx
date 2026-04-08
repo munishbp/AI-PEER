@@ -12,6 +12,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Speech from "expo-speech";
+import * as Haptics from "expo-haptics";
 import {
   Camera,
   useCameraDevice,
@@ -131,6 +133,20 @@ export default function ExerciseSessionPage() {
   const nextSide = isUnilateral
     ? (currentSet + 1) <= setsPerSide ? "Left" : "Right"
     : null;
+
+  // the exercise rule the user is *about* to perform — used to source the
+  // cameraPrompt shown in the placeholder. While the between-set screen is
+  // up (setComplete === true), we look ahead one set so the prompt switches
+  // to the right-side variant before sets 4-6 begin.
+  const upcomingTrackingId = useMemo(() => {
+    if (!isUnilateral) return exerciseId;
+    const targetSet = setComplete ? currentSet + 1 : currentSet;
+    return targetSet > setsPerSide ? `${exerciseId}-right` : exerciseId;
+  }, [setComplete, currentSet, isUnilateral, setsPerSide, exerciseId]);
+  const upcomingRule = useMemo(
+    () => getExerciseRules(upcomingTrackingId),
+    [upcomingTrackingId]
+  );
 
   // timer state
   const timerDuration = exerciseRule?.timerSeconds ?? null;
@@ -303,10 +319,14 @@ export default function ExerciseSessionPage() {
     if (typeof repCount === "number") {
       repCountRef.current = Math.max(repCountRef.current, repCount);
 
-      // flash when a new rep is counted
+      // flash, speak, and tap when a new rep is counted
       if (prevRepCountRef.current !== null && repCount > prevRepCountRef.current) {
         setRepFlash(true);
         setTimeout(() => setRepFlash(false), 800);
+        // cancel any in-flight speech so the user always hears the latest count
+        Speech.stop();
+        Speech.speak(String(repCount));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       }
       prevRepCountRef.current = repCount;
     }
@@ -430,10 +450,10 @@ export default function ExerciseSessionPage() {
                 </>
               ) : (
                 <>
-                  <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
+                  <Ionicons name="camera-outline" size={40} color="#8C7A6C" />
                   <Text style={styles.cameraHint}>Ready to monitor</Text>
                   <Text style={styles.cameraSmall}>
-                    Place your phone so your full body is visible
+                    {upcomingRule?.cameraPrompt ?? "Place your phone so your full body is visible."}
                   </Text>
                 </>
               )}
@@ -470,8 +490,8 @@ export default function ExerciseSessionPage() {
             </View>
           )}
 
-          {/* debug angle overlay — disabled for device testing */}
-          {/* {isTracking && debugAngle !== null && (() => {
+          {/* debug angle overlay */}
+          {isTracking && debugAngle !== null && (() => {
             const activeRule = getExerciseRules(trackingExerciseId);
             return (
               <View style={styles.debugOverlay}>
@@ -501,7 +521,7 @@ export default function ExerciseSessionPage() {
                 )}
               </View>
             );
-          })()} */}
+          })()}
 
           {/* timer overlay */}
           {isTracking && secondsLeft !== null && (
@@ -728,11 +748,19 @@ const styles = StyleSheet.create({
     borderColor: "#F0E0D4",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 14,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     borderRadius: 16,
   },
-  cameraHint: { color: "#6B5E55", fontWeight: "800" },
-  cameraSmall: { color: "#8C7A6C", fontWeight: "700", textAlign: "center", paddingHorizontal: 20 },
+  cameraHint: { color: "#6B5E55", fontWeight: "800", fontSize: 20 },
+  cameraSmall: {
+    color: "#5B4636",
+    fontWeight: "700",
+    textAlign: "center",
+    fontSize: 17,
+    lineHeight: 26,
+  },
 
   scoreOverlay: {
     position: "absolute",

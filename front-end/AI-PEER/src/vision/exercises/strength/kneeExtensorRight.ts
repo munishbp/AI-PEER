@@ -12,12 +12,12 @@ export const kneeExtensorRightRules: ExerciseRule = {
   repConfig: {
     keypoints: ['right_hip', 'right_knee', 'right_ankle'],
     startMin: 50, startMax: 125,
-    endMin: 140, endMax: 180,
+    endMin: 145, endMax: 180,
     targetReps: 10,
   },
   totalSets: 3,
   unilateral: true,
-  cameraPrompt: 'Sit in a chair facing the camera. Make sure your full legs — hips, knees, and ankles — are visible. Place your phone about 6 feet away at knee height.',
+  cameraPrompt: 'Sit sideways in a chair so the camera sees your RIGHT side — your right shoulder should be the one closest to the camera, not your face. Your full body, from head to feet, must be visible in frame. Place your phone about 6-8 feet away.',
   checks: [
     {
       type: 'angle',

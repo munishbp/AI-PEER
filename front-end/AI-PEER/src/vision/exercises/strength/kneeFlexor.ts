@@ -11,8 +11,8 @@ export const kneeFlexorRules: ExerciseRule = {
   category: 'strength',
   repConfig: {
     keypoints: ['left_hip', 'left_knee', 'left_ankle'],
-    startMin: 155, startMax: 180,
-    endMin: 50, endMax: 140,
+    startMin: 160, startMax: 180,
+    endMin: 50, endMax: 120,
     targetReps: 10,
   },
   totalSets: 3,
