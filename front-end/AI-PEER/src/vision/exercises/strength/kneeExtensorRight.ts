@@ -22,10 +22,11 @@ export const kneeExtensorRightRules: ExerciseRule = {
     {
       type: 'angle',
       keypoints: ['right_hip', 'right_knee', 'right_ankle'],
-      min: 140,
+      min: 145,
       max: 180,
       message: 'Extend your leg fully',
       severity: 'warning',
+      gateOnRepZones: true,
     },
     {
       type: 'alignment',

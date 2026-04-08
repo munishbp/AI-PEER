@@ -17,6 +17,12 @@ export type AngleCheck = {
   message: string;
   /** Severity of violation */
   severity: 'warning' | 'error';
+  /** When true, the form analyzer skips this check if the current angle is
+   *  inside the exercise's rep start zone OR end zone. Use this for "you're
+   *  not at peak X" warnings on rep-counted exercises so they only fire in
+   *  the dead zone between start and end positions, not while the user is
+   *  correctly resting in either zone. Requires the rule to have a repConfig. */
+  gateOnRepZones?: boolean;
 };
 
 /** A check that verifies two body parts are aligned (vertical or horizontal) */

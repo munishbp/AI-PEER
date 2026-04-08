@@ -30,10 +30,11 @@ export const sitToStandRules: ExerciseRule = {
     {
       type: 'angle',
       keypoints: ['left_hip', 'left_knee', 'left_ankle'],
-      min: 150,
+      min: 145,
       max: 180,
       message: 'Stand up fully',
       severity: 'warning',
+      gateOnRepZones: true,
     },
     {
       type: 'alignment',

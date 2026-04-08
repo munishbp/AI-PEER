@@ -6,7 +6,7 @@
 //
 import {getExerciseRules} from "@/src/vision/exercises"
 import {Pose, Keypoint, FormFeedback, FormViolation} from "./types"
-import {AngleCheck, AlignmentCheck, PositionCheck, FormCheck} from "@/src/vision/exercises/types"
+import {AngleCheck, AlignmentCheck, PositionCheck, FormCheck, RepConfig} from "@/src/vision/exercises/types"
 import {calculateAngle, angleFromVertical, angleFromHorizontal, isAbove, isBelow} from "@/src/vision/exercises/utils"
 
 
@@ -18,7 +18,7 @@ export function analyzePose(pose:Pose, exerciseId:string, overrideRules?:import(
     if(rules){
         for(const check of rules.checks){
             if (check.type==='angle'){
-                const result=checkAngle(pose,check);
+                const result=checkAngle(pose,check,rules.repConfig);
                 if (result){
                     violations.push(result);
                 }
@@ -54,7 +54,7 @@ function getKeypoint(pose:Pose,name:string):Keypoint|undefined{
     return pose.keypoints.find(x=>x.name === name);
 }
 
-function checkAngle(pose:Pose, check:AngleCheck):FormViolation|null{
+function checkAngle(pose:Pose, check:AngleCheck, repConfig?:RepConfig):FormViolation|null{
     const keypoint_1=getKeypoint(pose,check.keypoints[0]);
     const keypoint_2=getKeypoint(pose,check.keypoints[1]);
     const keypoint_3=getKeypoint(pose,check.keypoints[2]);
@@ -64,6 +64,16 @@ function checkAngle(pose:Pose, check:AngleCheck):FormViolation|null{
     }
 
     const angle:number=calculateAngle(keypoint_1,keypoint_2,keypoint_3);
+
+    // gate on rep zones: only fire when the user is in the dead zone between
+    // start and end positions of the rep, not while resting at either pole
+    if (check.gateOnRepZones && repConfig){
+        const inStartZone=angle>=repConfig.startMin && angle<=repConfig.startMax;
+        const inEndZone=angle>=repConfig.endMin && angle<=repConfig.endMax;
+        if (inStartZone || inEndZone){
+            return null;
+        }
+    }
 
     if (angle>=check.min && angle<=check.max){
         return null;
