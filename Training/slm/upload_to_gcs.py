@@ -24,7 +24,7 @@ import sys
 
 from google.cloud import storage
 
-GGUF_DIR = "./output/gguf"
+GGUF_DIR = "./output/gguf_geriatric_gguf"
 GCS_MODEL_PREFIX = "models"
 
 
@@ -77,7 +77,7 @@ def main():
     )
     parser.add_argument(
         "--dest-filename",
-        default="Qwen3.5-0.8B-aipeer-Q4_K_M.gguf",
+        default="Qwen3.5-2B-aipeer-Q4_K_M.gguf",
         help="Filename to use in GCS",
     )
     args = parser.parse_args()

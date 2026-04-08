@@ -4,7 +4,7 @@
 
 AI-PEER is a HIPAA-compliant mobile application for fall risk assessment and exercise intervention. The system has four components: a React Native mobile app (bare workflow with Expo libraries), an Express API on Cloud Run, Firebase services (Firestore, Auth, Cloud Functions), and Google Cloud Storage.
 
-The core design principle is that all ML inference stays on-device. The LLM (Qwen3.5-0.8B) and pose estimation model (MediaPipe Pose Landmarker) both run locally on the phone. No patient conversation data or video frames leave the device.
+The core design principle is that all ML inference stays on-device. The LLM (Qwen3.5-2B, finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice), Apache 2.0) and pose estimation model (MediaPipe Pose Landmarker) both run locally on the phone. No patient conversation data or video frames leave the device.
 
 ## System Diagram
 
@@ -14,7 +14,7 @@ The core design principle is that all ML inference stays on-device. The LLM (Qwe
   | React Native App          |        | Cloud Run                      |
   |                           | HTTPS  |   aipeer-api (Express 5.1)     |
   |  Expo Router (screens)    |------->|   /auth   - SMS 2FA            |
-  |  llama.rn (Qwen3.5-0.8B) |<-------|   /users  - CRUD               |
+  |  llama.rn (Qwen3.5-2B)    |<-------|   /users  - CRUD               |
   |  MediaPipe Pose Landmarker |        |   /video  - signed URLs        |
   |  AsyncStorage (local)     |        |   /model  - LLM download URL   |
   +---------------------------+        +---------------+----------------+
@@ -61,8 +61,8 @@ The core design principle is that all ML inference stays on-device. The LLM (Qwe
 
 1. On first use of AI Chat, the app checks if the model file exists on disk.
 2. If not, calls `GET /model/getModelURL` with Bearer token to get a signed download URL.
-3. The `modelController` generates a signed URL for `models/Qwen3.5-0.8B-aipeer-Q4_K_M.gguf` in the `qwenfinetune` bucket (separate from the video bucket via `GCS_MODEL_BUCKET` env var).
-4. App downloads the ~505MB GGUF file to the device's document directory with progress tracking.
+3. The `modelController` generates a signed URL for `models/Qwen3.5-2B-aipeer-Q4_K_M.gguf` in the `qwenfinetune` bucket (separate from the video bucket via `GCS_MODEL_BUCKET` env var).
+4. App downloads the ~1.2GB GGUF file to the device's document directory with progress tracking.
 5. Old model files (e.g., `Qwen3-0.6B-Q4_K_M.gguf`) are automatically deleted during download.
 6. `LLMService` singleton loads the model via `llama.rn` (4 CPU threads, 0 GPU layers for broad compatibility).
 7. Inference uses Qwen ChatML format (`<|im_start|>` tokens) with the PEER framework system prompt.
@@ -147,13 +147,13 @@ Database name: `ai-peer` (named database, not the default)
 | Bucket | Contents | Access |
 |--------|----------|--------|
 | aipeer_videos | Exercise demonstration videos (24 videos across warmup, strength, balance, assessment categories) | Private. V4 signed URLs with 1-hour expiry. |
-| qwenfinetune | Finetuned LLM model (Qwen3.5-0.8B-aipeer-Q4_K_M.gguf, ~505MB) | Private. V4 signed URLs with 1-hour expiry. Separate bucket env var (GCS_MODEL_BUCKET). |
+| qwenfinetune | Finetuned LLM model (Qwen3.5-2B-aipeer-Q4_K_M.gguf, ~1.2GB) finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0) | Private. V4 signed URLs with 1-hour expiry. Separate bucket env var (GCS_MODEL_BUCKET). |
 
 ## Key Design Decisions
 
 1. **Bare React Native workflow** (not Expo managed) -- required because `llama.rn` and the custom MediaPipe native plugin need native module linking that Expo Go cannot provide.
 
-2. **CPU-only LLM inference** (`n_gpu_layers=0`) -- ensures the model runs on any device regardless of GPU capabilities. The 0.8B model is small enough for acceptable CPU performance.
+2. **CPU-only LLM inference** (`n_gpu_layers=0`) -- ensures the model runs on any device regardless of GPU capabilities. The 2B Q4_K_M quant is efficient enough on modern iPhones for acceptable latency.
 
 3. **IAM signBlob on Cloud Run** -- the service account private key never exists on the server. Cloud Run uses Application Default Credentials, and URL signing is done via the IAM signBlob API. Locally, the private key from `.env` is used directly.
 

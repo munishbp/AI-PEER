@@ -78,7 +78,7 @@ Or open `android/` or `ios/` directly in Android Studio / Xcode.
 
 - Fall risk assessment with FRA matrix visualization and FES-I questionnaire
 - SMS 2FA authentication via Google Identity Platform
-- On-device AI chat powered by Qwen3.5-0.8B (finetuned on mental health counseling data, ~505MB, no data leaves phone)
+- On-device AI chat powered by Qwen3.5-2B (finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0), ~1.2GB, no data leaves phone)
 - Conversation history with 24-hour auto-archive
 - Real-time pose estimation via MediaPipe Pose Landmarker (~9MB model, GPU-accelerated, custom native plugin)
 - 24 exercises with pose-based form analysis (3 assessment, 5 warmup, 5 strength, 11 balance)
@@ -164,7 +164,7 @@ components/
 
 ## On-Device LLM
 
-The AI chat uses Qwen3.5-0.8B (finetuned on mental health counseling conversations) running locally via llama.rn. On first use, the model (~505MB) is downloaded from GCS via a signed URL (requires authentication). All inference happens on-device for HIPAA compliance.
+The AI chat uses Qwen3.5-2B finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0, 10,813 rows of short-form geriatric health coaching) running locally via llama.rn. On first use, the model (~1.2GB Q4_K_M GGUF) is downloaded from GCS via a signed URL (requires authentication). All inference happens on-device for HIPAA compliance.
 
 Configuration in `src/llm/config.ts`:
 - Max tokens: 512

@@ -16,13 +16,13 @@ import { InferenceConfig } from './types';
  */
 
 /** Filename for the downloaded model (stored in app's document directory) */
-export const MODEL_FILENAME = 'Qwen3.5-0.8B-aipeer-Q4_K_M.gguf';
+export const MODEL_FILENAME = 'Qwen3.5-2B-aipeer-Q4_K_M.gguf';
 
-/** Expected model size in bytes (for download progress) - ~505MB */
-export const MODEL_SIZE_BYTES = 505 * 1024 * 1024;
+/** Expected model size in bytes (for download progress) - ~1.2GB */
+export const MODEL_SIZE_BYTES = 1215 * 1024 * 1024;
 
 /** Old model filenames to clean up when upgrading */
-export const OLD_MODEL_FILENAMES = ['Qwen3-0.6B-Q4_K_M.gguf'];
+export const OLD_MODEL_FILENAMES = ['Qwen3-0.6B-Q4_K_M.gguf', 'Qwen3.5-0.8B-aipeer-Q4_K_M.gguf'];
 
 /**
  * Inference configuration
