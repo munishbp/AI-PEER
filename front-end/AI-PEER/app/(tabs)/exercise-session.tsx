@@ -9,7 +9,7 @@ import {
   LayoutChangeEvent,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -109,6 +109,9 @@ export default function ExerciseSessionPage() {
   // camera
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("front");
+  const insets = useSafeAreaInsets();
+  // TEMP DIAGNOSTIC — remove after gesture nav fix is verified
+  console.log(`[exercise-session] insets bottom=${insets.bottom} top=${insets.top} platform=${Platform.OS}`);
   const [showSummary, setShowSummary] = useState(false);
 
   // set & side management
