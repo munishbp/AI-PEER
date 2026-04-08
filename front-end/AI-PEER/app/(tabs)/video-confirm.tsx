@@ -15,12 +15,13 @@ import { Video, ResizeMode } from "expo-av";
 import { fetchVideoUrl, VideoResponse } from "@/src/video";
 import { useAuth } from "@/src/auth/AuthContext";
 
-type CatKey = "warmup" | "strength" | "balance";
+type CatKey = "warmup" | "strength" | "balance" | "assessment";
 
 function prettyCat(cat?: string) {
   if (cat === "warmup") return "Warm-Up";
   if (cat === "strength") return "Strength";
   if (cat === "balance") return "Balance";
+  if (cat === "assessment") return "Assessment";
   return "Exercise";
 }
 
@@ -37,7 +38,10 @@ export default function VideoConfirmPage() {
     cat?: CatKey;
     video?: string;
     label?: string;
+    nextRoute?: string;
+    backRoute?: string;
   }>();
+  const backRoute = (params.backRoute ?? "/(tabs)/exercise") as any;
 
   const catTitle = useMemo(() => prettyCat(params.cat), [params.cat]);
   const exerciseLabel = params.label ?? "Exercise";
@@ -92,7 +96,7 @@ export default function VideoConfirmPage() {
 
   const onConfirm = () => {
     router.push({
-      pathname: "/(tabs)/exercise-session",
+      pathname: (params.nextRoute ?? "/(tabs)/exercise-session") as any,
       params: {
         cat: params.cat,
         video: params.video,
@@ -108,7 +112,7 @@ export default function VideoConfirmPage() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.replace("/(tabs)/exercise")}
+            onPress={() => router.replace(backRoute)}
             style={styles.backBtn}
             activeOpacity={0.85}
           >
@@ -173,7 +177,7 @@ export default function VideoConfirmPage() {
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.9}
-            onPress={() => router.replace("/(tabs)/exercise")}
+            onPress={() => router.replace(backRoute)}
           >
             <Ionicons name="refresh-outline" size={16} color="#5B4636" />
             <Text style={styles.secondaryText}>Choose Different</Text>
