@@ -67,7 +67,7 @@ All routes below require `Authorization: Bearer <firebaseIdToken>` header.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | /model/getModelURL | Get signed download URL for the finetuned LLM model (Qwen3.5-0.8B-aipeer-Q4_K_M.gguf, ~505MB). Returns `{ modelUrl, filename, expiresIn: 3600 }`. |
+| GET | /model/getModelURL | Get signed download URL for the finetuned LLM model (Qwen3.5-2B-aipeer-Q4_K_M.gguf, ~1.2GB). Returns `{ modelUrl, filename, expiresIn: 3600 }`. |
 
 #### Video Routes (/video)
 

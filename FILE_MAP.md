@@ -16,7 +16,7 @@ Complete source file listing for the AI-PEER repository. UCF Senior Design 2025-
 | routes/modelRoutes.js | /model -- GET /getModelURL for LLM GGUF download. |
 | controllers/userController.js | User CRUD request handlers. |
 | controllers/videoController.js | Per-exercise signed URL generation (24 exercises). |
-| controllers/modelController.js | Signed URL for Qwen3.5-0.8B GGUF in qwenfinetune bucket. |
+| controllers/modelController.js | Signed URL for Qwen3.5-2B GGUF in qwenfinetune bucket. |
 | services/Auth_Service.js | Firebase custom token creation, Identity Platform SMS send/verify. |
 | services/GCS_Service.js | V4 signed URL generation. Supports override bucket param. Uses IAM signBlob on Cloud Run. |
 | services/firestore-functions.js | Firestore CRUD helpers for users collection. |
@@ -74,7 +74,7 @@ Complete source file listing for the AI-PEER repository. UCF Senior Design 2025-
 | LLMService.ts | Singleton llama.rn wrapper. Loads model, runs inference, releases memory. |
 | LLMContext.tsx | React Context for LLM state (download progress, model loaded, generating). Uses auth token for model download. |
 | modelDownloader.ts | Fetches signed URL from API, downloads GGUF with progress tracking, cleans up old model files. |
-| config.ts | Model filename, expected size (505MB), inference params (512 tokens, temp 0.7, top_p 0.9, ctx 8192). |
+| config.ts | Model filename, expected size (~1.2GB), inference params (512 tokens, temp 0.7, top_p 0.9, ctx 8192). |
 | systemPrompt.ts | PEER framework system prompt + ChatML prompt formatting function. |
 | types.ts | ChatMessage, Conversation, LLMState, InferenceConfig type definitions. |
 | useLLM.ts | React hook exposing LLM state and actions (send, downloadAndInit, clear). |
@@ -165,12 +165,10 @@ Complete source file listing for the AI-PEER repository. UCF Senior Design 2025-
 
 | File | Purpose |
 |------|---------|
-| finetune.py | SFT training script. Qwen3.5-0.8B + LoRA (r=16) via Unsloth on mental health counseling data. |
-| export_gguf.py | 3-stage export: merge LoRA adapters -> convert to F16 GGUF -> quantize to Q4_K_M. |
-| resume_training.py | Resume training from a saved checkpoint. |
+| finetune.py | SFT training script. Qwen/Qwen3.5-2B + LoRA (r=16) via unsloth on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0). Exports Q4_K_M GGUF via unsloth's `save_pretrained_gguf`. |
 | upload_to_gcs.py | Upload final GGUF model to the qwenfinetune GCS bucket. |
 | requirements.txt | Python dependencies (unsloth, torch, trl, transformers, google-cloud-storage). |
-| EMPATHY_TRAINING_PIPELINE.md | Detailed training methodology: data preprocessing, SFT, DPO (planned), GGUF export, evaluation strategy. |
+| TRAINING_PLAN.md | End-to-end recipe: dataset citation, hardware requirements, Linux/vast.ai setup script with gotchas, reference run stats, shipping steps. |
 
 ## Root Files
 

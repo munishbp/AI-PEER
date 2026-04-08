@@ -1,7 +1,8 @@
 /**
  * LLM Module - On-device language model for AI-PEER
  *
- * This module provides on-device LLM inference using Qwen3.5-0.8B.
+ * This module provides on-device LLM inference using Qwen3.5-2B
+ * (finetuned on YsK-dev/geriatric-health-advice, Apache 2.0).
  * All processing happens locally - no patient data leaves the phone.
  *
  * Usage:

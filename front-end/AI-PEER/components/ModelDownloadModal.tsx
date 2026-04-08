@@ -3,7 +3,7 @@
  *
  * Shows when the user opens AI Chat and the model isn't downloaded yet.
  * Displays:
- * - Warning about file size (~505MB)
+ * - Warning about file size (~1.2GB)
  * - Download button
  * - Progress bar during download
  * - Error state with retry
