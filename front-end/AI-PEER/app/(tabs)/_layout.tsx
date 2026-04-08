@@ -93,7 +93,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="exercise-session" options={{ href: null }} />
       <Tabs.Screen name="video-confirm" options={{ href: null }} />
       <Tabs.Screen name="chair-rise-test" options={{ href: null }} />
-      <Tabs.Screen name="balance-stages-test" options={{ href: null }} />
       <Tabs.Screen name="tug-test" options={{ href: null }} />
     </Tabs>
   );
