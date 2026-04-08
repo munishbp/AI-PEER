@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -11,65 +11,70 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-type TestKey = "static" | "dynamic" | "functional";
-
-type BalanceTestGroup = {
-  key: TestKey;
-  title: string;
-  subtitle: string;
+type Test = {
+  id: string; // assessment-1/-2/-3 — used as the video ID
+  name: string;
+  shortDesc: string;
   purpose: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
-  videos: string[];
+  videoLabel: string; // shown on the video-confirm preview screen
+  nextRoute: string; // session screen route after preview
 };
 
-const TEST_GROUPS: BalanceTestGroup[] = [
+const TESTS: Test[] = [
   {
-    key: "static",
-    title: "Static Balance",
-    subtitle: "Tests while standing still",
-    purpose: "Screens postural stability during quiet stance",
-    icon: "accessibility-outline",
-    iconBg: "#FFE9DA",
-    videos: [
-      "Demo: Feet Together Stand (Coming Soon)",
-      "Demo: Tandem Stand (Coming Soon)",
-    ],
-  },
-  {
-    key: "dynamic",
-    title: "Dynamic Balance",
-    subtitle: "Tests while moving",
-    purpose: "Assesses control while stepping and changing direction",
-    icon: "walk-outline",
-    iconBg: "#E8F0FF",
-    videos: [
-      "Demo: Timed Up And Go (Coming Soon)",
-      "Demo: Walk-And-Turn (Coming Soon)",
-    ],
-  },
-  {
-    key: "functional",
-    title: "Functional Strength",
-    subtitle: "Balance-related functional tasks",
-    purpose: "Measures sit-to-stand and lower-extremity control",
+    id: "assessment-1",
+    name: "Chair Rise",
+    shortDesc:
+      "Stand up and sit down as many times as possible in 30 seconds, with your arms crossed over your chest.",
+    purpose:
+      "Measures lower-body strength and endurance — a key fall-risk indicator.",
     icon: "barbell-outline",
     iconBg: "#F0E9FF",
-    videos: ["Demo: Chair Rise Test (Coming Soon)"],
+    videoLabel: "Chair Rise (30-Second Sit-to-Stand)",
+    nextRoute: "/(tabs)/chair-rise-test",
+  },
+  {
+    id: "assessment-3",
+    name: "Timed Up and Go",
+    shortDesc:
+      "Stand up from a chair, walk to a marker, turn around, walk back, and sit down — as quickly as you safely can.",
+    purpose:
+      "Measures functional mobility — completing in 12 seconds or less is considered normal.",
+    icon: "walk-outline",
+    iconBg: "#E8F0FF",
+    videoLabel: "Timed Up and Go (TUG)",
+    nextRoute: "/(tabs)/tug-test",
+  },
+  {
+    id: "assessment-2",
+    name: "4-Stage Balance Test",
+    shortDesc:
+      "Hold four progressively harder standing positions for 10 seconds each: feet together, semi-tandem, tandem, and single-leg.",
+    purpose:
+      "The standard CDC fall-risk screening for static balance.",
+    icon: "accessibility-outline",
+    iconBg: "#FFE9DA",
+    videoLabel: "4-Stage Balance Test",
+    nextRoute: "/(tabs)/balance-stages-test",
   },
 ];
 
 export default function BalanceTestPage() {
   const router = useRouter();
 
-  const [openFolders, setOpenFolders] = useState<Record<TestKey, boolean>>({
-    static: true,
-    dynamic: false,
-    functional: false,
-  });
-
-  const toggleFolder = (key: TestKey) => {
-    setOpenFolders((prev) => ({ ...prev, [key]: !prev[key] }));
+  const startTest = (test: Test) => {
+    router.push({
+      pathname: "/(tabs)/video-confirm",
+      params: {
+        cat: "assessment",
+        video: test.id,
+        label: test.videoLabel,
+        nextRoute: test.nextRoute,
+        backRoute: "/(tabs)/balance-test",
+      },
+    });
   };
 
   return (
@@ -96,7 +101,7 @@ export default function BalanceTestPage() {
         </View>
         <Text style={styles.subtitle}>Balance Test</Text>
 
-        {/* Segmented */}
+        {/* Segmented control */}
         <View style={styles.segmentOuter}>
           <TouchableOpacity
             style={styles.segmentBtn}
@@ -120,88 +125,51 @@ export default function BalanceTestPage() {
 
         {/* Center heading */}
         <View style={styles.centerHead}>
-          <Text style={styles.centerTitle}>Balance Test Demos</Text>
+          <Text style={styles.centerTitle}>Fall-Risk Assessments</Text>
           <Text style={styles.centerSub}>
-            Placeholder videos for future test demonstrations
+            Three clinical tests to assess your balance and mobility
           </Text>
         </View>
 
         {/* Test cards */}
-        <View style={{ gap: 18 }}>
-          {TEST_GROUPS.map((group) => {
-            const isOpen = openFolders[group.key];
-
-            return (
-              <View key={group.key} style={styles.testCard}>
-                <View style={styles.topRow}>
-                  <View style={[styles.iconCircle, { backgroundColor: group.iconBg }]}>
-                    <Ionicons name={group.icon} size={18} color="#8A5A3C" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.testTitle}>{group.title}</Text>
-                    <Text style={styles.testSubtitle}>{group.subtitle}</Text>
-                  </View>
+        <View style={{ gap: 14 }}>
+          {TESTS.map((test) => (
+            <View key={test.id} style={styles.testCard}>
+              <View style={styles.topRow}>
+                <View
+                  style={[
+                    styles.iconCircle,
+                    { backgroundColor: test.iconBg },
+                  ]}
+                >
+                  <Ionicons name={test.icon} size={20} color="#8A5A3C" />
                 </View>
-
-                <View style={styles.infoStrip}>
-                  <Text style={styles.infoText}>
-                    <Text style={styles.infoLabel}>Purpose:</Text> {group.purpose}
-                  </Text>
-                </View>
-
-                <View style={{ marginTop: 12 }}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => toggleFolder(group.key)}
-                    style={styles.folderTab}
-                  >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Ionicons
-                        name="folder-open-outline"
-                        size={18}
-                        color="#3D2F27"
-                      />
-                      <Text style={styles.folderTitle}>Demo Videos</Text>
-                      <View style={styles.countPill}>
-                        <Text style={styles.countText}>{group.videos.length}</Text>
-                      </View>
-                    </View>
-
-                    <Ionicons
-                      name={isOpen ? "chevron-up-outline" : "chevron-down-outline"}
-                      size={18}
-                      color="#6B5E55"
-                    />
-                  </TouchableOpacity>
-
-                  {isOpen && (
-                    <View style={styles.videoList}>
-                      {group.videos.map((name) => (
-                        <View key={name} style={styles.videoRow}>
-                          <View style={styles.videoPlaceholderIcon}>
-                            <Ionicons
-                              name="videocam-outline"
-                              size={24}
-                              color="#8C7A6C"
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.videoName}>{name}</Text>
-                            <Text style={styles.videoMeta}>Not available yet</Text>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.comingSoonBtn}>
-                  <Ionicons name="time-outline" size={16} color="#8C7A6C" />
-                  <Text style={styles.comingSoonText}>Test Module Coming Soon</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.testTitle}>{test.name}</Text>
                 </View>
               </View>
-            );
-          })}
+
+              <Text style={styles.testDesc}>{test.shortDesc}</Text>
+
+              <View style={styles.purposeStrip}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={14}
+                  color="#3D2F27"
+                />
+                <Text style={styles.purposeText}>{test.purpose}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.startBtn}
+                activeOpacity={0.9}
+                onPress={() => startTest(test)}
+              >
+                <Ionicons name="play" size={16} color="#FFF" />
+                <Text style={styles.startBtnText}>Start Test</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
 
         <View style={{ height: 28 }} />
@@ -213,7 +181,6 @@ export default function BalanceTestPage() {
 const beige = "#F7EDE4";
 const beigeTrack = "#F4E3D6";
 const beigeStrip = "#F3E7D9";
-const beigeDark = "#E6D4C6";
 const warmRed = "#D84535";
 
 const styles = StyleSheet.create({
@@ -246,102 +213,74 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: "#FFF" },
 
   centerHead: { alignItems: "center", marginBottom: 16 },
-  centerTitle: { fontSize: 16, fontWeight: "900", color: "#222" },
-  centerSub: { marginTop: 4, color: "#6B5E55", fontWeight: "600", textAlign: "center" },
+  centerTitle: { fontSize: 18, fontWeight: "900", color: "#222" },
+  centerSub: {
+    marginTop: 4,
+    color: "#6B5E55",
+    fontWeight: "600",
+    textAlign: "center",
+  },
 
   testCard: {
     backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 14,
+    padding: 16,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
       },
-      android: { elevation: 1.5 },
+      android: { elevation: 2 },
     }),
   },
 
   topRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  testTitle: { fontSize: 14, fontWeight: "900", color: "#222" },
-  testSubtitle: { marginTop: 2, color: "#6B5E55", fontWeight: "600" },
+  testTitle: { fontSize: 17, fontWeight: "900", color: "#222" },
 
-  infoStrip: {
-    marginTop: 14,
+  testDesc: {
+    marginTop: 12,
+    color: "#3D2F27",
+    fontWeight: "600",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  purposeStrip: {
+    marginTop: 12,
     backgroundColor: beigeStrip,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
-  },
-  infoText: { color: "#3D2F27", fontWeight: "600" },
-  infoLabel: { fontWeight: "900" },
-
-  folderTab: {
-    backgroundColor: "#FFF7F1",
-    borderWidth: 1,
-    borderColor: "#F0E0D4",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 8,
   },
-  folderTitle: { fontWeight: "900", color: "#3D2F27" },
-  countPill: {
-    backgroundColor: "#EDE3D9",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: "#E0D3C7",
+  purposeText: {
+    flex: 1,
+    color: "#3D2F27",
+    fontWeight: "700",
+    fontSize: 13,
+    lineHeight: 18,
   },
-  countText: { fontWeight: "900", color: "#6B5E55", fontSize: 12 },
 
-  videoList: { marginTop: 10, gap: 10 },
-  videoRow: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#EEE",
-    padding: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  videoPlaceholderIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: beigeStrip,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: beigeDark,
-  },
-  videoName: { fontWeight: "900", color: "#222" },
-  videoMeta: { marginTop: 2, color: "#6B5E55", fontWeight: "700", fontSize: 12 },
-
-  comingSoonBtn: {
-    marginTop: 12,
-    backgroundColor: "#F5F0EB",
+  startBtn: {
+    marginTop: 14,
+    backgroundColor: warmRed,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     gap: 8,
-    borderWidth: 1,
-    borderColor: "#EADFD5",
   },
-  comingSoonText: { color: "#6B5E55", fontWeight: "800" },
+  startBtnText: { color: "#FFF", fontWeight: "900", fontSize: 15 },
 });

@@ -9,6 +9,7 @@ export const timedUpAndGoRules: ExerciseRule = {
   id: 'assessment-3',
   name: 'Timed Up and Go',
   category: 'assessment',
+  cameraPrompt: 'Sit in a chair facing the camera. You will need 8-10 feet of clear floor space in front of the chair to walk to a marker, turn, and come back. Your full body must be visible. Place your phone about 8 feet away, propped at roughly chest height.',
   checks: [
     {
       type: 'alignment',

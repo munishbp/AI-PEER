@@ -9,7 +9,31 @@ export const chairRiseRules: ExerciseRule = {
   id: 'assessment-1',
   name: 'Chair Rise',
   category: 'assessment',
+  repConfig: {
+    mode: 'angle3d',
+    keypoints: ['left_hip', 'left_knee', 'left_ankle'],
+    startMin: 50, startMax: 125,
+    endMin: 145, endMax: 180,
+    targetReps: 30, // arbitrary high cap; the 30s timer drives the stop
+  },
+  cameraPrompt: 'Sit in a chair facing the camera with your arms crossed across your chest. Your full body, from head to feet, must be visible both when seated and when standing. Place your phone about 6-8 feet away, propped at roughly chest height while you are seated.',
   checks: [
+    {
+      type: 'position',
+      keypoint: 'left_wrist',
+      reference: 'left_shoulder',
+      relation: 'right_of',
+      message: 'Keep your arms crossed across your chest',
+      severity: 'warning',
+    },
+    {
+      type: 'position',
+      keypoint: 'right_wrist',
+      reference: 'right_shoulder',
+      relation: 'left_of',
+      message: 'Keep your arms crossed across your chest',
+      severity: 'warning',
+    },
     {
       type: 'angle',
       keypoints: ['left_hip', 'left_knee', 'left_ankle'],
