@@ -27,6 +27,7 @@ import { getExerciseRules } from "@/src/vision/exercises";
 import {
   submitCompletedActivity,
   AngleSummarySet,
+  FeedbackEvent,
 } from "@/src/exercise-activity-storage";
 import { useAuth } from "@/src/auth";
 
@@ -94,9 +95,11 @@ export default function ChairRiseTestPage() {
     }
   }, []);
 
-  // session stats — refs to avoid re-renders on every frame
+  // session stats — refs to avoid re-renders on every frame.
+  // chair rise is single-shot, so session start IS activity start; firstAt /
+  // lastAt on FeedbackEvent entries are session-relative ms.
   const scoresRef = useRef<number[]>([]);
-  const violationCountRef = useRef<Record<string, number>>({});
+  const violationCountRef = useRef<Record<string, FeedbackEvent>>({});
   const repCountRef = useRef(0);
   const sessionStartedAtRef = useRef<number | null>(null);
 
@@ -105,13 +108,31 @@ export default function ChairRiseTestPage() {
   const [finalReps, setFinalReps] = useState(0);
   const [finalDurationSec, setFinalDurationSec] = useState(TEST_DURATION_SEC);
 
-  // accumulate scores and violations while tracking
+  // accumulate scores and violations while tracking. each frame increments
+  // the violation's count and bumps lastAt; first frame sets firstAt.
   useEffect(() => {
     if (!isTracking || !currentFeedback) return;
     scoresRef.current.push(currentFeedback.score);
+
+    const offsetMs = sessionStartedAtRef.current
+      ? Date.now() - sessionStartedAtRef.current
+      : 0;
+
     for (const v of currentFeedback.violations) {
       const key = v.message;
-      violationCountRef.current[key] = (violationCountRef.current[key] || 0) + 1;
+      const existing = violationCountRef.current[key];
+      if (existing) {
+        existing.count += 1;
+        existing.lastAt = offsetMs;
+      } else {
+        violationCountRef.current[key] = {
+          message: v.message,
+          severity: v.severity,
+          count: 1,
+          firstAt: offsetMs,
+          lastAt: offsetMs,
+        };
+      }
     }
   }, [isTracking, currentFeedback]);
 
@@ -166,6 +187,9 @@ export default function ChairRiseTestPage() {
     const angleSummaries: AngleSummarySet[] = [
       { setIndex: 0, side: "left", reps: repHistory },
     ];
+    const feedbackEvents = Object.values(violationCountRef.current).map((e) => ({
+      ...e,
+    }));
 
     void submitCompletedActivity(
       {
@@ -179,7 +203,7 @@ export default function ChairRiseTestPage() {
         repsPerSet: [finalRepCount],
         unilateral: false,
         angleSummaries,
-        feedbackEvents: [],
+        feedbackEvents,
         avgScore: avgScoreValue,
         framesAnalyzed: framesAnalyzedCount,
       },

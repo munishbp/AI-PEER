@@ -28,6 +28,7 @@ import {
   submitCompletedActivity,
   ExerciseActivityCategory,
   AngleSummarySet,
+  FeedbackEvent,
 } from "@/src/exercise-activity-storage";
 import { useAuth } from "@/src/auth";
 
@@ -108,8 +109,12 @@ export default function ExerciseSessionPage() {
   const activityRepsPerSetRef = useRef<number[]>([]);
   const activitySetDurationsRef = useRef<number[]>([]);
   const activityScoresRef = useRef<number[]>([]);
-  const activityViolationsRef = useRef<Record<string, number>>({});
+  const activityViolationsRef = useRef<Record<string, FeedbackEvent>>({});
   const activitySetAngleSummariesRef = useRef<AngleSummarySet[]>([]);
+  // anchor for activity-relative timestamps in feedbackEvents firstAt/lastAt.
+  // set in handleStartMonitoring (the first set of an activity) and never
+  // reset between sets, so timestamps from set 2 don't collide with set 1.
+  const activityStartedAtRef = useRef<number | null>(null);
 
   const resetActivityAccumulators = useCallback(() => {
     activityRepsPerSetRef.current = [];
@@ -117,6 +122,7 @@ export default function ExerciseSessionPage() {
     activityScoresRef.current = [];
     activityViolationsRef.current = {};
     activitySetAngleSummariesRef.current = [];
+    activityStartedAtRef.current = null;
   }, []);
 
   // reset sets when exercise changes
@@ -185,9 +191,12 @@ export default function ExerciseSessionPage() {
     setSecondsLeft(null);
   }, []);
 
-  // session stats — use refs so we don't re-render on every frame
+  // session stats — use refs so we don't re-render on every frame.
+  // violationCountRef holds per-set FeedbackEvent entries with timestamps
+  // measured relative to the activity start (not the set start) so they
+  // can merge cleanly into activityViolationsRef across sets.
   const scoresRef = useRef<number[]>([]);
-  const violationCountRef = useRef<Record<string, number>>({});
+  const violationCountRef = useRef<Record<string, FeedbackEvent>>({});
   const repCountRef = useRef(0);
   const sessionStartedAtRef = useRef<number | null>(null);
   // trigger re-render for summary only
@@ -200,15 +209,34 @@ export default function ExerciseSessionPage() {
     setContainerSize({ width, height });
   }, []);
 
-  // accumulate scores and violations while tracking
+  // accumulate scores and violations while tracking.
+  // each frame increments the violation's count and bumps lastAt; the first
+  // frame sets firstAt. timestamps are activity-relative ms (not set-relative)
+  // so cross-set merges in handleSetComplete don't need re-baselining.
   useEffect(() => {
     if (!isTracking || !currentFeedback) return;
 
     scoresRef.current.push(currentFeedback.score);
 
+    const offsetMs = activityStartedAtRef.current
+      ? Date.now() - activityStartedAtRef.current
+      : 0;
+
     for (const v of currentFeedback.violations) {
       const key = v.message;
-      violationCountRef.current[key] = (violationCountRef.current[key] || 0) + 1;
+      const existing = violationCountRef.current[key];
+      if (existing) {
+        existing.count += 1;
+        existing.lastAt = offsetMs;
+      } else {
+        violationCountRef.current[key] = {
+          message: v.message,
+          severity: v.severity,
+          count: 1,
+          firstAt: offsetMs,
+          lastAt: offsetMs,
+        };
+      }
     }
   }, [isTracking, currentFeedback]);
 
@@ -236,12 +264,15 @@ export default function ExerciseSessionPage() {
     if (!modelReady) return;
 
     // reset per-set stats AND activity-scoped accumulators — this is set 1
-    // of a new activity, so we start fresh on both granularities.
+    // of a new activity, so we start fresh on both granularities. activity
+    // start anchor is set here so per-frame violation timestamps are relative
+    // to the very beginning of the multi-set activity.
     scoresRef.current = [];
     violationCountRef.current = {};
     repCountRef.current = 0;
     sessionStartedAtRef.current = Date.now();
     resetActivityAccumulators();
+    activityStartedAtRef.current = Date.now();
     setShowSummary(false);
 
     setStartedAtRef.current = Date.now();
@@ -290,9 +321,18 @@ export default function ExerciseSessionPage() {
     activityRepsPerSetRef.current.push(setReps);
     activitySetDurationsRef.current.push(setDurationSec);
     activityScoresRef.current.push(...scoresRef.current);
-    for (const [k, v] of Object.entries(violationCountRef.current)) {
-      activityViolationsRef.current[k] =
-        (activityViolationsRef.current[k] || 0) + v;
+    // merge per-set FeedbackEvent map into the activity-level map: same-keyed
+    // events sum their counts and take the min firstAt / max lastAt across
+    // sets so the merged record reflects the full lifetime of the violation.
+    for (const [k, perSet] of Object.entries(violationCountRef.current)) {
+      const existing = activityViolationsRef.current[k];
+      if (existing) {
+        existing.count += perSet.count;
+        existing.firstAt = Math.min(existing.firstAt, perSet.firstAt);
+        existing.lastAt = Math.max(existing.lastAt, perSet.lastAt);
+      } else {
+        activityViolationsRef.current[k] = { ...perSet };
+      }
     }
     activitySetAngleSummariesRef.current.push({
       setIndex,
@@ -337,7 +377,9 @@ export default function ExerciseSessionPage() {
             repsPerSet: [...activityRepsPerSetRef.current],
             unilateral: isUnilateral,
             angleSummaries: [...activitySetAngleSummariesRef.current],
-            feedbackEvents: [],
+            feedbackEvents: Object.values(activityViolationsRef.current).map(
+              (e) => ({ ...e })
+            ),
             avgScore: activityAvgScore,
             framesAnalyzed: totalFrames,
           },
@@ -470,7 +512,7 @@ export default function ExerciseSessionPage() {
 
   const topViolations = useMemo(() => {
     const entries = Object.entries(violationCountRef.current);
-    entries.sort((a, b) => b[1] - a[1]);
+    entries.sort((a, b) => b[1].count - a[1].count);
     return entries.slice(0, 5);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryTick]);
@@ -727,9 +769,9 @@ export default function ExerciseSessionPage() {
                 {topViolations.length > 0 && (
                   <View style={styles.tipBox}>
                     <Text style={styles.tipTitle}>Top Issues</Text>
-                    {topViolations.map(([msg, count]) => (
+                    {topViolations.map(([msg, event]) => (
                       <Text key={msg} style={styles.tipText}>
-                        {"\u2022"} {msg} ({count}x)
+                        {"\u2022"} {msg} ({event.count}x)
                       </Text>
                     ))}
                   </View>
