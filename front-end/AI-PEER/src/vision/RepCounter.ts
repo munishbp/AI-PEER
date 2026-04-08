@@ -44,7 +44,7 @@ export class RepCounter {
   get debugPositions() { return this._debugPositions; }
 
   private computeValue(pose: Pose): number | null {
-    const { keypoints, mode } = this.config;
+    const { keypoints, secondaryKeypoints, mode } = this.config;
     const [kp1Name, kp2Name, kp3Name] = keypoints;
 
     const kp1 = pose.keypoints.find(k => k.name === kp1Name);
@@ -75,9 +75,28 @@ export class RepCounter {
     }
 
     // default: angle mode (2D)
-    const angle = calculateAngle(kp1, kp2, kp3);
+    const angle1 = calculateAngle(kp1, kp2, kp3);
+
+    // bilateral: also require the secondary side's keypoints, average the two angles
+    if (secondaryKeypoints) {
+      const [s1Name, s2Name, s3Name] = secondaryKeypoints;
+      const s1 = pose.keypoints.find(k => k.name === s1Name);
+      const s2 = pose.keypoints.find(k => k.name === s2Name);
+      const s3 = pose.keypoints.find(k => k.name === s3Name);
+      if (!s1 || !s2 || !s3) return null;
+
+      this._debugConfidences += ` | ${s1Name}:${s1.confidence.toFixed(2)} ${s2Name}:${s2.confidence.toFixed(2)} ${s3Name}:${s3.confidence.toFixed(2)}`;
+
+      if (!isConfident(s1) || !isConfident(s2) || !isConfident(s3)) return null;
+
+      const angle2 = calculateAngle(s1, s2, s3);
+      const avg = (angle1 + angle2) / 2;
+      this._debugPositions = `L:${angle1.toFixed(0)}° R:${angle2.toFixed(0)}° avg:${avg.toFixed(0)}°`;
+      return avg;
+    }
+
     this._debugPositions = `${kp3Name}: (${kp3.x.toFixed(3)}, ${kp3.y.toFixed(3)})`;
-    return angle;
+    return angle1;
   }
 
   update(pose: Pose): number {
