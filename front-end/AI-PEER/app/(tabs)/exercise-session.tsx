@@ -393,7 +393,7 @@ export default function ExerciseSessionPage() {
       }
 
       resetActivityAccumulators();
-      router.replace("/(tabs)/exercise");
+      router.navigate("/(tabs)/exercise");
       return;
     } else {
       // more sets to go — show between-set summary card and queue the gesture
@@ -554,7 +554,7 @@ export default function ExerciseSessionPage() {
               repCountRef.current = 0;
               clearTimer();
               stopTracking();
-              router.replace("/(tabs)/exercise");
+              router.navigate("/(tabs)/exercise");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
@@ -652,7 +652,10 @@ export default function ExerciseSessionPage() {
             </View>
           )}
 
-          {/* debug angle overlay */}
+          {/* debug angle overlay — commented out for the first device walkthrough
+              so the skeleton overlay is visible without text obscuring it.
+              uncomment when you need to validate angle thresholds / phase
+              transitions / keypoint confidence again.
           {isTracking && debugAngle !== null && (() => {
             const activeRule = getExerciseRules(trackingExerciseId);
             return (
@@ -684,6 +687,7 @@ export default function ExerciseSessionPage() {
               </View>
             );
           })()}
+          */}
 
           {/* timer overlay */}
           {isTracking && secondsLeft !== null && (

@@ -309,7 +309,7 @@ export default function TugTestPage() {
           <TouchableOpacity
             onPress={() => {
               handleAbort();
-              router.replace("/(tabs)/balance-test");
+              router.navigate("/(tabs)/balance-test");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
@@ -393,7 +393,9 @@ export default function TugTestPage() {
             </View>
           )}
 
-          {/* live knee-angle debug overlay (right side) */}
+          {/* live knee-angle debug overlay — commented out for the first device
+              walkthrough so the skeleton is visible without text obscuring it.
+              uncomment to validate STAND_THRESHOLD / SIT_THRESHOLD again.
           {isTracking && lastKneeAngleRef.current !== null && (
             <View style={styles.angleOverlay}>
               <Text style={styles.angleText}>
@@ -402,6 +404,7 @@ export default function TugTestPage() {
               <Text style={styles.angleLabel}>knee 3D</Text>
             </View>
           )}
+          */}
         </View>
 
         {/* error display */}
@@ -477,7 +480,7 @@ export default function TugTestPage() {
               <TouchableOpacity
                 style={styles.secondaryBtn}
                 activeOpacity={0.9}
-                onPress={() => router.replace("/(tabs)/balance-test")}
+                onPress={() => router.navigate("/(tabs)/balance-test")}
               >
                 <Ionicons name="arrow-back" size={16} color="#5B4636" />
                 <Text style={styles.secondaryText}>Back to Tests</Text>
