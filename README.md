@@ -167,7 +167,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 - Beile Han
 - Pramodh Miryala - https://www.linkedin.com/in/pramodh-miryala-82ab28292/
 - Santiago Echeverry
-- Munish Persaud - https://www.linkedin.com/in/munish-persaud
+- Munish Persaud - https://munishbp.com
 
 UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
 
