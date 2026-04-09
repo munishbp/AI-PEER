@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE } from "./api";
+import { auth } from "./firebaseClient";
 
 const EXERCISE_ACTIVITY_KEY = "exercise_activity_records_v1";
 const MAX_RECORDS = 1000;
@@ -228,17 +229,32 @@ function buildRecord(input: NewActivityInput): ExerciseCompletionRecord {
 
 /** POST a completed activity to the backend. Returns true on success.
  *  Logs the failure and returns false on any error — does not throw, so
- *  callers can fall back to local-only persistence as a degraded mode. */
+ *  callers can fall back to local-only persistence as a degraded mode.
+ *
+ *  Token freshness: calls auth.currentUser?.getIdToken(true) inline to force
+ *  a refresh against Firebase's internal refresh token. The previous version
+ *  trusted a stale token from useAuth() state which never auto-refreshed —
+ *  any session older than ~1 hour was silently failing with 401. The app's
+ *  custom /auth/refresh path (in AuthContext.restoreSession) is unaffected;
+ *  it still handles cold-start session restore from the AsyncStorage refresh
+ *  token. The two systems coexist orthogonally. */
 export async function submitActivityToBackend(
-  record: ExerciseCompletionRecord,
-  token: string
+  record: ExerciseCompletionRecord
 ): Promise<boolean> {
   try {
+    const freshToken = await auth.currentUser?.getIdToken(true);
+    if (!freshToken) {
+      console.warn(
+        "[ActivityStorage] No authenticated user; skipping backend submit"
+      );
+      return false;
+    }
+
     const res = await fetch(`${BASE}/activities/complete`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${freshToken}`,
       },
       body: JSON.stringify(record),
     });
@@ -267,8 +283,7 @@ export async function submitActivityToBackend(
  *  POST is fire-and-forget — failures are logged, not surfaced. Callers should
  *  only invoke this when an activity is fully complete (all sets done). */
 export async function submitCompletedActivity(
-  input: NewActivityInput,
-  token: string | null
+  input: NewActivityInput
 ): Promise<ExerciseCompletionRecord> {
   const record = buildRecord(input);
 
@@ -280,11 +295,7 @@ export async function submitCompletedActivity(
     console.error("[ActivityStorage] Local write failed:", err);
   }
 
-  if (token) {
-    void submitActivityToBackend(record, token);
-  } else {
-    console.warn("[ActivityStorage] No auth token; skipping backend submit");
-  }
+  void submitActivityToBackend(record);
 
   return record;
 }

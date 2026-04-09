@@ -31,7 +31,6 @@ import {
   AngleSummarySet,
   FeedbackEvent,
 } from "@/src/exercise-activity-storage";
-import { useAuth } from "@/src/auth";
 
 type CatKey = "warmup" | "strength" | "balance";
 
@@ -60,7 +59,6 @@ function toActivityCategory(
 
 export default function ExerciseSessionPage() {
   const router = useRouter();
-  const { token } = useAuth();
   const params = useLocalSearchParams<{
     cat?: CatKey;
     video?: string;
@@ -369,26 +367,23 @@ export default function ExerciseSessionPage() {
       // only persist activities where at least one rep was counted across the
       // whole session — guards against accidental empty completions
       if (totalReps > 0) {
-        void submitCompletedActivity(
-          {
-            exerciseId,
-            exerciseName,
-            category: activityCategory,
-            setsCompleted: totalSets,
-            setsTarget: totalSets,
-            durationSec: totalDurationSec,
-            totalReps,
-            repsPerSet: [...activityRepsPerSetRef.current],
-            unilateral: isUnilateral,
-            angleSummaries: [...activitySetAngleSummariesRef.current],
-            feedbackEvents: Object.values(activityViolationsRef.current).map(
-              (e) => ({ ...e })
-            ),
-            avgScore: activityAvgScore,
-            framesAnalyzed: totalFrames,
-          },
-          token
-        ).catch((error) => {
+        void submitCompletedActivity({
+          exerciseId,
+          exerciseName,
+          category: activityCategory,
+          setsCompleted: totalSets,
+          setsTarget: totalSets,
+          durationSec: totalDurationSec,
+          totalReps,
+          repsPerSet: [...activityRepsPerSetRef.current],
+          unilateral: isUnilateral,
+          angleSummaries: [...activitySetAngleSummariesRef.current],
+          feedbackEvents: Object.values(activityViolationsRef.current).map(
+            (e) => ({ ...e })
+          ),
+          avgScore: activityAvgScore,
+          framesAnalyzed: totalFrames,
+        }).catch((error) => {
           console.error(
             "[ExerciseSession] Failed to save activity record:",
             error
@@ -425,7 +420,6 @@ export default function ExerciseSessionPage() {
     currentSide,
     exerciseRule,
     getRepHistory,
-    token,
     resetActivityAccumulators,
     router,
   ]);
