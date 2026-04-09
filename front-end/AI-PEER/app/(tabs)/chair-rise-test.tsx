@@ -23,8 +23,13 @@ import { useVision } from "@/src/vision";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
+import { GestureCountdownOverlay } from "@/components/GestureCountdownOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
-import { appendExerciseCompletion } from "@/src/exercise-activity-storage";
+import {
+  submitCompletedActivity,
+  AngleSummarySet,
+  FeedbackEvent,
+} from "@/src/exercise-activity-storage";
 
 const TEST_DURATION_SEC = 30;
 const EXERCISE_ID = "assessment-1";
@@ -51,6 +56,8 @@ export default function ChairRiseTestPage() {
 
   const {
     isTracking,
+    trackingMode,
+    countdownSecondsLeft,
     currentPose,
     currentFeedback,
     repCount,
@@ -61,8 +68,10 @@ export default function ChairRiseTestPage() {
     error: visionError,
     setModelReady,
     startTracking,
+    startGestureWatch,
     stopTracking,
     handlePoseResult,
+    getRepHistory,
   } = useVision();
 
   useEffect(() => {
@@ -88,9 +97,11 @@ export default function ChairRiseTestPage() {
     }
   }, []);
 
-  // session stats — refs to avoid re-renders on every frame
+  // session stats — refs to avoid re-renders on every frame.
+  // chair rise is single-shot, so session start IS activity start; firstAt /
+  // lastAt on FeedbackEvent entries are session-relative ms.
   const scoresRef = useRef<number[]>([]);
-  const violationCountRef = useRef<Record<string, number>>({});
+  const violationCountRef = useRef<Record<string, FeedbackEvent>>({});
   const repCountRef = useRef(0);
   const sessionStartedAtRef = useRef<number | null>(null);
 
@@ -99,23 +110,41 @@ export default function ChairRiseTestPage() {
   const [finalReps, setFinalReps] = useState(0);
   const [finalDurationSec, setFinalDurationSec] = useState(TEST_DURATION_SEC);
 
-  // accumulate scores and violations while tracking
+  // accumulate scores and violations while tracking. each frame increments
+  // the violation's count and bumps lastAt; first frame sets firstAt.
   useEffect(() => {
     if (!isTracking || !currentFeedback) return;
     scoresRef.current.push(currentFeedback.score);
+
+    const offsetMs = sessionStartedAtRef.current
+      ? Date.now() - sessionStartedAtRef.current
+      : 0;
+
     for (const v of currentFeedback.violations) {
       const key = v.message;
-      violationCountRef.current[key] = (violationCountRef.current[key] || 0) + 1;
+      const existing = violationCountRef.current[key];
+      if (existing) {
+        existing.count += 1;
+        existing.lastAt = offsetMs;
+      } else {
+        violationCountRef.current[key] = {
+          message: v.message,
+          severity: v.severity,
+          count: 1,
+          firstAt: offsetMs,
+          lastAt: offsetMs,
+        };
+      }
     }
   }, [isTracking, currentFeedback]);
 
-  // frame processor wiring
+  // frame processor wiring — receives pose AND hands per frame
   const handleFrameResult = useCallback(
     (
       pose: Parameters<typeof handlePoseResult>[0],
-      _repCount: number | null
+      hands: Parameters<typeof handlePoseResult>[1]
     ) => {
-      handlePoseResult(pose);
+      handlePoseResult(pose, hands);
     },
     [handlePoseResult]
   );
@@ -153,12 +182,29 @@ export default function ChairRiseTestPage() {
         ? scoresRef.current.reduce((a, b) => a + b, 0) / framesAnalyzedCount
         : null;
 
-    void appendExerciseCompletion({
+    // grab the rep counter's per-rep angle history before stopTracking() resets it.
+    // chair rise is single-shot, single-side (left_hip / left_knee / left_ankle),
+    // so we record one AngleSummarySet at index 0 with side='left'.
+    const repHistory = getRepHistory();
+    const angleSummaries: AngleSummarySet[] = [
+      { setIndex: 0, side: "left", reps: repHistory },
+    ];
+    const feedbackEvents = Object.values(violationCountRef.current).map((e) => ({
+      ...e,
+    }));
+
+    void submitCompletedActivity({
       exerciseId: EXERCISE_ID,
       exerciseName: EXERCISE_NAME,
       category: "assessment",
-      repCount: finalRepCount,
+      setsCompleted: 1,
+      setsTarget: 1,
       durationSec: elapsedSec,
+      totalReps: finalRepCount,
+      repsPerSet: [finalRepCount],
+      unilateral: false,
+      angleSummaries,
+      feedbackEvents,
       avgScore: avgScoreValue,
       framesAnalyzed: framesAnalyzedCount,
     }).catch((error) => {
@@ -178,7 +224,7 @@ export default function ChairRiseTestPage() {
     const band = fallRiskBand(finalRepCount);
     Speech.stop();
     Speech.speak(`Test complete. ${finalRepCount} reps. ${band.label}.`);
-  }, [clearTimer, stopTracking]);
+  }, [clearTimer, stopTracking, getRepHistory]);
 
   const handleStart = useCallback(async () => {
     if (!hasPermission) {
@@ -187,18 +233,26 @@ export default function ChairRiseTestPage() {
     }
     if (!modelReady) return;
 
-    // reset session state
+    // reset session state. the per-set timer + spoken kickoff are deferred to
+    // the trackingMode watcher effect below — they fire when the gesture flow
+    // completes and trackingMode flips to 'tracking'.
     scoresRef.current = [];
     violationCountRef.current = {};
     repCountRef.current = 0;
     prevRepCountRef.current = null;
-    sessionStartedAtRef.current = Date.now();
     setShowSummary(false);
     setFinalReps(0);
 
-    startTracking(EXERCISE_ID);
+    startGestureWatch(EXERCISE_ID);
+  }, [hasPermission, requestPermission, modelReady, startGestureWatch]);
 
-    // start the 30-second countdown
+  // gesture handoff: when trackingMode flips to 'tracking' (post-countdown),
+  // seed the session timestamp, start the 30-second timer, and speak the
+  // kickoff prompt. this used to happen inline at the bottom of handleStart.
+  useEffect(() => {
+    if (trackingMode !== "tracking") return;
+
+    sessionStartedAtRef.current = Date.now();
     setSecondsLeft(TEST_DURATION_SEC);
     timerRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
@@ -207,12 +261,11 @@ export default function ChairRiseTestPage() {
       });
     }, 1000);
 
-    // verbal kickoff
     Speech.stop();
     Speech.speak(
       "Cross your arms. Stand up and sit down as many times as you can. Go."
     );
-  }, [hasPermission, requestPermission, modelReady, startTracking]);
+  }, [trackingMode]);
 
   // auto-stop when the timer hits zero
   useEffect(() => {
@@ -232,7 +285,10 @@ export default function ChairRiseTestPage() {
     };
   }, [stopTracking, clearTimer]);
 
-  const cameraActive = isTracking && hasPermission && !!device;
+  // camera renders during gesture wait + countdown + tracking — same widening
+  // as exercise-session.tsx so the user can see the skeleton during gesture wait.
+  const cameraActive =
+    trackingMode !== "idle" && hasPermission && !!device;
   const currentScore = currentFeedback?.score ?? null;
   const band = fallRiskBand(finalReps);
 
@@ -251,7 +307,7 @@ export default function ChairRiseTestPage() {
               clearTimer();
               stopTracking();
               Speech.stop();
-              router.replace("/(tabs)/balance-test");
+              router.navigate("/(tabs)/balance-test");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
@@ -273,7 +329,7 @@ export default function ChairRiseTestPage() {
             <Camera
               style={StyleSheet.absoluteFill}
               device={device}
-              isActive={isTracking}
+              isActive={true}
               frameProcessor={frameProcessor}
               pixelFormat="rgb"
             />
@@ -300,8 +356,8 @@ export default function ChairRiseTestPage() {
             </View>
           )}
 
-          {/* skeleton overlays */}
-          {isTracking && currentPose && containerSize.width > 0 && (
+          {/* skeleton overlays — visible in gesture/countdown/tracking */}
+          {trackingMode !== "idle" && currentPose && containerSize.width > 0 && (
             <>
               <GuideOverlay
                 pose={currentPose}
@@ -363,6 +419,13 @@ export default function ChairRiseTestPage() {
                 ))}
               </View>
             )}
+
+          {/* gesture-confirm + countdown overlay (sits on top of the skeleton).
+              renders nothing in idle/tracking modes. */}
+          <GestureCountdownOverlay
+            trackingMode={trackingMode}
+            countdownSecondsLeft={countdownSecondsLeft}
+          />
         </View>
 
         {/* rep counter below camera */}
@@ -404,8 +467,8 @@ export default function ChairRiseTestPage() {
           </View>
         )}
 
-        {/* tips card when idle */}
-        {!isTracking && !showSummary && (
+        {/* tips card when truly idle (no gesture flow running) */}
+        {trackingMode === "idle" && !showSummary && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>How to do this test</Text>
             <View style={styles.tipBox}>
@@ -422,7 +485,7 @@ export default function ChairRiseTestPage() {
 
         {/* controls */}
         <View style={styles.controlsRow}>
-          {isTracking ? (
+          {trackingMode === "tracking" ? (
             <TouchableOpacity
               style={styles.stopBtn}
               activeOpacity={0.9}
@@ -431,12 +494,25 @@ export default function ChairRiseTestPage() {
               <Ionicons name="square" size={16} color="#FFF" />
               <Text style={styles.primaryText}>Stop Early</Text>
             </TouchableOpacity>
+          ) : trackingMode === "waiting_for_gesture" ||
+            trackingMode === "countdown" ? (
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              activeOpacity={0.9}
+              onPress={() => {
+                stopTracking();
+                Speech.stop();
+              }}
+            >
+              <Ionicons name="close" size={16} color="#5B4636" />
+              <Text style={styles.secondaryText}>Cancel</Text>
+            </TouchableOpacity>
           ) : showSummary ? (
             <>
               <TouchableOpacity
                 style={styles.secondaryBtn}
                 activeOpacity={0.9}
-                onPress={() => router.replace("/(tabs)/balance-test")}
+                onPress={() => router.navigate("/(tabs)/balance-test")}
               >
                 <Ionicons name="arrow-back" size={16} color="#5B4636" />
                 <Text style={styles.secondaryText}>Back to Tests</Text>

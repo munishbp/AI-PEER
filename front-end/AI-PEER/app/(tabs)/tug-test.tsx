@@ -22,15 +22,18 @@ import { useVision } from "@/src/vision";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
+import { GestureCountdownOverlay } from "@/components/GestureCountdownOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
 import { calculateAngle3D, isConfident } from "@/src/vision/exercises/utils";
-import { appendExerciseCompletion } from "@/src/exercise-activity-storage";
+import { submitCompletedActivity } from "@/src/exercise-activity-storage";
 
 const EXERCISE_ID = "assessment-3";
 const EXERCISE_NAME = "Timed Up and Go";
 
-// State machine thresholds
-const READY_COUNTDOWN_SEC = 10;
+// State machine thresholds. The pre-test "getting_ready" 10s countdown is
+// gone — the gesture-confirm flow in VisionContext (arms overhead → 5s
+// countdown) now handles the pre-test phase before tugState advances out of
+// 'idle'.
 const STAND_THRESHOLD = 145; // 3D knee angle ≥ this means standing
 const SIT_THRESHOLD = 125;   // 3D knee angle ≤ this means seated
 const FRAMES_REQUIRED = 2;   // require N consecutive frames in zone (noise rejection)
@@ -38,7 +41,6 @@ const LOCKOUT_MS = 5000;     // ignore knee angle for 5s after the initial stand
 
 type TugState =
   | "idle"
-  | "getting_ready"
   | "waiting_for_stand"
   | "walking"
   | "waiting_for_final_sit"
@@ -53,8 +55,6 @@ function stateLabel(state: TugState): string {
   switch (state) {
     case "idle":
       return "Ready when you are";
-    case "getting_ready":
-      return "Get ready...";
     case "waiting_for_stand":
       return "Stand up to start the test";
     case "walking":
@@ -75,11 +75,14 @@ export default function TugTestPage() {
 
   const {
     isTracking,
+    trackingMode,
+    countdownSecondsLeft,
     currentPose,
     currentFeedback,
     error: visionError,
     setModelReady,
     startTracking,
+    startGestureWatch,
     stopTracking,
     handlePoseResult,
   } = useVision();
@@ -99,7 +102,6 @@ export default function TugTestPage() {
 
   // state machine
   const [tugState, setTugState] = useState<TugState>("idle");
-  const [readySec, setReadySec] = useState<number>(READY_COUNTDOWN_SEC);
   const [walkSec, setWalkSec] = useState<number>(0);
   const [finalElapsed, setFinalElapsed] = useState<number>(0);
 
@@ -108,13 +110,13 @@ export default function TugTestPage() {
   const framesInTargetRef = useRef<number>(0);
   const lastKneeAngleRef = useRef<number | null>(null);
 
-  // frame processor wiring
+  // frame processor wiring — receives pose AND hands per frame
   const handleFrameResult = useCallback(
     (
       pose: Parameters<typeof handlePoseResult>[0],
-      _repCount: number | null
+      hands: Parameters<typeof handlePoseResult>[1]
     ) => {
-      handlePoseResult(pose);
+      handlePoseResult(pose, hands);
     },
     [handlePoseResult]
   );
@@ -200,46 +202,41 @@ export default function TugTestPage() {
     return () => clearInterval(t);
   }, [tugState]);
 
-  // getting_ready 10-second countdown
+  // gesture-flow handoff: when the VisionContext countdown completes and
+  // trackingMode flips to 'tracking', we're ready to start watching for the
+  // initial stand. only fires once per test (gated on tugState === 'idle').
   useEffect(() => {
-    if (tugState !== "getting_ready") return;
-    setReadySec(READY_COUNTDOWN_SEC);
+    if (trackingMode !== "tracking") return;
+    if (tugState !== "idle") return;
+    framesInTargetRef.current = 0;
     Speech.stop();
     Speech.speak(
-      "Get ready. Sit in your chair facing the camera. The test will start in 10 seconds."
+      "Stand up, walk to the marker, turn around, and come back to sit."
     );
-
-    const t = setInterval(() => {
-      setReadySec((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          clearInterval(t);
-          Speech.stop();
-          Speech.speak(
-            "Stand up, walk to the marker, turn around, and come back to sit."
-          );
-          framesInTargetRef.current = 0;
-          setTugState("waiting_for_stand");
-          return 0;
-        }
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [tugState]);
+    setTugState("waiting_for_stand");
+  }, [trackingMode, tugState]);
 
   const finishTest = useCallback(
     (elapsedSeconds: number) => {
       setFinalElapsed(elapsedSeconds);
       setTugState("done");
 
-      void appendExerciseCompletion({
+      // TUG has no reps and no form score — the test result is durationSec.
+      // dropped the previous avgScore=elapsedSeconds hack since durationSec
+      // already carries that information cleanly.
+      void submitCompletedActivity({
         exerciseId: EXERCISE_ID,
         exerciseName: EXERCISE_NAME,
         category: "assessment",
-        repCount: 0,
+        setsCompleted: 1,
+        setsTarget: 1,
         durationSec: elapsedSeconds,
-        avgScore: elapsedSeconds, // the test score IS the time
+        totalReps: 0,
+        repsPerSet: [0],
+        unilateral: false,
+        angleSummaries: [],
+        feedbackEvents: [],
+        avgScore: null,
         framesAnalyzed: 0,
       }).catch((error) => {
         console.error("[TugTest] Failed to save activity record:", error);
@@ -266,18 +263,18 @@ export default function TugTestPage() {
     }
     if (!modelReady) return;
 
-    // reset state
+    // reset state. tugState stays 'idle' through the gesture flow; the
+    // trackingMode watcher effect flips it to 'waiting_for_stand' once the
+    // gesture-confirm countdown completes.
     startTimeRef.current = null;
     lockoutEndsAtRef.current = 0;
     framesInTargetRef.current = 0;
     lastKneeAngleRef.current = null;
     setWalkSec(0);
     setFinalElapsed(0);
-    setReadySec(READY_COUNTDOWN_SEC);
 
-    startTracking(EXERCISE_ID);
-    setTugState("getting_ready");
-  }, [hasPermission, requestPermission, modelReady, startTracking]);
+    startGestureWatch(EXERCISE_ID);
+  }, [hasPermission, requestPermission, modelReady, startGestureWatch]);
 
   const handleAbort = useCallback(() => {
     stopTracking();
@@ -296,7 +293,9 @@ export default function TugTestPage() {
     };
   }, [stopTracking]);
 
-  const cameraActive = isTracking && hasPermission && !!device;
+  // camera renders during gesture wait + countdown + tracking
+  const cameraActive =
+    trackingMode !== "idle" && hasPermission && !!device;
   const band = tugFallRiskBand(finalElapsed);
 
   return (
@@ -310,7 +309,7 @@ export default function TugTestPage() {
           <TouchableOpacity
             onPress={() => {
               handleAbort();
-              router.replace("/(tabs)/balance-test");
+              router.navigate("/(tabs)/balance-test");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
@@ -332,7 +331,7 @@ export default function TugTestPage() {
             <Camera
               style={StyleSheet.absoluteFill}
               device={device}
-              isActive={isTracking}
+              isActive={true}
               frameProcessor={frameProcessor}
               pixelFormat="rgb"
             />
@@ -359,8 +358,8 @@ export default function TugTestPage() {
             </View>
           )}
 
-          {/* skeleton overlays */}
-          {isTracking && currentPose && containerSize.width > 0 && (
+          {/* skeleton overlays — visible in gesture/countdown/tracking */}
+          {trackingMode !== "idle" && currentPose && containerSize.width > 0 && (
             <>
               <GuideOverlay
                 pose={currentPose}
@@ -379,13 +378,12 @@ export default function TugTestPage() {
             </>
           )}
 
-          {/* Get-ready countdown overlay */}
-          {tugState === "getting_ready" && (
-            <View style={styles.bigCountdownOverlay}>
-              <Text style={styles.bigCountdownNumber}>{readySec}</Text>
-              <Text style={styles.bigCountdownLabel}>Get ready</Text>
-            </View>
-          )}
+          {/* gesture-confirm + countdown overlay — replaces the old 10s
+              get-ready overlay. renders nothing in idle/tracking modes. */}
+          <GestureCountdownOverlay
+            trackingMode={trackingMode}
+            countdownSecondsLeft={countdownSecondsLeft}
+          />
 
           {/* Running timer overlay (walking + waiting_for_final_sit) */}
           {(tugState === "walking" || tugState === "waiting_for_final_sit") && (
@@ -395,7 +393,9 @@ export default function TugTestPage() {
             </View>
           )}
 
-          {/* live knee-angle debug overlay (right side) */}
+          {/* live knee-angle debug overlay — commented out for the first device
+              walkthrough so the skeleton is visible without text obscuring it.
+              uncomment to validate STAND_THRESHOLD / SIT_THRESHOLD again.
           {isTracking && lastKneeAngleRef.current !== null && (
             <View style={styles.angleOverlay}>
               <Text style={styles.angleText}>
@@ -404,6 +404,7 @@ export default function TugTestPage() {
               <Text style={styles.angleLabel}>knee 3D</Text>
             </View>
           )}
+          */}
         </View>
 
         {/* error display */}
@@ -444,7 +445,7 @@ export default function TugTestPage() {
                 {"\u2022"} On the cue, stand up{"\n"}
                 {"\u2022"} Walk to the marker, turn around, walk back{"\n"}
                 {"\u2022"} Sit down — the test ends automatically{"\n"}
-                {"\u2022"} The phone will give you 10 seconds to get ready
+                {"\u2022"} Raise both arms overhead to start when ready
               </Text>
             </View>
           </View>
@@ -452,7 +453,7 @@ export default function TugTestPage() {
 
         {/* controls */}
         <View style={styles.controlsRow}>
-          {tugState === "idle" ? (
+          {tugState === "idle" && trackingMode === "idle" ? (
             <TouchableOpacity
               style={styles.primaryBtn}
               activeOpacity={0.9}
@@ -461,12 +462,25 @@ export default function TugTestPage() {
               <Ionicons name="play" size={16} color="#FFF" />
               <Text style={styles.primaryText}>Start Test</Text>
             </TouchableOpacity>
+          ) : tugState === "idle" &&
+            (trackingMode === "waiting_for_gesture" ||
+              trackingMode === "countdown") ? (
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              activeOpacity={0.9}
+              onPress={() => {
+                handleAbort();
+              }}
+            >
+              <Ionicons name="close" size={16} color="#5B4636" />
+              <Text style={styles.secondaryText}>Cancel</Text>
+            </TouchableOpacity>
           ) : tugState === "done" ? (
             <>
               <TouchableOpacity
                 style={styles.secondaryBtn}
                 activeOpacity={0.9}
-                onPress={() => router.replace("/(tabs)/balance-test")}
+                onPress={() => router.navigate("/(tabs)/balance-test")}
               >
                 <Ionicons name="arrow-back" size={16} color="#5B4636" />
                 <Text style={styles.secondaryText}>Back to Tests</Text>

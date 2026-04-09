@@ -47,18 +47,6 @@ const TESTS: Test[] = [
     videoLabel: "Timed Up and Go (TUG)",
     nextRoute: "/(tabs)/tug-test",
   },
-  {
-    id: "assessment-2",
-    name: "4-Stage Balance Test",
-    shortDesc:
-      "Hold four progressively harder standing positions for 10 seconds each: feet together, semi-tandem, tandem, and single-leg.",
-    purpose:
-      "The standard CDC fall-risk screening for static balance.",
-    icon: "accessibility-outline",
-    iconBg: "#FFE9DA",
-    videoLabel: "4-Stage Balance Test",
-    nextRoute: "/(tabs)/balance-stages-test",
-  },
 ];
 
 export default function BalanceTestPage() {
@@ -127,7 +115,7 @@ export default function BalanceTestPage() {
         <View style={styles.centerHead}>
           <Text style={styles.centerTitle}>Fall-Risk Assessments</Text>
           <Text style={styles.centerSub}>
-            Three clinical tests to assess your balance and mobility
+            Two clinical tests to assess your balance and mobility
           </Text>
         </View>
 

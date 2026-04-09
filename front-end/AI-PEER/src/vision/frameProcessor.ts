@@ -10,12 +10,22 @@ import { useCallback, useRef } from 'react';
 import { useFrameProcessor } from 'react-native-vision-camera';
 import { VisionCameraProxy } from 'react-native-vision-camera';
 import { useRunOnJS } from 'react-native-worklets-core';
-import { mapMediaPipeToPose, type MediaPipeLandmark } from './VisionService';
+import {
+  mapMediaPipeToPose,
+  mapMediaPipeToHands,
+  type MediaPipeLandmark,
+  type Hand,
+} from './VisionService';
 import { Pose } from './types';
 
-type OnPoseDetected = (pose: Pose | null, repCount: number | null) => void;
+// The native plugin now returns BOTH pose AND hand landmarks per frame:
+//   { pose: [33 landmark dicts], hands: [[21 landmark dicts], ...] }
+// pose is required (returns null on detection failure); hands may be empty.
+type OnPoseDetected = (pose: Pose | null, hands: Hand[]) => void;
 
-// Initialize the native plugin once (module-level)
+// Initialize the native plugin once (module-level). The plugin name stays
+// 'poseLandmarker' even though it now also returns hands — both iOS and
+// Android plugin classes have been extended in-place.
 const poseLandmarkerPlugin = VisionCameraProxy.initFrameProcessorPlugin('poseLandmarker', {});
 
 export function useVisionFrameProcessor(
@@ -25,15 +35,20 @@ export function useVisionFrameProcessor(
   const onPoseRef = useRef(onPoseDetected);
   onPoseRef.current = onPoseDetected;
 
-  // Process landmarks on JS thread: receive raw array, map to Pose, forward
-  const handleLandmarks = useCallback((landmarks: MediaPipeLandmark[] | null) => {
-    if (!landmarks) {
-      onPoseRef.current(null, null);
-      return;
-    }
-    const pose = mapMediaPipeToPose(landmarks);
-    onPoseRef.current(pose, null);
-  }, []);
+  // Process landmarks on JS thread: receive raw object, map both pose and
+  // hands into our normalized coordinate space, forward to the consumer.
+  const handleLandmarks = useCallback(
+    (rawPose: MediaPipeLandmark[] | null, rawHands: any[]) => {
+      if (!rawPose) {
+        onPoseRef.current(null, []);
+        return;
+      }
+      const pose = mapMediaPipeToPose(rawPose);
+      const hands = mapMediaPipeToHands(rawHands);
+      onPoseRef.current(pose, hands);
+    },
+    []
+  );
 
   const handleOnJS = useRunOnJS(handleLandmarks, [handleLandmarks]);
 
@@ -44,12 +59,20 @@ export function useVisionFrameProcessor(
 
     const result = poseLandmarkerPlugin.call(frame);
 
-    if (!result || !Array.isArray(result) || result.length < 33) {
-      handleOnJS(null);
+    if (!result || typeof result !== 'object') {
+      handleOnJS(null, []);
       return;
     }
 
-    handleOnJS(result as unknown as MediaPipeLandmark[]);
+    const pose = (result as any).pose;
+    const hands = (result as any).hands;
+
+    if (!Array.isArray(pose) || pose.length < 33) {
+      handleOnJS(null, []);
+      return;
+    }
+
+    handleOnJS(pose as MediaPipeLandmark[], Array.isArray(hands) ? hands : []);
   }, [handleOnJS]);
 
   return frameProcessor;

@@ -3,7 +3,10 @@ const {verification} = require("../services/Auth_Service");
 const getVerification=async(req,res,next)=>{
     try{
         const token= req.headers.authorization?.replace("Bearer ","");
-        await verification(token)
+        // attach the decoded token to req.user so downstream controllers can
+        // read req.user.uid without re-verifying or trusting body params
+        const decoded = await verification(token)
+        req.user = decoded;
         next()
     }
     catch(error){

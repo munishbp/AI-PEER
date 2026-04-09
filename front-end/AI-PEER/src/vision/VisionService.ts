@@ -67,6 +67,34 @@ export type MediaPipeLandmark = {
   presence?: number;
 };
 
+export type MediaPipeHandLandmark = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+/** A single hand from MediaPipe Hand Landmarker. 21 landmarks per hand:
+ *  wrist (0), thumb (1-4), index (5-8), middle (9-12), ring (13-16), pinky (17-20).
+ *  Coordinates are in the SAME space as Pose keypoints (post-transform), so
+ *  gesture detectors can mix hand and body data without coordinate conversions.
+ *
+ *  handedness: MediaPipe's classification of which hand this is. iOS pre-mirrors
+ *  the front-camera buffer so MediaPipe's selfie convention is correct ("Right"
+ *  means user's actual right hand). Android doesn't pre-mirror, so MediaPipe's
+ *  output is inverted relative to the user's actual hand — but the y-axis flip
+ *  in mapMediaPipeToHands also flips the cross-product sign in the detector,
+ *  so the two errors cancel and the same detection logic works on both. */
+export type Hand = {
+  landmarks: HandLandmark[]; // length 21
+  handedness?: "Left" | "Right";
+};
+
+export type HandLandmark = {
+  x: number;
+  y: number;
+  z: number;
+};
+
 /**
  * Convert MediaPipe Pose Landmarker output (33 landmarks) to our Pose format.
  * MediaPipe coordinates are normalized 0-1 in the raw camera-sensor frame space.
@@ -102,4 +130,48 @@ export function mapMediaPipeToPose(landmarks: MediaPipeLandmark[]): Pose | null 
 
   const average_confidence = keypoints.reduce((sum, kp) => sum + kp.confidence, 0) / keypoints.length;
   return { keypoints, timestamp: Date.now(), confidence: average_confidence };
+}
+
+/**
+ * Convert MediaPipe Hand Landmarker output to our Hand[] format.
+ * Applies the SAME landscape→portrait coordinate transform that
+ * mapMediaPipeToPose applies, so hand and pose landmarks live in the
+ * same coordinate space and can be combined in gesture detectors.
+ *
+ * iOS:     transpose (x: lm.y, y: lm.x) — same as pose.
+ * Android: transpose with Y-flip (x: lm.y, y: 1 - lm.x) — same as pose.
+ *
+ * Per-hand input shape from the native plugin (both iOS Swift and Android
+ * Kotlin emit this): { landmarks: [{x,y,z}, ...21], handedness: "Left"|"Right" }.
+ * The handedness label is needed by detectOpenPalm to disambiguate the
+ * palm-normal cross-product sign.
+ */
+export function mapMediaPipeToHands(rawHands: any[] | null | undefined): Hand[] {
+  if (!Array.isArray(rawHands) || rawHands.length === 0) return [];
+
+  const isAndroid = Platform.OS === 'android';
+  const out: Hand[] = [];
+
+  for (const rawHand of rawHands) {
+    if (!rawHand || typeof rawHand !== 'object') continue;
+    const rawLandmarks = rawHand.landmarks;
+    const rawHandedness = rawHand.handedness;
+    if (!Array.isArray(rawLandmarks) || rawLandmarks.length < 21) continue;
+
+    const landmarks: HandLandmark[] = rawLandmarks.map((lm: MediaPipeHandLandmark) => ({
+      x: lm.y,
+      y: isAndroid ? 1 - lm.x : lm.x,
+      z: lm.z,
+    }));
+
+    out.push({
+      landmarks,
+      handedness:
+        rawHandedness === 'Left' || rawHandedness === 'Right'
+          ? rawHandedness
+          : undefined,
+    });
+  }
+
+  return out;
 }

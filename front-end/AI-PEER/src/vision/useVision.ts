@@ -10,6 +10,8 @@ import { Pose, FormFeedback } from './types';
 export function useVision() {
   const {
     state,
+    trackingMode,
+    countdownSecondsLeft,
     repCount,
     targetReps,
     debugAngle,
@@ -18,8 +20,10 @@ export function useVision() {
     debugPositions,
     setModelReady,
     startTracking,
+    startGestureWatch,
     stopTracking,
     handlePoseResult,
+    getRepHistory,
   } = useVisionContext();
 
   const isReady: boolean = state.isModelLoaded;
@@ -34,6 +38,8 @@ export function useVision() {
     // state
     isReady,
     isTracking,
+    trackingMode,
+    countdownSecondsLeft,
     currentPose,
     currentFeedback,
     error,
@@ -49,7 +55,9 @@ export function useVision() {
     // actions
     setModelReady,
     startTracking,
+    startGestureWatch,
     stopTracking,
     handlePoseResult,
+    getRepHistory,
   };
 }
