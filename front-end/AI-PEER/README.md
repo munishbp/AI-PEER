@@ -14,14 +14,17 @@ React Native mobile app for fall risk assessment and exercise interventions. Bui
 ```bash
 nvm use                                # Use pinned Node version (.nvmrc)
 npm install                            # JS dependencies
-cd ios && pod install && cd ..         # iOS native dependencies
+cd ios && pod install && cd ..         # iOS native dependencies (macOS only)
 cp .env.example .env                   # Fill in Firebase and API credentials
-npm run ios:doctor                     # Verify environment is healthy
+npm run ios:doctor                     # Verify iOS environment is healthy (macOS)
+npm run android:doctor                 # Verify Android environment is healthy
 ```
 
-If `ios:doctor` reports any failures, fix them before attempting an iOS build. See **iOS Troubleshooting** below.
+If either doctor reports failures, fix them before attempting a build. See **iOS Troubleshooting** and **Android Troubleshooting** below.
 
-> **After pulling new changes** that touch `ios/Podfile`, `package.json`, or any native code: re-run `npm install`, then `cd ios && pod install && cd ..`, then `npm run ios:doctor`. If the build still misbehaves, `npm run ios:clean` is the one-command recovery.
+> **After pulling new changes** that touch `ios/Podfile`, `android/build.gradle`, `android/gradle.properties`, `package.json`, or any native code:
+> - **iOS:** re-run `npm install`, then `cd ios && pod install && cd ..`, then `npm run ios:doctor`. If the build still misbehaves, `npm run ios:clean` is the one-command recovery.
+> - **Android:** re-run `npm install`, then `cd android && ./gradlew clean && cd ..`, then `npm run android:doctor`. If the build still misbehaves, `npm run android:clean` is the one-command recovery.
 
 > **Note:** `react-native-worklets-core` is a required direct dependency. It enables VisionCamera frame processors, which are what the custom MediaPipe Swift plugin (`PoseLandmarkerPlugin.swift`) builds on top of. It's distinct from the newer `react-native-worklets` package — both are needed but only `worklets-core` exposes VisionCamera's `FrameProcessorPlugin.h` headers to native code. If you ever see a "VisionCamera/FrameProcessorPlugin.h file not found" build error, the cause is `react-native-worklets-core` being missing from `node_modules`.
 
@@ -53,36 +56,71 @@ This deintegrates and reinstalls Pods, wipes `~/Library/Developer/Xcode/DerivedD
 - *"react-native-worklets-core missing"* — run `npm install`. It's a direct dependency required by the custom MediaPipe Swift plugin.
 - *"pod not found"* or *"CocoaPods version too old"* — run `brew install cocoapods` or `brew upgrade cocoapods`.
 
+## Android Troubleshooting
+
+If an Android build fails with `Fail to run Gradle Worker Daemon`, OOM during `:react-native-screens:compileReleaseJavaWithJavac`, JDK toolchain mismatches, or any "works on my pixel 7 setup but not theirs" weirdness, the cause is almost always environmental drift — JDK version, Android SDK env vars, Gradle daemon memory, or stale build caches. The Gradle Worker Daemon failure mode in particular almost always means the OS couldn't fork a worker JVM (OOM, JDK env not set, daemon dead).
+
+**First, diagnose:**
+```bash
+npm run android:doctor
+```
+
+This prints PASS/FAIL for every required piece of the Android environment (JDK version, `JAVA_HOME`, Android SDK location, `ANDROID_SDK_ROOT` / `ANDROID_HOME`, Gradle wrapper, gradle.properties, build tools, daemon health). It is read-only and never modifies anything. Cross-platform: macOS, Linux, Windows (via WSL or Git Bash).
+
+**Then, if doctor passes but the build still fails, nuke and rebuild:**
+```bash
+npm run android:clean
+```
+
+This runs `./gradlew clean`, wipes `android/build/`, `android/app/build/`, `android/.gradle/`, and stops any running Gradle daemons. After it finishes, fresh-build with `npm run android` (or open `android/` in Android Studio and Sync → Rebuild). The script deliberately leaves `node_modules/`, `android/local.properties`, and `android/keystores/` alone — those are slow to recreate or contain user-specific config.
+
+> **Why this happens:** Gradle Worker Daemons are forked JVMs that run compilation tasks in parallel. They inherit the JDK, the Android SDK location, and Gradle's memory configuration from the parent process. If any of those is misconfigured (wrong JDK on PATH, missing `ANDROID_HOME`, daemon out of memory) the worker fork fails with the generic "Fail to run Gradle Worker Daemon" message — Gradle's diagnostics are intentionally vague at that layer because the actual failure happens inside the OS exec call. `android:doctor` checks every environment variable and config knob that affects worker daemon health, and `android:clean` resets the build cache + kills any zombie daemons.
+
+**Common doctor failures:**
+- *"JDK version mismatch"* / *"Wrong JDK on PATH"* — install the JDK version that React Native + AGP expect (usually JDK 17). Set `JAVA_HOME` accordingly.
+- *"ANDROID_HOME / ANDROID_SDK_ROOT not set"* — point them at your Android SDK install (typically `~/Library/Android/sdk` on macOS, `~/Android/Sdk` on Linux).
+- *"Gradle daemon OOM"* — bump `org.gradle.jvmargs` in `android/gradle.properties` (the hardened defaults from commit `f061acd9` should already cover this; only escalate if you're hitting it on a memory-constrained machine).
+- *"Build tools version not installed"* — open Android Studio → SDK Manager → install the build tools version that matches `android/build.gradle`.
+
 ## Running the App
 
 Expo Go will not work. You must build the native app.
 
+**iOS (macOS only) — recommended workflow:**
+```bash
+# Terminal 1: Start Metro bundler
+npm start
+
+# Terminal 2: Open Xcode workspace, then Cmd+R to build & run
+npm run ios
+```
+
+The `npm run ios` script is just `open ios/AIPEER.xcworkspace` — it opens the project in Xcode rather than triggering a CLI build. From Xcode you can pick the device, see real-time compile errors, and hit Cmd+R to build + run. JS-only changes hot-reload via Metro automatically; only native code changes (Swift / Pods) require a fresh Xcode build.
+
 **Android:**
 ```bash
 # Terminal 1: Start Metro bundler
-npx expo start
+npm start
 
-# Terminal 2: Build and run (or use Android Studio)
-npx expo run:android
+# Terminal 2: Build and run
+npm run android
 ```
 
-**iOS (macOS only):**
-```bash
-npx expo start
-npx expo run:ios
-```
-
-Or open `android/` or `ios/` directly in Android Studio / Xcode.
+Or open `android/` directly in Android Studio.
 
 ## Features
 
 - Fall risk assessment with FRA matrix visualization and FES-I questionnaire
-- SMS 2FA authentication via Google Identity Platform
+- SMS 2FA authentication via Google Identity Platform with two-token persistence (refresh token in AsyncStorage → /auth/refresh → custom token → ID token)
 - On-device AI chat powered by Qwen3.5-2B (finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0), ~1.2GB, no data leaves phone)
 - Conversation history with 24-hour auto-archive
-- Real-time pose estimation via MediaPipe Pose Landmarker (~9MB model, GPU-accelerated, custom native plugin)
-- 24 exercises with pose-based form analysis (3 assessment, 5 warmup, 5 strength, 11 balance)
-- Rep counting with form scoring (angle, alignment, position checks)
+- Real-time pose + hand estimation via MediaPipe Pose Landmarker AND Hand Landmarker (~9MB + ~7MB models, GPU-accelerated, single custom native plugin returning both per frame)
+- Open-palm gesture-confirm start flow on every monitored exercise session — replaces direct Start Monitoring with a "hold up an open palm → 5-second countdown → tracking" flow
+- 23 exercises with pose-based form analysis (2 clinical fall-risk assessments, 5 warmup, 5 strength, 11 balance)
+- Two clinical fall-risk assessments: Chair Rise (30-second sit-to-stand) and Timed Up and Go (TUG)
+- Rep counting with state machine (1.2s cooldown, 3D angle support, bilateral averaging) and per-rep angle history captured into the activity record
+- Form score = percentage of frames where all checks passed (binary per-frame, averaged across the activity)
+- Per-user exercise activity history persisted to Firestore via the backend `/activities` endpoint, with automatic Firebase ID-token refresh per request
 - Exercise video library with signed URL delivery from GCS
 - Daily workout recommendations with compliance tracking
 - Activity tracking with weekly summaries and monthly heatmap
@@ -92,74 +130,98 @@ Or open `android/` or `ios/` directly in Android Studio / Xcode.
 ## Project Structure
 
 ```
-app/                           # Expo Router screens
-  _layout.tsx                  # Root layout (providers: Auth, LLM, Vision, Prefs)
-  index.tsx                    # Login/Register
-  verify.tsx                   # SMS code verification
-  welcome.tsx                  # Onboarding
-  tutorial.tsx                 # App tutorial
-  questionnaire.tsx            # FES-I fall risk questionnaire
-  chat-history.tsx             # Conversation history list
+app/                              # Expo Router screens
+  _layout.tsx                     # Root layout (providers: Auth, LLM, Vision, Prefs)
+  index.tsx                       # Login/Register
+  verify.tsx                      # SMS code verification
+  welcome.tsx                     # Onboarding
+  tutorial.tsx                    # App tutorial
+  questionnaire.tsx               # FES-I fall risk questionnaire
+  chat-history.tsx                # Conversation history list
   (tabs)/
-    _layout.tsx                # Tab navigator (5 tabs)
-    index.tsx                  # Home -- FRA matrix, scores, activity
-    ai-chat.tsx                # On-device AI chat
-    exercise.tsx               # Exercise category selector
-    exercise-session.tsx       # Full-screen exercise with camera + pose overlay
-    activity.tsx               # Activity tracking, compliance heatmap
-    balance-test.tsx           # Balance assessment test
-    video-confirm.tsx          # Video playback before exercise
-    contacts.tsx               # Emergency contacts
-    settings.tsx               # User preferences
+    _layout.tsx                   # Tab navigator (5 visible tabs + hidden routes)
+    index.tsx                     # Home -- FRA matrix, scores, activity
+    ai-chat.tsx                   # On-device AI chat
+    exercise.tsx                  # Exercise category selector
+    exercise-session.tsx          # Multi-set exercise w/ camera + gesture-confirm + rep counter
+    activity.tsx                  # Activity tracking, compliance heatmap
+    balance-test.tsx              # Fall-risk assessments landing (Chair Rise + TUG)
+    chair-rise-test.tsx           # 30-second sit-to-stand assessment
+    tug-test.tsx                  # Timed Up and Go assessment
+    video-confirm.tsx             # Video playback before exercise
+    contacts.tsx                  # Emergency contacts
+    settings.tsx                  # User preferences
 
 src/
-  api.ts                       # HTTP client for backend API
-  firebaseClient.ts            # Firebase SDK init
-  video.ts                     # Exercise video URL mapping
-  daily-workout.ts             # Workout recommendation logic
-  workout-combos.ts            # Exercise combinations
-  exercise-activity-storage.ts # AsyncStorage for exercise logs
-  fra-storage.ts               # AsyncStorage for FRA results
-  prefs-context.tsx            # Accessibility preferences context
-  theme.ts                     # Colors, typography, spacing
+  api.ts                          # HTTP client for backend API
+  firebaseClient.ts               # Firebase Auth SDK init
+  video.ts                        # Exercise video URL mapping
+  daily-workout.ts                # Workout recommendation logic
+  workout-combos.ts               # Exercise combinations
+  exercise-activity-storage.ts    # Local + backend dual-write activity persistence
+  fra-storage.ts                  # AsyncStorage for FRA results
+  prefs-context.tsx               # Accessibility preferences context
+  theme.ts                        # Colors, typography, spacing
 
   auth/
-    AuthContext.tsx             # Auth provider (login, register, refresh tokens)
+    AuthContext.tsx               # Two-token persistence + restoreSession on launch
 
   llm/
-    LLMService.ts              # Singleton llama.rn wrapper (load, generate, release)
-    LLMContext.tsx              # React Context (download, init, generate state)
-    modelDownloader.ts          # Signed URL fetch + streaming download
-    config.ts                  # Model filename, size, inference params
-    systemPrompt.ts            # PEER framework persona + ChatML formatting
-    useLLM.ts                  # Hook for components
-    types.ts                   # ChatMessage, Conversation, LLMState
+    LLMService.ts                 # Singleton llama.rn wrapper (load, generate, release)
+    LLMContext.tsx                # React Context (download, init, generate state)
+    modelDownloader.ts            # Signed URL fetch + streaming download
+    config.ts                     # Model filename, size, inference params
+    systemPrompt.ts               # PEER framework persona + ChatML formatting
+    useLLM.ts                     # Hook for components
+    types.ts                      # ChatMessage, Conversation, LLMState
 
   vision/
-    VisionService.ts           # MediaPipe landmark → COCO keypoint mapper
-    VisionContext.tsx           # React Context for tracking state
-    FormAnalyzer.ts            # Angle/alignment/position rule checking
-    RepCounter.ts              # Rep state machine (1.2s cooldown)
-    PoseSmoothing.ts           # Temporal keypoint smoothing
-    frameProcessor.ts          # VisionCamera frame processor
-    config.ts                  # Model config (640x640, 0.3 threshold)
-    exercises/                 # 24 exercise rule definitions
-      assessment/              # Balance test, chair rise, TUG
-      warmup/                  # Head, neck, back, trunk, ankle
-      strength/                # Knee ext/flex, hip abd, calf/toe raises
-      balance/                 # 11 balance exercises
+    VisionService.ts              # MediaPipe pose + hand landmark mappers
+    VisionContext.tsx             # Tracking state machine + open-palm detector + smoother
+    FormAnalyzer.ts               # Per-frame check loop with rep-zone gating + severity
+    RepCounter.ts                 # Rep state machine + per-rep angle history
+    frameProcessor.ts             # VisionCamera worklet bridge to native plugin
+    config.ts                     # Vision module config
+    constants.ts                  # COCO keypoint names, skeleton edges
+    types.ts                      # Pose, Keypoint, FormFeedback, FormViolation
+    useVision.ts                  # Hook exposing vision state + actions
+    exercises/                    # 23 exercise rule definitions
+      assessment/                 # Chair rise, TUG (4-stage parked stub)
+      warmup/                     # Head, neck, back, trunk, ankle
+      strength/                   # Knee ext/flex, hip abd, calf/toe raises
+      balance/                    # 11 balance exercises
     components/
-      GuideOverlay.tsx         # Camera positioning guide
-      SkeletonOverlay.tsx      # Skeleton visualization
-  ios/AIPEER/
-    PoseLandmarkerPlugin.swift   # Custom VisionCamera plugin (MediaPipe, iOS)
-    PoseLandmarkerPlugin.m       # ObjC registration for the Swift plugin
-    pose_landmarker_full.task    # MediaPipe model (~9MB)
+      GuideOverlay.tsx            # Camera positioning guide
+      SkeletonOverlay.tsx         # Skeleton visualization
+
+ios/AIPEER/
+  PoseLandmarkerPlugin.swift      # Custom VisionCamera plugin: Pose + Hand from one call
+  PoseLandmarkerPlugin.m          # ObjC registration for the Swift plugin
+  pose_landmarker_full.task       # MediaPipe Pose model (~9MB)
+  hand_landmarker.task            # MediaPipe Hand model (~7MB)
+
+android/app/src/main/
+  java/com/anonymous/aipeer/poselandmarker/
+    PoseLandmarkerFrameProcessorPlugin.kt   # Kotlin port of the Swift plugin
+  assets/
+    pose_landmarker_full.task     # MediaPipe Pose model (Android copy)
+    hand_landmarker.task          # MediaPipe Hand model (Android copy)
+
+assets/models/                    # Canonical model files (sources of truth)
+  pose_landmarker_full.task
+  hand_landmarker.task
+
+scripts/                          # Build doctors + clean recovery
+  ios-doctor.sh                   # iOS environment diagnostics
+  ios-clean.sh                    # iOS pod deintegrate + DerivedData wipe
+  android-doctor.sh               # Android environment diagnostics
+  android-clean.sh                # Gradle clean + build cache wipe
 
 components/
-  ModelDownloadModal.tsx       # LLM download dialog with progress bar
-  FRAMatrixCard.tsx            # FRA matrix visualization
-  graphs/                      # FRA and line graph components
+  ModelDownloadModal.tsx          # LLM download dialog with progress bar
+  FRAMatrixCard.tsx               # FRA matrix visualization
+  GestureCountdownOverlay.tsx     # Gesture-confirm + countdown overlay (Hold up an open palm)
+  graphs/                         # FRA and line graph components
 ```
 
 ## On-Device LLM
@@ -172,9 +234,27 @@ Configuration in `src/llm/config.ts`:
 - Temperature: 0.7
 - Conversation TTL: 24 hours
 
-## Pose Estimation
+## Vision Pipeline
 
-Real-time exercise form monitoring using Google MediaPipe Pose Landmarker (~9MB model). A custom native VisionCamera frame processor plugin (`PoseLandmarkerPlugin.swift` on iOS) runs MediaPipe inference with GPU acceleration (Metal). The model detects 33 3D landmarks per person, which are mapped to 17 COCO-compatible keypoints. Each of the 24 exercises has specific form rules (angle ranges, alignment tolerances, position requirements) defined in `src/vision/exercises/`. The RepCounter tracks reps using a state machine with 1.2-second cooldown to prevent double-counting. Form scores of 60+ indicate good form. The iOS Podfile requires `MediaPipeTasksVision` pod with xcframework linker workarounds (see Podfile comments).
+Real-time exercise form monitoring AND open-palm gesture-confirm start flow, both running on the same single-call native plugin.
+
+**Dual-task plugin.** A single custom VisionCamera frame processor plugin (`PoseLandmarkerPlugin.swift` on iOS, `PoseLandmarkerFrameProcessorPlugin.kt` on Android — both registered as `'poseLandmarker'`) runs Google MediaPipe Pose Landmarker AND MediaPipe Hand Landmarker on each camera frame, returning a unified `{ pose: [...33], hands: [{ landmarks: [...21], handedness }] }` result. The two MediaPipe tasks share the same `MediaPipeTasksVision` pod (iOS) / `tasks-vision` artifact (Android) — adding the Hand task did NOT require a new dependency or any new C++ compilation.
+
+**Pose** (33 landmarks per person, mapped to 17 COCO-compatible keypoints in `VisionService.mapMediaPipeToPose`). 23 exercises have rules in `src/vision/exercises/` (angle, alignment, position, distance checks). Form scores derive from the percentage of frames where ALL form checks passed during the active rep period — binary 100/0 per frame, averaged over the activity for the final score. The form analyzer supports rep-zone gating (skip the check while the user is in the start or end zone — only fire warnings in the dead zone between) and severity gradation (mild/moderate/severe based on degrees outside the acceptable range), both in `src/vision/exercises/types.ts`.
+
+**Rep counting** lives in `RepCounter.ts`: a state machine (`idle → in_start → in_end`) with a 1.2-second cooldown, 2-frame zone persistence, 15° minimum movement validation, and bilateral keypoint averaging for two-leg exercises (e.g., knee bends). Each counted rep is logged into a per-rep history (`{ startAngle, endAngle, peakAngle, romDeg, durationMs }`) which the activity-record persistence layer pulls into the Firestore record at end of session.
+
+**Form-check smoothing.** `VisionContext` wraps `analyzePose` with a per-rule violation-start map: a violation must be continuously failing for ≥300ms before it surfaces to the user. This catches single-frame keypoint glitches without hiding sustained out-of-form positions. The smoothed violations also feed the binary form score (so a one-frame glitch doesn't tank the score).
+
+**Gesture-confirm start flow.** Tapping Start Monitoring (or Start Test on the assessments) doesn't immediately begin tracking. Instead, `VisionContext` enters a `waiting_for_gesture` state and runs the `detectOpenPalm` check on each detected hand. The detector requires (1) all four non-thumb fingers extended in 3D (extension ratio ≥ 0.92), (2) all fingertips above the wrist in image y, (3) thumb extended away from the wrist (≥ 1.2× hand-size scale), and (4) the palm-normal cross product pointing toward the camera. The cross-product sign depends on which hand it is and the underlying coordinate transform — see the next section. Once the user holds the gesture continuously for `GESTURE_HOLD_MS` (1000ms), VisionContext enters `countdown` for 5 seconds (audible 5-4-3-2-1 via expo-speech) and then transitions to `tracking`. The `GestureCountdownOverlay` component renders the prompt + the countdown number visually on top of the camera.
+
+**TrackingMode state machine.** The whole lifecycle is `idle → waiting_for_gesture → countdown → tracking → idle` with explicit transitions in `VisionContext.tsx`. The camera + skeleton overlay render in any non-idle state; the rep counter UI only renders in `tracking`. Between sets of a multi-set exercise, the screen re-enters `waiting_for_gesture` and the user re-confirms with another open-palm gesture.
+
+**Cross-platform coordinates and the Android handedness gotcha.** `mapMediaPipeToPose` and `mapMediaPipeToHands` both apply a landscape→portrait coordinate rotation. iOS uses `(x: lm.y, y: lm.x)` (transpose only); Android uses `(x: lm.y, y: 1 - lm.x)` (transpose with Y-flip, because CameraX delivers the front camera buffer in the opposite vertical orientation from iOS). The Y-flip on Android inverts the sign of the cross product computed in `detectOpenPalm`, so the iOS detector logic runs inverted on Android. **An earlier implementation assumed this was canceled by an inverted handedness label on Android (per the MediaPipe selfie convention warning), but Pixel 7 device testing disproved that assumption** — MediaPipe reports handedness correctly on Android, only the cross-product sign flips. The detector now branches on `Platform.OS === 'android'` and negates the expected sign. If a future device test ever finds palm-vs-back inverted again, the fix is to flip the `RIGHT_PALM_NORMAL_SIGN` constant in `VisionContext.tsx`.
+
+**Native plugin lifecycle differences.** iOS uses constructor-time GPU init (the plugin is instantiated once when VisionCamera registers it). Android uses lazy thread-affine init in the first `callback()` call — MediaPipe's GPU delegate has thread affinity, and the constructor runs on the wrong thread, so we defer init to the videoQueue thread where `callback()` runs. Both platforms hold the landmarkers in process-wide singletons so React Native fast-refresh / HMR doesn't leak instances across reloads.
+
+**Build dependency note.** The custom Swift plugin only compiles because `react-native-worklets-core` is declared as a direct npm dependency in `package.json`. VisionCamera's frame processor support is gated on this package — without it, VisionCamera does not expose `FrameProcessorPlugin.h` and `PoseLandmarkerPlugin.swift` fails to compile.
 
 ## Environment Variables
 

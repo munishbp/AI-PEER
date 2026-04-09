@@ -14,7 +14,7 @@ import React, {
   useEffect,
   ReactNode,
 } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import { VisionState, Pose, FormFeedback, FormViolation } from './types';
 import { analyzePose } from './FormAnalyzer';
 import { RepCounter, RepHistoryEntry } from './RepCounter';
@@ -418,14 +418,19 @@ const THUMB_REACH_RATIO = 1.2;
 // hand with palm facing the camera in our portrait coordinate system.
 // The cross product of (wrist→index_MCP) × (wrist→pinky_MCP) z-component
 // flips between Left and Right hands (the two are mirror images), so we
-// scale by handedness in detectOpenPalm. If device testing shows palm/back
-// are inverted, flip this constant from +1 to -1.
+// scale by handedness in detectOpenPalm. Calibrated on iOS with a palm-
+// forward right hand.
 //
-// Cross-platform note: on Android, mapMediaPipeToHands flips the y axis
-// (Y-flip), which inverts the cross-product sign. MediaPipe also reports
-// the wrong handedness on Android (it assumes selfie input but Android's
-// CameraX doesn't pre-mirror) — those two errors cancel, so the same
-// constant works on both platforms without any Platform.OS branching.
+// Cross-platform note: mapMediaPipeToHands applies a transpose-only
+// transform on iOS (linear part det = -1, orientation-reversing) but a
+// transpose + Y-flip on Android (det = +1, orientation-preserving). The
+// 2D cross product picks up opposite signs on the two platforms for the
+// same anatomical hand, so detectOpenPalm negates expectedSign on Android.
+// An earlier version of this file claimed two errors cancel on Android
+// (Y-flip + a supposedly-wrong MediaPipe handedness label); device testing
+// on a Pixel 7 in 2026-04 disproved that — Android handedness is reported
+// correctly, so only the transform-sign flip applies and must be
+// compensated inside detectOpenPalm.
 const RIGHT_PALM_NORMAL_SIGN = 1;
 
 function dist3D(
@@ -502,8 +507,12 @@ function detectOpenPalm(hand: Hand): boolean {
     // cross product z component (we don't need the full 3D normal — only
     // the sign of the z component matters for palm-toward-camera).
     const normalZ = v1x * v2y - v1y * v2x;
-    const expectedSign =
+    let expectedSign =
       hand.handedness === "Right" ? RIGHT_PALM_NORMAL_SIGN : -RIGHT_PALM_NORMAL_SIGN;
+    // Android's mapMediaPipeToHands Y-flip inverts the 2D cross product sign
+    // relative to iOS (see RIGHT_PALM_NORMAL_SIGN comment above for the full
+    // coordinate-orientation explanation).
+    if (Platform.OS === 'android') expectedSign = -expectedSign;
     if (normalZ * expectedSign <= 0) return false;
   }
 
