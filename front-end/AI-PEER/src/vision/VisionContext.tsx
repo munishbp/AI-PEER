@@ -20,7 +20,7 @@ import { analyzePose } from './FormAnalyzer';
 import { RepCounter, RepHistoryEntry } from './RepCounter';
 import { getExerciseRules } from './exercises';
 import { ExerciseRule } from './exercises/types';
-import { isConfident } from './exercises/utils';
+import { Hand } from './VisionService';
 
 /** Tracking lifecycle state machine.
  *  - 'idle': nothing running
@@ -52,8 +52,10 @@ type VisionContextValue = {
    *  effects (rep counter init, form analysis) take over. */
   startGestureWatch: (exerciseId: string) => void;
   stopTracking: () => void;
-  // accepts an already-parsed pose from the frame processor worklet
-  handlePoseResult: (pose: Pose | null) => void;
+  // accepts an already-parsed pose AND hand list from the frame processor.
+  // hands is empty when no hands are detected this frame; pose is null only
+  // on detection failure.
+  handlePoseResult: (pose: Pose | null, hands: Hand[]) => void;
   // returns a snapshot of the current rep counter's per-rep history. callers
   // must invoke this BEFORE stopTracking() since stopTracking resets the
   // counter and discards the history. exposed as a getter (not a state field)
@@ -264,25 +266,27 @@ export function VisionProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // handlePoseResult — takes a parsed pose from the frame processor.
+  // handlePoseResult — takes a parsed pose AND hand list from the frame processor.
   // - 'idle': bail out
-  // - 'waiting_for_gesture': run the arms-overhead detector. don't analyze
-  //   form, don't update the rep counter. update currentPose so the screen
-  //   can still render the skeleton overlay (gives the user feedback that
-  //   the camera sees them).
+  // - 'waiting_for_gesture': run the open-palm detector against the detected
+  //   hands. don't analyze form, don't update the rep counter. update
+  //   currentPose so the screen can still render the skeleton overlay (gives
+  //   the user feedback that the camera sees them).
   // - 'countdown': pose-only update for the skeleton; everything else dormant.
-  // - 'tracking': existing path — analyze, smooth, update rep counter.
+  // - 'tracking': existing path — analyze, smooth, update rep counter. hands
+  //   are ignored in tracking mode.
   const handlePoseResult = useCallback(
-    (pose: Pose | null) => {
+    (pose: Pose | null, hands: Hand[]) => {
       const mode = trackingModeRef.current;
       if (mode === 'idle') return;
 
       let feedback: FormFeedback | null = null;
 
-      if (mode === 'waiting_for_gesture' && pose) {
-        // sustained-detection: only fire when both wrists have been above both
-        // shoulders for at least GESTURE_HOLD_MS. resets if any frame fails.
-        if (detectArmsOverhead(pose)) {
+      if (mode === 'waiting_for_gesture') {
+        // sustained-detection: only fire when at least one detected hand has
+        // been showing an open palm for ≥ GESTURE_HOLD_MS. resets if any
+        // frame fails (no hands, or no hand currently open).
+        if (detectStartGesture(hands)) {
           if (gestureFirstSeenAtRef.current === null) {
             gestureFirstSeenAtRef.current = Date.now();
           } else if (Date.now() - gestureFirstSeenAtRef.current >= GESTURE_HOLD_MS) {
@@ -380,27 +384,65 @@ export function useVisionContext(): VisionContextValue {
   return context;
 }
 
-// arms-overhead gesture detector. true when both wrists are confidently above
-// both shoulders by at least 15% of the visible torso height. uses left hip
-// as the torso anchor; if hip is missing or unconfident, falls back to a
-// constant 0.2 normalized-y margin (the keypoint coords are normalized 0..1).
-function detectArmsOverhead(pose: Pose): boolean {
-  const ls = pose.keypoints.find((k) => k.name === 'left_shoulder');
-  const rs = pose.keypoints.find((k) => k.name === 'right_shoulder');
-  const lw = pose.keypoints.find((k) => k.name === 'left_wrist');
-  const rw = pose.keypoints.find((k) => k.name === 'right_wrist');
-  const lh = pose.keypoints.find((k) => k.name === 'left_hip');
+// MediaPipe Hand landmark indices for the four non-thumb fingers. each finger
+// has four landmarks: MCP (knuckle base), PIP (mid), DIP (upper), TIP (end).
+// thumb (1-4) is excluded — its curl behavior is too variable across users to
+// reliably classify as "extended."
+const FINGER_INDICES: ReadonlyArray<readonly [number, number, number, number]> = [
+  [5, 6, 7, 8],     // index
+  [9, 10, 11, 12],  // middle
+  [13, 14, 15, 16], // ring
+  [17, 18, 19, 20], // pinky
+];
 
-  if (!ls || !rs || !lw || !rw) return false;
-  if (!isConfident(ls) || !isConfident(rs) || !isConfident(lw) || !isConfident(rw)) {
-    return false;
+// minimum extension ratio (euclidean distance MCP→TIP / sum of segment lengths
+// MCP→PIP→DIP→TIP) for a finger to count as "extended". 1.0 = perfectly straight,
+// ~0.5 = curled into a fist. 0.85 is a generous threshold that allows for
+// natural finger droop while still rejecting curled positions.
+const FINGER_EXTENSION_THRESHOLD = 0.85;
+
+// at least this many of the four non-thumb fingers must be extended for the
+// gesture to count as "open palm." three out of four leaves room for a
+// partially-curled finger or one with a tracking glitch.
+const MIN_EXTENDED_FINGERS = 3;
+
+function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// open-palm detector. for each non-thumb finger, compute the extension ratio:
+// the straight-line MCP→TIP distance divided by the path length through
+// MCP→PIP→DIP→TIP. a fully extended finger has ratio ≈ 1.0; a curled finger
+// drops to ~0.5. a hand counts as an "open palm" when at least 3 of 4
+// non-thumb fingers exceed the extension threshold.
+function detectOpenPalm(hand: Hand): boolean {
+  if (!hand.landmarks || hand.landmarks.length < 21) return false;
+  const lm = hand.landmarks;
+
+  let extendedCount = 0;
+  for (const [mcp, pip, dip, tip] of FINGER_INDICES) {
+    const direct = dist(lm[mcp], lm[tip]);
+    const path =
+      dist(lm[mcp], lm[pip]) +
+      dist(lm[pip], lm[dip]) +
+      dist(lm[dip], lm[tip]);
+    if (path > 0 && direct / path >= FINGER_EXTENSION_THRESHOLD) {
+      extendedCount++;
+    }
   }
 
-  const torso = lh && isConfident(lh) ? Math.abs(ls.y - lh.y) : 0.2;
-  const margin = torso * 0.15;
+  return extendedCount >= MIN_EXTENDED_FINGERS;
+}
 
-  // y axis: smaller y = higher on screen, so wrist above shoulder means wrist.y < shoulder.y
-  return lw.y < ls.y - margin && rw.y < rs.y - margin;
+// returns true if ANY detected hand shows an open palm. either left or right
+// hand counts — gesture detection is hand-agnostic.
+function detectStartGesture(hands: Hand[]): boolean {
+  for (const hand of hands) {
+    if (detectOpenPalm(hand)) return true;
+  }
+  return false;
 }
 
 // dedupes by message and applies the 300ms persistence window. mutates

@@ -242,14 +242,15 @@ export default function ExerciseSessionPage() {
     }
   }, [isTracking, currentFeedback]);
 
-  // frame processor — runs inference on worklet, posts pose back to js
-  // handlePoseResult runs form analysis and updates vision context state
+  // frame processor — runs inference on worklet, posts pose AND hands back to js.
+  // handlePoseResult routes pose to form analysis / rep counter (in tracking mode)
+  // and hands to the open-palm gesture detector (in waiting_for_gesture mode).
   const handleFrameResult = useCallback(
     (
       pose: Parameters<typeof handlePoseResult>[0],
-      _repCount: number | null
+      hands: Parameters<typeof handlePoseResult>[1]
     ) => {
-      handlePoseResult(pose);
+      handlePoseResult(pose, hands);
     },
     [handlePoseResult]
   );

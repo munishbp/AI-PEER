@@ -10,6 +10,8 @@ import com.google.mediapipe.framework.image.MediaImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
+import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
+import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import com.mrousavy.camera.frameprocessors.Frame
@@ -84,15 +86,19 @@ class PoseLandmarkerFrameProcessorPlugin(
     @Keep
     override fun callback(frame: Frame, arguments: Map<String, Any>?): Any? {
         // ── Lazy GPU-thread-affine init ────────────────────────────────────
-        // First call (per process lifetime): try GPU, fall back to CPU. The
-        // shared landmarker is held in the companion object so HMR / fast
-        // refresh cycles that re-invoke the registry factory don't leak a
-        // new instance per reload.
+        // First call (per process lifetime): try GPU, fall back to CPU for
+        // BOTH landmarkers. They're held in the companion object so HMR /
+        // fast refresh cycles that re-invoke the registry factory don't leak
+        // new instances per reload. Each landmarker has its own GPU→CPU fall-
+        // back independently — if pose initializes on GPU but hand fails on
+        // GPU, hand still gets a chance to come up on CPU.
         if (!initAttempted) {
             synchronized(initLock) {
                 if (!initAttempted) {
                     val gpu = createLandmarker(Delegate.GPU)
                     sharedLandmarker = gpu ?: createLandmarker(Delegate.CPU)
+                    val handGpu = createHandLandmarker(Delegate.GPU)
+                    sharedHandLandmarker = handGpu ?: createHandLandmarker(Delegate.CPU)
                     initAttempted = true
                     if (sharedLandmarker != null) {
                         val delegateName = if (gpu != null) "GPU" else "CPU"
@@ -100,11 +106,18 @@ class PoseLandmarkerFrameProcessorPlugin(
                     } else {
                         Log.e(TAG, "PoseLandmarker failed to initialize on both GPU and CPU")
                     }
+                    if (sharedHandLandmarker != null) {
+                        val delegateName = if (handGpu != null) "GPU" else "CPU"
+                        Log.i(TAG, "HandLandmarker initialized with delegate=$delegateName")
+                    } else {
+                        Log.w(TAG, "HandLandmarker failed to initialize on both GPU and CPU — gesture detection will be disabled")
+                    }
                 }
             }
         }
 
         val landmarker = sharedLandmarker ?: return null
+        val hands = sharedHandLandmarker
 
         // ── Frame → MPImage ────────────────────────────────────────────────
         // VisionCamera Frame.getImage() throws FrameInvalidError. Catch Throwable
@@ -173,14 +186,14 @@ class PoseLandmarkerFrameProcessorPlugin(
         val landmarks = result.landmarks().firstOrNull() ?: return null
         if (landmarks.size < 33) return null
 
-        // ── Build JS-bridge-friendly output ────────────────────────────────
+        // ── Build JS-bridge-friendly pose output ───────────────────────────
         // Must be List<Map<String, Any>> with String keys and Double values.
         // VisionCamera v4's JSI bridge on Android does NOT support java.lang.Float
         // ("Cannot convert Java type 'class java.lang.Float' to jsi::Value!") so
         // we explicitly upcast each primitive float to Double before boxing into
         // the map. JS receives plain `number` either way, so iOS parity is
         // preserved at the contract level.
-        val output = ArrayList<Map<String, Any>>(landmarks.size)
+        val poseOutput = ArrayList<Map<String, Any>>(landmarks.size)
         for (lm in landmarks) {
             val dict = HashMap<String, Any>(4)
             dict["x"] = lm.x().toDouble()
@@ -189,9 +202,41 @@ class PoseLandmarkerFrameProcessorPlugin(
             // NormalizedLandmark.visibility() returns java.util.Optional<Float>.
             // Match iOS: include the key only when visibility is present.
             lm.visibility().ifPresent { dict["visibility"] = it.toDouble() }
-            output.add(dict)
+            poseOutput.add(dict)
         }
-        return output
+
+        // ── Hand detection on the same frame ───────────────────────────────
+        // Use the SAME mpImage and SAME timestampMs so MediaPipe's monotonicity
+        // check applies once per frame, not twice. If hand detection fails,
+        // we still return the pose result with an empty hands list — the JS
+        // gesture detector just won't fire that frame.
+        val handsOutput = ArrayList<List<Map<String, Any>>>()
+        if (hands != null) {
+            val handResult: HandLandmarkerResult? = try {
+                hands.detectForVideo(mpImage, timestampMs)
+            } catch (t: Throwable) {
+                Log.w(TAG, "hand detectForVideo failed", t)
+                null
+            }
+            if (handResult != null) {
+                for (handLandmarks in handResult.landmarks()) {
+                    val handDicts = ArrayList<Map<String, Any>>(handLandmarks.size)
+                    for (lm in handLandmarks) {
+                        val dict = HashMap<String, Any>(3)
+                        dict["x"] = lm.x().toDouble()
+                        dict["y"] = lm.y().toDouble()
+                        dict["z"] = lm.z().toDouble()
+                        handDicts.add(dict)
+                    }
+                    handsOutput.add(handDicts)
+                }
+            }
+        }
+
+        return mapOf(
+            "pose" to poseOutput,
+            "hands" to handsOutput,
+        )
     }
 
     /**
@@ -230,16 +275,44 @@ class PoseLandmarkerFrameProcessorPlugin(
         }
     }
 
+    /**
+     * Build a HandLandmarker with the given delegate. Mirrors createLandmarker
+     * for the Hand task. Reuses the same MediaPipe tasks-vision dependency,
+     * no new gradle entry needed. Confidence thresholds slightly higher than
+     * pose because hand detection at distance has more false positives.
+     */
+    private fun createHandLandmarker(delegate: Delegate): HandLandmarker? {
+        return try {
+            val baseOptions = BaseOptions.builder()
+                .setModelAssetPath("hand_landmarker.task")
+                .setDelegate(delegate)
+                .build()
+            val options = HandLandmarker.HandLandmarkerOptions.builder()
+                .setBaseOptions(baseOptions)
+                .setRunningMode(RunningMode.VIDEO)
+                .setNumHands(2)
+                .setMinHandDetectionConfidence(0.4f)
+                .setMinHandPresenceConfidence(0.4f)
+                .setMinTrackingConfidence(0.4f)
+                .build()
+            HandLandmarker.createFromOptions(context, options)
+        } catch (t: Throwable) {
+            Log.w(TAG, "createHandLandmarker(delegate=$delegate) failed", t)
+            null
+        }
+    }
+
     companion object {
         private const val TAG = "PoseLandmarker"
 
         // Process-wide singletons. Held here (not as instance fields) so that
         // React Native fast-refresh / HMR re-invoking the registry factory
-        // never creates a second PoseLandmarker that leaks ~50 MB of native
-        // memory per reload. Marked @Volatile for safe publication across the
-        // JS/worklets thread (where the factory runs) and the videoQueue thread
-        // (where callback() runs).
+        // never creates a second PoseLandmarker / HandLandmarker that leaks
+        // ~50 MB of native memory per reload. Marked @Volatile for safe
+        // publication across the JS/worklets thread (where the factory runs)
+        // and the videoQueue thread (where callback() runs).
         @Volatile private var sharedLandmarker: PoseLandmarker? = null
+        @Volatile private var sharedHandLandmarker: HandLandmarker? = null
         @Volatile private var initAttempted: Boolean = false
 
         // Lock object for double-checked locking around lazy init.

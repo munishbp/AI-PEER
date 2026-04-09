@@ -110,13 +110,13 @@ export default function TugTestPage() {
   const framesInTargetRef = useRef<number>(0);
   const lastKneeAngleRef = useRef<number | null>(null);
 
-  // frame processor wiring
+  // frame processor wiring — receives pose AND hands per frame
   const handleFrameResult = useCallback(
     (
       pose: Parameters<typeof handlePoseResult>[0],
-      _repCount: number | null
+      hands: Parameters<typeof handlePoseResult>[1]
     ) => {
-      handlePoseResult(pose);
+      handlePoseResult(pose, hands);
     },
     [handlePoseResult]
   );

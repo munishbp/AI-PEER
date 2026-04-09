@@ -31,7 +31,7 @@ export function GestureCountdownOverlay({
   useEffect(() => {
     if (trackingMode === "waiting_for_gesture") {
       Speech.stop();
-      Speech.speak("Raise both arms overhead to start.");
+      Speech.speak("Hold up an open palm to start.");
     }
   }, [trackingMode]);
 
@@ -53,12 +53,12 @@ export function GestureCountdownOverlay({
     <View style={styles.container} pointerEvents="none">
       {trackingMode === "waiting_for_gesture" && (
         <View style={styles.gestureBox}>
-          <Ionicons name="arrow-up-outline" size={48} color="#FFF" />
+          <Ionicons name="hand-left-outline" size={48} color="#FFF" />
           <Text style={styles.gestureTitle}>
-            Raise both arms overhead to start
+            Hold up an open palm to start
           </Text>
           <Text style={styles.gestureSub}>
-            Hold the position for half a second
+            Show your palm to the camera for half a second
           </Text>
         </View>
       )}

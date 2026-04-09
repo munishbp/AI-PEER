@@ -82,11 +82,18 @@ public class PoseLandmarkerPlugin: FrameProcessorPlugin {
     /// The MediaPipe Pose Landmarker instance, initialized once and reused per frame.
     private var poseLandmarker: PoseLandmarker?
 
+    /// The MediaPipe Hand Landmarker instance, also initialized once. Runs in
+    /// parallel with the pose landmarker on the same frame so the JS layer
+    /// gets pose AND up-to-2 hands from a single plugin call. Used by the
+    /// gesture-confirm flow in VisionContext (open palm to start a session).
+    private var handLandmarker: HandLandmarker?
+
     /// Called once when VisionCamera initializes the plugin.
-    /// Sets up the PoseLandmarker with GPU acceleration.
+    /// Sets up both landmarkers with GPU acceleration.
     public override init(proxy: VisionCameraProxyHolder, options: [AnyHashable: Any]! = [:]) {
         super.init(proxy: proxy, options: options)
         setupLandmarker()
+        setupHandLandmarker()
     }
 
     /// Initialize the MediaPipe PoseLandmarker with the bundled model file.
@@ -115,13 +122,55 @@ public class PoseLandmarkerPlugin: FrameProcessorPlugin {
         }
     }
 
+    /// Initialize the MediaPipe HandLandmarker for gesture detection. Reuses
+    /// the same MediaPipeTasksVision pod as PoseLandmarker — no new pod needed.
+    /// Confidence thresholds are slightly higher than pose because hand
+    /// detection at distance has more false positives.
+    private func setupHandLandmarker() {
+        guard let modelPath = Bundle.main.path(forResource: "hand_landmarker", ofType: "task") else {
+            print("[HandLandmarker] Model file not found in bundle")
+            return
+        }
+
+        let opts = HandLandmarkerOptions()
+        opts.baseOptions.modelAssetPath = modelPath
+        opts.baseOptions.delegate = .GPU
+        opts.runningMode = .video
+        opts.numHands = 2                       // detect either hand; gesture detector accepts any
+        opts.minHandDetectionConfidence = 0.4
+        opts.minHandPresenceConfidence = 0.4
+        opts.minTrackingConfidence = 0.4
+
+        do {
+            handLandmarker = try HandLandmarker(options: opts)
+            print("[HandLandmarker] Initialized successfully with GPU delegate")
+        } catch {
+            print("[HandLandmarker] Failed to init: \(error)")
+        }
+    }
+
     /// Called by VisionCamera on each camera frame.
-    /// Runs MediaPipe pose detection synchronously and returns 33 landmarks.
+    /// Runs MediaPipe pose detection synchronously, then runs hand detection
+    /// on the same frame, and returns BOTH results in a unified dict shape.
+    ///
+    /// Return shape:
+    ///   {
+    ///     "pose":  [{x,y,z,visibility?}, ...]   // 33 entries, MediaPipe pose landmarks
+    ///     "hands": [                             // 0..2 hands
+    ///                [{x,y,z}, ...],             // 21 entries per hand
+    ///                ...
+    ///              ]
+    ///   }
+    ///
+    /// The TypeScript layer (frameProcessor.ts) unpacks this and routes pose
+    /// to mapMediaPipeToPose and hands to mapMediaPipeToHands. Both pose and
+    /// hand landmarks are in the same raw camera coordinate space, so the JS
+    /// layer applies the SAME landscape→portrait transform to both.
     ///
     /// - Parameters:
     ///   - frame: The camera frame (CMSampleBuffer + metadata)
     ///   - arguments: Optional JS arguments (unused)
-    /// - Returns: Array of 33 landmark dictionaries, or nil if detection fails
+    /// - Returns: Dict with "pose" and "hands" keys, or nil if pose detection fails
     public override func callback(_ frame: Frame, withArguments arguments: [AnyHashable: Any]?) -> Any? {
         guard let landmarker = poseLandmarker else { return nil }
 
@@ -129,21 +178,24 @@ public class PoseLandmarkerPlugin: FrameProcessorPlugin {
         // No orientation hint — the TypeScript layer handles coordinate rotation.
         guard let image = try? MPImage(sampleBuffer: frame.buffer) else { return nil }
 
+        let timestampMs = Int(frame.timestamp)
+
+        // ── Pose detection ─────────────────────────────────────────────────
         // Run synchronous pose detection (.video mode).
         // Returns immediately with results — no delegate callback needed.
-        guard let result = try? landmarker.detect(
+        guard let poseResult = try? landmarker.detect(
             videoFrame: image,
-            timestampInMilliseconds: Int(frame.timestamp)
+            timestampInMilliseconds: timestampMs
         ) else { return nil }
 
         // Extract the first (and only) person's landmarks.
         // result.landmarks is [[NormalizedLandmark]] — one array per detected person.
-        guard let landmarks = result.landmarks.first else { return nil }
+        guard let poseLandmarks = poseResult.landmarks.first else { return nil }
 
-        // Convert to JS-compatible array of dictionaries.
+        // Convert pose to JS-compatible array of dictionaries.
         // Each landmark has x, y (normalized 0-1), z (depth), and visibility (0-1).
-        var output: [[String: Any]] = []
-        for lm in landmarks {
+        var poseOutput: [[String: Any]] = []
+        for lm in poseLandmarks {
             var dict: [String: Any] = [
                 "x": lm.x,
                 "y": lm.y,
@@ -152,8 +204,35 @@ public class PoseLandmarkerPlugin: FrameProcessorPlugin {
             if let v = lm.visibility {
                 dict["visibility"] = v.floatValue
             }
-            output.append(dict)
+            poseOutput.append(dict)
         }
-        return output
+
+        // ── Hand detection ─────────────────────────────────────────────────
+        // Run hand detection on the SAME frame with the SAME timestamp. If
+        // it fails or returns no hands, we still return the pose result with
+        // an empty hands array — gesture detection just won't fire that frame.
+        var handsOutput: [[[String: Any]]] = []
+        if let handLandmarker = handLandmarker,
+           let handResult = try? handLandmarker.detect(
+               videoFrame: image,
+               timestampInMilliseconds: timestampMs
+           ) {
+            for hand in handResult.landmarks {
+                var handDicts: [[String: Any]] = []
+                for lm in hand {
+                    handDicts.append([
+                        "x": lm.x,
+                        "y": lm.y,
+                        "z": lm.z,
+                    ])
+                }
+                handsOutput.append(handDicts)
+            }
+        }
+
+        return [
+            "pose": poseOutput,
+            "hands": handsOutput,
+        ] as [String: Any]
     }
 }

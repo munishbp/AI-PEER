@@ -138,13 +138,13 @@ export default function ChairRiseTestPage() {
     }
   }, [isTracking, currentFeedback]);
 
-  // frame processor wiring
+  // frame processor wiring — receives pose AND hands per frame
   const handleFrameResult = useCallback(
     (
       pose: Parameters<typeof handlePoseResult>[0],
-      _repCount: number | null
+      hands: Parameters<typeof handlePoseResult>[1]
     ) => {
-      handlePoseResult(pose);
+      handlePoseResult(pose, hands);
     },
     [handlePoseResult]
   );
