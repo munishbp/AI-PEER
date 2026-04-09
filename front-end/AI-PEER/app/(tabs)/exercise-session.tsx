@@ -23,6 +23,7 @@ import { useVision } from "@/src/vision";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
+import { GestureCountdownOverlay } from "@/components/GestureCountdownOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
 import {
   submitCompletedActivity,
@@ -85,6 +86,8 @@ export default function ExerciseSessionPage() {
   // vision hook
   const {
     isTracking,
+    trackingMode,
+    countdownSecondsLeft,
     currentPose,
     currentFeedback,
     repCount,
@@ -96,6 +99,7 @@ export default function ExerciseSessionPage() {
     error: visionError,
     setModelReady,
     startTracking,
+    startGestureWatch,
     stopTracking,
     handlePoseResult,
     getRepHistory,
@@ -270,24 +274,15 @@ export default function ExerciseSessionPage() {
     scoresRef.current = [];
     violationCountRef.current = {};
     repCountRef.current = 0;
-    sessionStartedAtRef.current = Date.now();
     resetActivityAccumulators();
     activityStartedAtRef.current = Date.now();
     setShowSummary(false);
 
-    setStartedAtRef.current = Date.now();
-    startTracking(trackingExerciseId);
-
-    // start countdown timer if exercise has a duration
-    if (timerDuration) {
-      setSecondsLeft(timerDuration);
-      timerRef.current = setInterval(() => {
-        setSecondsLeft((prev) => {
-          if (prev === null || prev <= 1) return 0;
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    // start the gesture flow instead of jumping straight to tracking. the
+    // trackingMode watcher effect below will start the per-set timer / set
+    // sessionStartedAtRef once the countdown completes and trackingMode flips
+    // to 'tracking'.
+    startGestureWatch(trackingExerciseId);
   };
 
   const handleSetComplete = useCallback(() => {
@@ -344,10 +339,19 @@ export default function ExerciseSessionPage() {
     sessionStartedAtRef.current = null;
     repCountRef.current = 0;
     clearTimer();
-    stopTracking();
     setSummaryTick((t) => t + 1);
 
-    if (currentSet >= totalSets) {
+    // if there are more sets to go, leave the camera/pose pipeline running
+    // and queue the gesture flow for the next set; the trackingMode watcher
+    // effect handles the per-set state advancement once the countdown ends.
+    // if this was the last set, fall through to the submit + navigate path.
+    const isFinalSet = currentSet >= totalSets;
+
+    if (isFinalSet) {
+      stopTracking();
+    }
+
+    if (isFinalSet) {
       // all sets done — build the activity record and submit it (locally + backend),
       // then navigate back to the exercise tab. partial activities are NEVER
       // persisted; if the user bails out before this branch, no record is written.
@@ -396,18 +400,28 @@ export default function ExerciseSessionPage() {
       router.replace("/(tabs)/exercise");
       return;
     } else {
-      // more sets to go — show between-set screen
+      // more sets to go — show between-set summary card and queue the gesture
+      // flow for the next set. the user raises arms again to start the next
+      // set; we don't render a manual "Next Set" button anymore.
       setSetComplete(true);
+      const nextSet = currentSet + 1;
+      const nextTrackingId =
+        isUnilateral && nextSet > setsPerSide
+          ? `${exerciseId}-right`
+          : exerciseId;
+      startGestureWatch(nextTrackingId);
     }
   }, [
     currentSet,
     totalSets,
     clearTimer,
     stopTracking,
+    startGestureWatch,
     exerciseId,
     exerciseName,
     activityCategory,
     isUnilateral,
+    setsPerSide,
     currentSide,
     exerciseRule,
     getRepHistory,
@@ -416,29 +430,30 @@ export default function ExerciseSessionPage() {
     router,
   ]);
 
-  const handleNextSet = useCallback(async () => {
-    const nextSet = currentSet + 1;
-    setCurrentSet(nextSet);
-    setSetComplete(false);
+  // gesture flow handoff: when trackingMode flips to 'tracking', either
+  // (a) starting set 1 of a new activity — we just need to seed the per-set
+  //     timer/timestamp; the activity-level accumulators were reset in
+  //     handleStartMonitoring.
+  // (b) advancing from a between-set state — we ALSO need to bump currentSet
+  //     and clear setComplete. handleSetComplete already queued this set's
+  //     gesture watch with the right tracking ID.
+  // both cases run on the trackingMode === 'tracking' edge. setComplete tells
+  // them apart.
+  useEffect(() => {
+    if (trackingMode !== "tracking") return;
 
-    if (!hasPermission) {
-      const granted = await requestPermission();
-      if (!granted) return;
+    if (setComplete) {
+      // case (b): coming from a between-set transition
+      setCurrentSet((c) => c + 1);
+      setSetComplete(false);
     }
-    if (!modelReady) return;
 
-    // reset stats for new set
+    // case (a) and (b): seed per-set state
     scoresRef.current = [];
     violationCountRef.current = {};
     repCountRef.current = 0;
     sessionStartedAtRef.current = Date.now();
-
-    // compute tracking exercise ID from the NEW set number
-    const nextTrackingId = isUnilateral && nextSet > setsPerSide
-      ? `${exerciseId}-right`
-      : exerciseId;
     setStartedAtRef.current = Date.now();
-    startTracking(nextTrackingId);
 
     if (timerDuration) {
       setSecondsLeft(timerDuration);
@@ -449,7 +464,8 @@ export default function ExerciseSessionPage() {
         });
       }, 1000);
     }
-  }, [currentSet, isUnilateral, setsPerSide, hasPermission, requestPermission, modelReady, startTracking, exerciseId, timerDuration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackingMode]);
 
   // rep counted flash
   const [repFlash, setRepFlash] = useState(false);
@@ -527,7 +543,10 @@ export default function ExerciseSessionPage() {
   };
 
   const currentScore = currentFeedback?.score ?? null;
-  const cameraActive = isTracking && hasPermission && !!device;
+  // camera + skeleton render in any non-idle state so the user can see the
+  // pose feedback during gesture wait and the countdown, not just tracking.
+  const cameraActive =
+    trackingMode !== "idle" && hasPermission && !!device;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -564,7 +583,7 @@ export default function ExerciseSessionPage() {
             <Camera
               style={StyleSheet.absoluteFill}
               device={device}
-              isActive={isTracking}
+              isActive={true}
               frameProcessor={frameProcessor}
               pixelFormat="rgb"
             />
@@ -601,8 +620,8 @@ export default function ExerciseSessionPage() {
             </View>
           )}
 
-          {/* skeleton overlays */}
-          {isTracking && currentPose && containerSize.width > 0 && (
+          {/* skeleton overlays — render in gesture/countdown/tracking modes */}
+          {trackingMode !== "idle" && currentPose && containerSize.width > 0 && (
             <>
               <GuideOverlay
                 pose={currentPose}
@@ -620,6 +639,13 @@ export default function ExerciseSessionPage() {
               />
             </>
           )}
+
+          {/* gesture-confirm + countdown overlay (sits on top of the skeleton).
+              the component renders nothing in idle/tracking modes. */}
+          <GestureCountdownOverlay
+            trackingMode={trackingMode}
+            countdownSecondsLeft={countdownSecondsLeft}
+          />
 
           {/* score overlay when tracking */}
           {isTracking && currentScore !== null && (
@@ -783,8 +809,8 @@ export default function ExerciseSessionPage() {
           </View>
         )}
 
-        {/* tips card when idle */}
-        {!isTracking && !showSummary && !setComplete && (
+        {/* tips card when truly idle (no gesture flow running) */}
+        {trackingMode === "idle" && !showSummary && !setComplete && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Tips</Text>
             <View style={styles.tipBox}>
@@ -798,9 +824,11 @@ export default function ExerciseSessionPage() {
           </View>
         )}
 
-        {/* controls */}
+        {/* controls — Next Set button is gone; the gesture flow auto-advances
+            between sets. during gesture/countdown the only escape is the back
+            arrow at the top of the screen (which calls stopTracking). */}
         <View style={styles.controlsRow}>
-          {isTracking ? (
+          {trackingMode === "tracking" ? (
             <TouchableOpacity
               style={styles.stopBtn}
               activeOpacity={0.9}
@@ -809,16 +837,20 @@ export default function ExerciseSessionPage() {
               <Ionicons name="square" size={16} color="#FFF" />
               <Text style={styles.primaryText}>Stop Monitoring</Text>
             </TouchableOpacity>
-          ) : setComplete ? (
+          ) : trackingMode === "waiting_for_gesture" ||
+            trackingMode === "countdown" ? (
             <TouchableOpacity
-              style={styles.primaryBtn}
+              style={styles.secondaryBtn}
               activeOpacity={0.9}
-              onPress={handleNextSet}
+              onPress={() => {
+                stopTracking();
+                resetActivityAccumulators();
+                setSetComplete(false);
+                setCurrentSet(1);
+              }}
             >
-              <Ionicons name="play" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>
-                Next Set ({currentSet + 1}/{totalSets})
-              </Text>
+              <Ionicons name="close" size={16} color="#5B4636" />
+              <Text style={styles.secondaryText}>Cancel</Text>
             </TouchableOpacity>
           ) : (
             <>
