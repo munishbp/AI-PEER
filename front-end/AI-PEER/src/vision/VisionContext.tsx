@@ -85,7 +85,9 @@ const VIOLATION_SMOOTHING_MS = 300;
 
 // gesture must be sustained for at least this many ms before we count it as
 // confirmed. prevents stray frames from prematurely triggering the countdown.
-const GESTURE_HOLD_MS = 500;
+// bumped from 500 to 1000 after device testing — 500 was too quick to reject
+// transient hand sightings.
+const GESTURE_HOLD_MS = 1000;
 
 // length of the spoken countdown that runs after a gesture is confirmed.
 const COUNTDOWN_SECONDS = 5;
@@ -412,6 +414,20 @@ const MIN_EXTENDED_FINGERS = 4;
 // starting point — tunable down to 1.0 if needed.
 const THUMB_REACH_RATIO = 1.2;
 
+// Empirically determined sign for the palm-normal cross product on a Right
+// hand with palm facing the camera in our portrait coordinate system.
+// The cross product of (wrist→index_MCP) × (wrist→pinky_MCP) z-component
+// flips between Left and Right hands (the two are mirror images), so we
+// scale by handedness in detectOpenPalm. If device testing shows palm/back
+// are inverted, flip this constant from +1 to -1.
+//
+// Cross-platform note: on Android, mapMediaPipeToHands flips the y axis
+// (Y-flip), which inverts the cross-product sign. MediaPipe also reports
+// the wrong handedness on Android (it assumes selfie input but Android's
+// CameraX doesn't pre-mirror) — those two errors cancel, so the same
+// constant works on both platforms without any Platform.OS branching.
+const RIGHT_PALM_NORMAL_SIGN = 1;
+
 function dist3D(
   a: { x: number; y: number; z: number },
   b: { x: number; y: number; z: number }
@@ -422,20 +438,26 @@ function dist3D(
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-// open-palm detector v2. four checks must all pass:
+// open-palm detector v3. five checks must all pass:
 //
 //   (1) all four non-thumb fingers extended in 3D (catches side-view fists
-//       that the old 2D check missed: a curled finger has its tip near the
+//       that a 2D check would miss: a curled finger has its tip near the
 //       wrist in 3D regardless of camera angle).
 //   (2) all four fingertips above the wrist in image y (rejects upside-down
 //       hands, sideways fingers, and incidental hand movements where the
 //       user isn't deliberately holding the hand up to show the camera).
 //   (3) thumb extended away from the wrist (rejects fist-with-fingers-out
 //       and any hand pose where the thumb is tucked).
+//   (4) palm normal points toward the camera. cross product of
+//       (wrist→index_MCP) and (wrist→pinky_MCP) gives the palm normal
+//       vector; its z-component sign tells us palm vs back. the sign also
+//       depends on which physical hand it is (the cross product orientation
+//       flips between left and right), so we use MediaPipe's handedness
+//       label to disambiguate.
 //
-// the old detector was 2D-only, used a 0.85 threshold, accepted 3 of 4 fingers,
-// ignored the thumb, and didn't check orientation — it false-positived on any
-// hand visible to the camera. this version requires all of the above.
+// v2 (the previous version) skipped check (4) because handedness wasn't
+// extracted from the native plugin yet. v2 false-positived on a back-of-
+// hand-facing-camera with extended fingers. v3 fixes that.
 function detectOpenPalm(hand: Hand): boolean {
   if (!hand.landmarks || hand.landmarks.length < 21) return false;
   const lm = hand.landmarks;
@@ -467,6 +489,23 @@ function detectOpenPalm(hand: Hand): boolean {
   if (handSize === 0) return false;
   const thumbReach = dist3D(wrist, lm[4]); // wrist → thumb tip
   if (thumbReach < handSize * THUMB_REACH_RATIO) return false;
+
+  // (4) palm normal points toward the camera (palm-vs-back disambiguation).
+  // skipped if handedness isn't available (e.g., the native plugin hasn't
+  // been rebuilt with handedness extraction yet, or MediaPipe didn't classify
+  // this hand confidently). in that case the earlier checks still apply.
+  if (hand.handedness) {
+    const v1x = lm[5].x - wrist.x;
+    const v1y = lm[5].y - wrist.y;
+    const v2x = lm[17].x - wrist.x;
+    const v2y = lm[17].y - wrist.y;
+    // cross product z component (we don't need the full 3D normal — only
+    // the sign of the z component matters for palm-toward-camera).
+    const normalZ = v1x * v2y - v1y * v2x;
+    const expectedSign =
+      hand.handedness === "Right" ? RIGHT_PALM_NORMAL_SIGN : -RIGHT_PALM_NORMAL_SIGN;
+    if (normalZ * expectedSign <= 0) return false;
+  }
 
   return true;
 }

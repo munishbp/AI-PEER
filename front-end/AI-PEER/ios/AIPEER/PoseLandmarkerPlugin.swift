@@ -211,13 +211,19 @@ public class PoseLandmarkerPlugin: FrameProcessorPlugin {
         // Run hand detection on the SAME frame with the SAME timestamp. If
         // it fails or returns no hands, we still return the pose result with
         // an empty hands array — gesture detection just won't fire that frame.
-        var handsOutput: [[[String: Any]]] = []
+        //
+        // Per-hand return shape is { landmarks: [...21], handedness: "Left"|"Right" }
+        // — the handedness label is needed by the JS detector's palm-normal
+        // sign check (the cross product orientation flips between hands, so
+        // we can't tell palm from back without knowing which hand it is).
+        var handsOutput: [[String: Any]] = []
         if let handLandmarker = handLandmarker,
            let handResult = try? handLandmarker.detect(
                videoFrame: image,
                timestampInMilliseconds: timestampMs
            ) {
-            for hand in handResult.landmarks {
+            let handednessLabels = handResult.handedness
+            for (handIndex, hand) in handResult.landmarks.enumerated() {
                 var handDicts: [[String: Any]] = []
                 for lm in hand {
                     handDicts.append([
@@ -226,7 +232,21 @@ public class PoseLandmarkerPlugin: FrameProcessorPlugin {
                         "z": lm.z,
                     ])
                 }
-                handsOutput.append(handDicts)
+                // MediaPipe iOS returns handedness as [[ResultCategory]] —
+                // outer index per hand, inner array typically has one entry
+                // with categoryName "Left" or "Right". empty string if missing.
+                let label: String
+                if handednessLabels.indices.contains(handIndex),
+                   let firstCategory = handednessLabels[handIndex].first,
+                   let name = firstCategory.categoryName {
+                    label = name
+                } else {
+                    label = ""
+                }
+                handsOutput.append([
+                    "landmarks": handDicts,
+                    "handedness": label,
+                ])
             }
         }
 

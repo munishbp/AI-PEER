@@ -210,7 +210,12 @@ class PoseLandmarkerFrameProcessorPlugin(
         // check applies once per frame, not twice. If hand detection fails,
         // we still return the pose result with an empty hands list — the JS
         // gesture detector just won't fire that frame.
-        val handsOutput = ArrayList<List<Map<String, Any>>>()
+        //
+        // Per-hand return shape is { landmarks: [...21], handedness: "Left"|"Right" }
+        // mirroring iOS — the JS detector needs handedness to compute the
+        // palm-normal sign check (the cross product orientation flips between
+        // hands, so we can't tell palm from back without knowing which hand).
+        val handsOutput = ArrayList<Map<String, Any>>()
         if (hands != null) {
             val handResult: HandLandmarkerResult? = try {
                 hands.detectForVideo(mpImage, timestampMs)
@@ -219,7 +224,8 @@ class PoseLandmarkerFrameProcessorPlugin(
                 null
             }
             if (handResult != null) {
-                for (handLandmarks in handResult.landmarks()) {
+                val handednessList = handResult.handednesses()
+                for ((handIndex, handLandmarks) in handResult.landmarks().withIndex()) {
                     val handDicts = ArrayList<Map<String, Any>>(handLandmarks.size)
                     for (lm in handLandmarks) {
                         val dict = HashMap<String, Any>(3)
@@ -228,7 +234,16 @@ class PoseLandmarkerFrameProcessorPlugin(
                         dict["z"] = lm.z().toDouble()
                         handDicts.add(dict)
                     }
-                    handsOutput.add(handDicts)
+                    // handednessList is List<List<Category>> — outer per-hand,
+                    // inner typically one entry with categoryName "Left"|"Right".
+                    val label: String = handednessList.getOrNull(handIndex)
+                        ?.firstOrNull()
+                        ?.categoryName()
+                        ?: ""
+                    handsOutput.add(mapOf(
+                        "landmarks" to handDicts,
+                        "handedness" to label,
+                    ))
                 }
             }
         }
