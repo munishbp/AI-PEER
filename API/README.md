@@ -1,6 +1,6 @@
 # AI-PEER API
 
-Express 5.1 backend deployed on Google Cloud Run. Handles authentication (phone + SMS 2FA), user management, exercise video delivery via signed URLs, and LLM model distribution. All protected endpoints require a Firebase ID token as Bearer auth.
+Express 5.1 backend deployed on Google Cloud Run. Handles authentication (phone + SMS 2FA), user management, exercise video delivery via signed URLs, LLM model distribution, and per-user exercise activity persistence to Firestore. All protected endpoints require a Firebase ID token as Bearer auth.
 
 ## Prerequisites
 
@@ -69,6 +69,41 @@ All routes below require `Authorization: Bearer <firebaseIdToken>` header.
 |--------|------|-------------|
 | GET | /model/getModelURL | Get signed download URL for the finetuned LLM model (Qwen3.5-2B-aipeer-Q4_K_M.gguf, ~1.2GB). Returns `{ modelUrl, filename, expiresIn: 3600 }`. |
 
+#### Activities Routes (/activities)
+
+Per-user exercise activity history. Records are written to a Firestore subcollection at `users/{uid}/activities/{activityId}`. The user ID is read from the verified Bearer token (`req.user.uid`), never from request body or query — this prevents authenticated callers from writing to other users' histories.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /activities/complete | Write a completed activity to the caller's history. Body must conform to the schema below. Doc id is the activity's own `id` field, so a retry with the same id is idempotent. Returns `{ success: true, activityId }` on 201. Returns 400 on missing required fields, 401 on missing/invalid token. |
+| GET | /activities/list | Return the caller's full activity history, ordered by `completedAt` desc. Returns `{ activities: [...] }`. Single-field orderBy — no composite index required. |
+
+**Request body schema** (POST /activities/complete) — required fields validated by `controllers/activitiesController.js:validateActivityRecord`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Client-generated unique identifier (e.g., `${Date.now()}_${random6}`). Used as the Firestore document id for idempotency. |
+| exerciseId | string | Exercise rule id (e.g., `strength-1`, `assessment-1`). Maps to entries in `exerciseRegistry`. |
+| exerciseName | string | Display name (e.g., `Knee Extensor`, `Chair Rise`). |
+| category | string | One of `warmup`, `strength`, `balance`, `assessment`, `other`. |
+| completedAt | string | ISO 8601 timestamp of when the activity finished. |
+| setsCompleted | number | Always equals setsTarget when this record exists — partial activities are NEVER persisted. |
+| setsTarget | number | Total sets the user attempted. |
+| durationSec | number | Total session duration summed across all sets, rounded to seconds. |
+| totalReps | number | Sum of reps across all sets. |
+| repsPerSet | number[] | Reps in each set in order, e.g. `[10, 9, 10]`. |
+| unilateral | boolean | True for L/R-split exercises (knee extensor, knee flexor, hip abductor). |
+
+**Optional fields** (not validated, but written through if provided):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| angleSummaries | array | Per-set angle history from RepCounter: `[{setIndex, side: 'left'\|'right'\|'both', reps: [{startAngle, endAngle, peakAngle, romDeg, durationMs}], bilateralAveraged?}]`. |
+| feedbackEvents | array | Aggregated form-check violations: `[{message, severity: 'mild'\|'moderate'\|'severe'\|'warning'\|'error', count, firstAt, lastAt}]`. firstAt/lastAt are ms-since-activity-start. |
+| avgScore | number \| null | Mean form score across all frames analyzed in this activity (0-100). null if no frames. |
+| framesAnalyzed | number | Total frames pose-analyzed across all sets. |
+| notes | string | Optional free-form note (e.g., assessment band labels). |
+
 #### Video Routes (/video)
 
 Each endpoint returns `{ videoId, videoUrl, title, duration, expiresIn: 3600 }` where `videoUrl` is a 1-hour signed GCS URL.
@@ -77,7 +112,7 @@ Each endpoint returns `{ videoId, videoUrl, title, duration, expiresIn: 3600 }` 
 |--------|------|-------|
 | GET | /video/getTugURL | Timed Up and Go |
 | GET | /video/getCRiseURL | Chair Rise |
-| GET | /video/getBalanceURL | 4-Stage Balance Test |
+| GET | /video/getBalanceURL | **Deprecated:** 4-Stage Balance Test (UI route removed in commit `c0345ad2`; endpoint retained for now to avoid breaking older client builds). |
 | GET | /video/getAnkleURL | Ankle Warm Up |
 | GET | /video/getBackURL | Back Extension Warm Up |
 | GET | /video/getHeadURL | Head Warm Up |
@@ -125,29 +160,33 @@ Production URL: `https://aipeer-api-596437694331.us-central1.run.app`
 ## Architecture Notes
 
 - **Middleware order matters**: `/auth` routes are mounted before the verification middleware, so they are publicly accessible. All routes mounted after `app.use(verification)` require a Bearer token.
+- **`req.user` injection**: The auth middleware (`middleware/authMiddleware.js`) verifies the Firebase ID token AND attaches the decoded token to `req.user` so downstream controllers can read `req.user.uid` directly. New controllers should ALWAYS use `req.user.uid` instead of trusting body params for the user identity — taking the user id from the body is a real authorization gap (any authenticated caller could pass another user's id and read their data). The activities controller demonstrates the correct pattern.
 - **GCS signing**: On Cloud Run, `GCS_PRIVATE_KEY` is not set, so `GCS_Service` uses IAM `signBlob` to sign URLs remotely. Locally, the private key from `.env` is used directly.
 - **Separate model bucket**: `modelController` reads from `GCS_MODEL_BUCKET` (defaults to `qwenfinetune`), while `videoController` reads from `GCS_BUCKET_NAME` (`aipeer_videos`). The `generateSignedUrl` function accepts an optional bucket override parameter.
 - **Rate limiting**: SMS send-code has a 60-second cooldown and a 5-per-hour limit per phone number. Enforced via Firestore `verificationSessions` timestamps.
-- **Refresh tokens**: Stored in the `refreshTokens` Firestore collection with a 30-day expiry. Exchanged via `/auth/refresh` for a new Firebase custom token.
+- **Refresh tokens**: Stored in the `refreshTokens` Firestore collection with a 30-day expiry. Exchanged via `/auth/refresh` for a new Firebase custom token. **Note** that the client also has a separate per-request token-freshness path: clients should call `auth.currentUser?.getIdToken(true)` (Firebase JS SDK) inline before making protected calls — this refreshes the ID token against Firebase's internal refresh token, independent of the app's `/auth/refresh` cold-start path. The two systems coexist orthogonally.
+- **Activity persistence**: `users/{uid}/activities/{activityId}` is a Firestore subcollection. The Admin SDK bypasses security rules, so write/read access is gated entirely by the `req.user.uid` check in the activities controller. The query `orderBy('completedAt', 'desc')` is single-field — no composite index required.
 
 ## File Structure
 
 ```
 API/
-  server.js                    # Express entry point
-  config/firebaseConfig.js     # Firebase Admin init
-  middleware/authMiddleware.js  # Bearer token verification
+  server.js                       # Express entry point
+  config/firebaseConfig.js        # Firebase Admin init (named 'ai-peer' database)
+  middleware/authMiddleware.js    # Bearer token verification + req.user injection
   routes/
-    authRoutes.js              # /auth endpoints
-    userRoutes.js              # /users endpoints
-    videosRoutes.js            # /video endpoints (24 exercises)
-    modelRoutes.js             # /model endpoints
+    authRoutes.js                 # /auth endpoints
+    userRoutes.js                 # /users endpoints
+    videosRoutes.js               # /video endpoints (23 active exercises + deprecated balance)
+    modelRoutes.js                # /model endpoints
+    activitiesRoutes.js           # /activities endpoints (POST /complete, GET /list)
   controllers/
-    userController.js          # User CRUD handlers
-    videoController.js         # Video signed URL handlers
-    modelController.js         # LLM model signed URL handler
+    userController.js             # User CRUD handlers
+    videoController.js            # Video signed URL handlers
+    modelController.js            # LLM model signed URL handler
+    activitiesController.js       # Activity record submission + retrieval (uses req.user.uid)
   services/
-    Auth_Service.js            # Firebase tokens, Identity Platform SMS
-    GCS_Service.js             # Signed URL generation
-    firestore-functions.js     # Firestore CRUD helpers
+    Auth_Service.js               # Firebase tokens, Identity Platform SMS
+    GCS_Service.js                # Signed URL generation
+    firestore-functions.js        # Firestore CRUD helpers (users + activities subcollection)
 ```
