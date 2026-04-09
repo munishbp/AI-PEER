@@ -15,8 +15,17 @@ export type AngleCheck = {
   max: number;
   /** Feedback message when angle is out of range */
   message: string;
-  /** Severity of violation */
+  /** Severity of violation. Used as the default; when severityThresholds is
+   *  set, the analyzer overrides this with mild/moderate/severe based on how
+   *  far the measured angle is outside [min, max]. */
   severity: 'warning' | 'error';
+  /** Optional graded severity. Both values are degrees outside [min, max].
+   *  outsideBy < moderate → 'mild', < severe → 'moderate', else → 'severe'.
+   *  Leave unset to keep using the default severity field. */
+  severityThresholds?: {
+    moderate: number;
+    severe: number;
+  };
   /** When true, the form analyzer skips this check if the current angle is
    *  inside the exercise's rep start zone OR end zone. Use this for "you're
    *  not at peak X" warnings on rep-counted exercises so they only fire in
@@ -36,8 +45,14 @@ export type AlignmentCheck = {
   tolerance: number;
   /** Feedback message when misaligned */
   message: string;
-  /** Severity of violation */
+  /** Severity of violation. Default; overridden when severityThresholds set. */
   severity: 'warning' | 'error';
+  /** Optional graded severity. Both values are degrees over tolerance.
+   *  overBy < moderate → 'mild', < severe → 'moderate', else → 'severe'. */
+  severityThresholds?: {
+    moderate: number;
+    severe: number;
+  };
 };
 
 /** A check that verifies a keypoint is above/below another */

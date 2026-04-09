@@ -15,7 +15,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { VisionState, Pose, FormFeedback } from './types';
+import { VisionState, Pose, FormFeedback, FormViolation } from './types';
 import { analyzePose } from './FormAnalyzer';
 import { RepCounter, RepHistoryEntry } from './RepCounter';
 import { getExerciseRules } from './exercises';
@@ -56,6 +56,11 @@ const initialState: VisionState = {
 // throttle state updates to ~5hz so we don't spam re-renders
 const STATE_UPDATE_INTERVAL = 200;
 
+// a form-check violation must be continuously failing for at least this many
+// ms before we surface it. catches single-frame keypoint glitches without
+// hiding sustained out-of-form positions.
+const VIOLATION_SMOOTHING_MS = 300;
+
 export function VisionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<VisionState>(initialState);
   const [repCount, setRepCount] = useState<number | null>(null);
@@ -73,6 +78,11 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const pendingFeedbackRef = useRef<FormFeedback | null>(null);
   const repCounterRef = useRef<RepCounter | null>(null);
   const activeRulesRef = useRef<ExerciseRule | null>(null);
+  // per-violation start timestamps used by the 300ms smoother. cleared on
+  // start/stop tracking. keyed by violation message — bilateral exercises with
+  // duplicate messages (e.g. knee bends "Bend your knees more" on left + right)
+  // collapse to one entry, which matches how feedbackEvents key by message too.
+  const violationStartTimesRef = useRef<Map<string, number>>(new Map());
 
   const setModelReady = useCallback((ready: boolean) => {
     setState((s) => ({ ...s, isModelLoaded: ready }));
@@ -81,6 +91,7 @@ export function VisionProvider({ children }: { children: ReactNode }) {
   const startTracking = useCallback((exerciseId: string) => {
     exerciseIdRef.current = exerciseId;
     isTrackingRef.current = true;
+    violationStartTimesRef.current.clear();
 
     const rules = getExerciseRules(exerciseId);
     activeRulesRef.current = rules ?? null;
@@ -113,6 +124,7 @@ export function VisionProvider({ children }: { children: ReactNode }) {
     isTrackingRef.current = false;
     repCounterRef.current?.reset();
     repCounterRef.current = null;
+    violationStartTimesRef.current.clear();
     setRepCount(null);
     setTargetReps(null);
     setState((s) => ({
@@ -131,7 +143,17 @@ export function VisionProvider({ children }: { children: ReactNode }) {
 
       let feedback: FormFeedback | null = null;
       if (pose && exerciseIdRef.current) {
-        feedback = analyzePose(pose, exerciseIdRef.current, activeRulesRef.current ?? undefined);
+        const raw = analyzePose(pose, exerciseIdRef.current, activeRulesRef.current ?? undefined);
+        // apply 300ms smoothing: drop violations that haven't been continuously
+        // failing for long enough yet, and clear timers for rules that have
+        // recovered. recompute the binary score from the smoothed list so a
+        // single-frame glitch doesn't tank the per-frame form score.
+        const smoothed = smoothViolations(raw.violations, violationStartTimesRef.current, Date.now());
+        feedback = {
+          violations: smoothed,
+          score: smoothed.length === 0 ? 100 : 0,
+          isGoodForm: smoothed.length === 0,
+        };
       }
 
       // update rep counter
@@ -201,4 +223,38 @@ export function useVisionContext(): VisionContextValue {
     throw new Error('useVisionContext must be used within VisionProvider');
   }
   return context;
+}
+
+// dedupes by message and applies the 300ms persistence window. mutates
+// startTimes in place: prunes keys whose rule passed this frame, adds new
+// entries for newly-failing rules, and only emits violations whose start
+// time is at least VIOLATION_SMOOTHING_MS in the past.
+function smoothViolations(
+  raw: FormViolation[],
+  startTimes: Map<string, number>,
+  now: number,
+): FormViolation[] {
+  const currentKeys = new Set(raw.map((v) => v.message));
+
+  // sweep: rules that passed this frame have their timer cleared
+  for (const key of Array.from(startTimes.keys())) {
+    if (!currentKeys.has(key)) startTimes.delete(key);
+  }
+
+  const out: FormViolation[] = [];
+  const seen = new Set<string>();
+  for (const v of raw) {
+    if (seen.has(v.message)) continue;
+    seen.add(v.message);
+
+    let firstAt = startTimes.get(v.message);
+    if (firstAt === undefined) {
+      startTimes.set(v.message, now);
+      firstAt = now;
+    }
+    if (now - firstAt >= VIOLATION_SMOOTHING_MS) {
+      out.push(v);
+    }
+  }
+  return out;
 }

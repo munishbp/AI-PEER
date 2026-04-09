@@ -64,6 +64,17 @@ export function mapToScreen(
 // Violation helpers
 // ---------------------------------------------------------------------------
 
+// Normalize the FormViolation severity union (which now includes mild |
+// moderate | severe from the Phase 5 gradation work) down to the 2-color
+// scheme this skeleton renderer uses. severe and error map to the red lane;
+// everything else maps to the yellow lane. The renderer doesn't need finer
+// gradation today — that lives in the persisted feedbackEvents instead.
+function toSkeletonSeverity(
+  s: 'error' | 'warning' | 'mild' | 'moderate' | 'severe',
+): 'error' | 'warning' {
+  return s === 'error' || s === 'severe' ? 'error' : 'warning';
+}
+
 /**
  * Build a lookup map from body-part name to its worst severity.
  *
@@ -76,9 +87,10 @@ export function getViolationMap(
   if (!feedback) return map;
 
   for (const v of feedback.violations) {
+    const sev = toSkeletonSeverity(v.severity);
     const existing = map.get(v.bodyPart);
     if (existing === 'error') continue; // already worst
-    map.set(v.bodyPart, v.severity);
+    map.set(v.bodyPart, sev);
   }
 
   return map;
