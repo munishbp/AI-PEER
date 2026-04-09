@@ -386,8 +386,8 @@ export function useVisionContext(): VisionContextValue {
 
 // MediaPipe Hand landmark indices for the four non-thumb fingers. each finger
 // has four landmarks: MCP (knuckle base), PIP (mid), DIP (upper), TIP (end).
-// thumb (1-4) is excluded — its curl behavior is too variable across users to
-// reliably classify as "extended."
+// thumb (1-4) is handled separately by the thumb-extended check below — its
+// curl behavior doesn't fit the four-segment extension-ratio pattern.
 const FINGER_INDICES: ReadonlyArray<readonly [number, number, number, number]> = [
   [5, 6, 7, 8],     // index
   [9, 10, 11, 12],  // middle
@@ -395,45 +395,80 @@ const FINGER_INDICES: ReadonlyArray<readonly [number, number, number, number]> =
   [17, 18, 19, 20], // pinky
 ];
 
-// minimum extension ratio (euclidean distance MCP→TIP / sum of segment lengths
-// MCP→PIP→DIP→TIP) for a finger to count as "extended". 1.0 = perfectly straight,
-// ~0.5 = curled into a fist. 0.85 is a generous threshold that allows for
-// natural finger droop while still rejecting curled positions.
-const FINGER_EXTENSION_THRESHOLD = 0.85;
+// minimum 3D extension ratio (straight-line MCP→TIP distance / sum of segment
+// lengths MCP→PIP→DIP→TIP) for a finger to count as "extended". 1.0 = perfectly
+// straight, ~0.5 = curled into a fist. 0.92 is strict — only nearly-straight
+// fingers pass. tunable down to 0.88 if device testing surfaces false negatives
+// for users with arthritic / partially-curled hands.
+const FINGER_EXTENSION_THRESHOLD = 0.92;
 
-// at least this many of the four non-thumb fingers must be extended for the
-// gesture to count as "open palm." three out of four leaves room for a
-// partially-curled finger or one with a tracking glitch.
-const MIN_EXTENDED_FINGERS = 3;
+// require ALL four non-thumb fingers extended (not 3 of 4) — eliminates the
+// "fist with one finger sticking out" false positive.
+const MIN_EXTENDED_FINGERS = 4;
 
-function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+// minimum thumb-tip-to-wrist distance as a fraction of hand size (wrist→middle
+// finger MCP). a tucked-into-fist thumb sits very close to the wrist; an
+// extended thumb on an open palm reaches well past the middle MCP. 1.2 is the
+// starting point — tunable down to 1.0 if needed.
+const THUMB_REACH_RATIO = 1.2;
+
+function dist3D(
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number }
+): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
-  return Math.sqrt(dx * dx + dy * dy);
+  const dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-// open-palm detector. for each non-thumb finger, compute the extension ratio:
-// the straight-line MCP→TIP distance divided by the path length through
-// MCP→PIP→DIP→TIP. a fully extended finger has ratio ≈ 1.0; a curled finger
-// drops to ~0.5. a hand counts as an "open palm" when at least 3 of 4
-// non-thumb fingers exceed the extension threshold.
+// open-palm detector v2. four checks must all pass:
+//
+//   (1) all four non-thumb fingers extended in 3D (catches side-view fists
+//       that the old 2D check missed: a curled finger has its tip near the
+//       wrist in 3D regardless of camera angle).
+//   (2) all four fingertips above the wrist in image y (rejects upside-down
+//       hands, sideways fingers, and incidental hand movements where the
+//       user isn't deliberately holding the hand up to show the camera).
+//   (3) thumb extended away from the wrist (rejects fist-with-fingers-out
+//       and any hand pose where the thumb is tucked).
+//
+// the old detector was 2D-only, used a 0.85 threshold, accepted 3 of 4 fingers,
+// ignored the thumb, and didn't check orientation — it false-positived on any
+// hand visible to the camera. this version requires all of the above.
 function detectOpenPalm(hand: Hand): boolean {
   if (!hand.landmarks || hand.landmarks.length < 21) return false;
   const lm = hand.landmarks;
+  const wrist = lm[0];
 
+  // (1) all four non-thumb fingers extended in 3D
   let extendedCount = 0;
   for (const [mcp, pip, dip, tip] of FINGER_INDICES) {
-    const direct = dist(lm[mcp], lm[tip]);
+    const direct = dist3D(lm[mcp], lm[tip]);
     const path =
-      dist(lm[mcp], lm[pip]) +
-      dist(lm[pip], lm[dip]) +
-      dist(lm[dip], lm[tip]);
-    if (path > 0 && direct / path >= FINGER_EXTENSION_THRESHOLD) {
-      extendedCount++;
-    }
+      dist3D(lm[mcp], lm[pip]) +
+      dist3D(lm[pip], lm[dip]) +
+      dist3D(lm[dip], lm[tip]);
+    if (path === 0 || direct / path < FINGER_EXTENSION_THRESHOLD) return false;
+    extendedCount++;
+  }
+  if (extendedCount < MIN_EXTENDED_FINGERS) return false;
+
+  // (2) fingertips above the wrist (smaller y = higher on screen in
+  // normalized image coords). natural "showing my palm" pose only.
+  for (const [, , , tip] of FINGER_INDICES) {
+    if (lm[tip].y >= wrist.y) return false;
   }
 
-  return extendedCount >= MIN_EXTENDED_FINGERS;
+  // (3) thumb extended away from the wrist. uses the wrist→middle-finger-MCP
+  // distance as a hand-size scale reference, then checks that the thumb tip
+  // reaches beyond THUMB_REACH_RATIO * handSize.
+  const handSize = dist3D(wrist, lm[9]); // wrist → middle finger MCP
+  if (handSize === 0) return false;
+  const thumbReach = dist3D(wrist, lm[4]); // wrist → thumb tip
+  if (thumbReach < handSize * THUMB_REACH_RATIO) return false;
+
+  return true;
 }
 
 // returns true if ANY detected hand shows an open palm. either left or right
