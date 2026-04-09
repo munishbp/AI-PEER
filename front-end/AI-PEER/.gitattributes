@@ -1,0 +1,7 @@
+# Shell scripts must stay LF regardless of the user's core.autocrlf setting.
+# Bash (including Git Bash on Windows) treats \r as a literal character, so
+# a CRLF shebang is not recognized and the script fails to start with
+# "env: bash\r: No such file or directory". Forcing eol=lf here means
+# Windows teammates can run scripts/*.sh without manually dos2unix-ing them
+# after every fresh clone or branch switch.
+*.sh text eol=lf
