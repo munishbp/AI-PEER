@@ -10,6 +10,7 @@
 		05FEBE222A5354954C11601A /* libPods-AIPEER.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E0ABC17CC7973D279299085E /* libPods-AIPEER.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		38332742D4E1E7BBAA106CD9 /* pose_landmarker_full.task in Resources */ = {isa = PBXBuildFile; fileRef = C6C72D46D50CC5FFD1A2F423 /* pose_landmarker_full.task */; };
+		7E571FE1D4E1E7BBAA106CDA /* hand_landmarker.task in Resources */ = {isa = PBXBuildFile; fileRef = 7E571FE2D50CC5FFD1A2F424 /* hand_landmarker.task */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		3F38EC9C82C641F28FC8E832 /* PoseLandmarkerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA967C6384218B33F3C399E /* PoseLandmarkerPlugin.swift */; };
 		5EF8EB9C9549CED73C3D5F88 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F623B17DCA3188B8EACAEC94 /* ExpoModulesProvider.swift */; };
@@ -31,6 +32,7 @@
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AIPEER/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		C6C72D46D50CC5FFD1A2F423 /* pose_landmarker_full.task */ = {isa = PBXFileReference; includeInIndex = 1; name = pose_landmarker_full.task; path = AIPEER/pose_landmarker_full.task; sourceTree = "<group>"; };
+		7E571FE2D50CC5FFD1A2F424 /* hand_landmarker.task */ = {isa = PBXFileReference; includeInIndex = 1; name = hand_landmarker.task; path = AIPEER/hand_landmarker.task; sourceTree = "<group>"; };
 		E0ABC17CC7973D279299085E /* libPods-AIPEER.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AIPEER.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = AIPEER/AppDelegate.swift; sourceTree = "<group>"; };
@@ -61,6 +63,7 @@
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				05BCD0B8D537F2D9547D85A5 /* PrivacyInfo.xcprivacy */,
 				C6C72D46D50CC5FFD1A2F423 /* pose_landmarker_full.task */,
+				7E571FE2D50CC5FFD1A2F424 /* hand_landmarker.task */,
 				8BA967C6384218B33F3C399E /* PoseLandmarkerPlugin.swift */,
 				421A132B2980C6FC6FF4C19B /* PoseLandmarkerPlugin.m */,
 			);
@@ -209,6 +212,7 @@
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				6F826B6AA1FE1C90CF4E7F23 /* PrivacyInfo.xcprivacy in Resources */,
 				38332742D4E1E7BBAA106CD9 /* pose_landmarker_full.task in Resources */,
+				7E571FE1D4E1E7BBAA106CDA /* hand_landmarker.task in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

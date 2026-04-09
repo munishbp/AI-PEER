@@ -16,6 +16,9 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
+import com.anonymous.aipeer.poselandmarker.PoseLandmarkerFrameProcessorPlugin
+import com.mrousavy.camera.frameprocessors.FrameProcessorPluginRegistry
+
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
@@ -52,5 +55,28 @@ class MainApplication : Application(), ReactApplication {
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
     ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
+  }
+
+  // ── VisionCamera frame processor plugin registration ──────────────────
+  // Registers the "poseLandmarker" plugin so the shared TypeScript code in
+  // src/vision/frameProcessor.ts can resolve it via
+  //   VisionCameraProxy.initFrameProcessorPlugin('poseLandmarker', {})
+  //
+  // The companion-object init runs when MainApplication is class-loaded by
+  // the JVM, which happens via android:name=".MainApplication" before
+  // Application.onCreate() and before any JS bundle loads. Earlier than
+  // onCreate so the registry is populated before any frame processor is
+  // initialized from JS.
+  //
+  // Plugin name "poseLandmarker" MUST match exactly:
+  //   - JS:  src/vision/frameProcessor.ts:19
+  //   - iOS: ios/AIPEER/PoseLandmarkerPlugin.m:25
+  // Mismatch silently makes poseLandmarkerPlugin === null in JS.
+  companion object {
+    init {
+      FrameProcessorPluginRegistry.addFrameProcessorPlugin("poseLandmarker") { proxy, options ->
+        PoseLandmarkerFrameProcessorPlugin(proxy, options)
+      }
+    }
   }
 }

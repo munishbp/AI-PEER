@@ -16,7 +16,7 @@ import { fetchVideoUrl, VideoResponse } from "@/src/video";
 import { useAuth } from "@/src/auth/AuthContext";
 import { useTranslation } from "react-i18next";
 
-type CatKey = "warmup" | "strength" | "balance";
+type CatKey = "warmup" | "strength" | "balance" | "assessment";
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -32,11 +32,16 @@ export default function VideoConfirmPage() {
     cat?: CatKey;
     video?: string;
     label?: string;
+    nextRoute?: string;
+    backRoute?: string;
   }>();
+  const backRoute = (params.backRoute ?? "/(tabs)/exercise") as any;
+
   const prettyCat = (cat?: string) => {
     if (cat === "warmup") return t("exercise.warmupTitle");
     if (cat === "strength") return t("exercise.strengthTitle");
     if (cat === "balance") return t("exercise.balanceTitle");
+    if (cat === "assessment") return "Assessment";
     return t("exercise.exercise");
   }
 
@@ -93,7 +98,7 @@ export default function VideoConfirmPage() {
 
   const onConfirm = () => {
     router.push({
-      pathname: "/(tabs)/exercise-session",
+      pathname: (params.nextRoute ?? "/(tabs)/exercise-session") as any,
       params: {
         cat: params.cat,
         video: params.video,
@@ -109,7 +114,7 @@ export default function VideoConfirmPage() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.replace("/(tabs)/exercise")}
+            onPress={() => router.replace(backRoute)}
             style={styles.backBtn}
             activeOpacity={0.85}
           >
@@ -171,7 +176,7 @@ export default function VideoConfirmPage() {
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.9}
-            onPress={() => router.replace("/(tabs)/exercise")}
+            onPress={() => router.replace(backRoute)}
           >
             <Ionicons name="refresh-outline" size={16} color="#5B4636" />
             <Text style={styles.secondaryText}>{t("video-confirm.chooseDifferent")}</Text>

@@ -129,6 +129,10 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+        // MediaPipe Pose Landmarker model file (.task) is a TFLite flatbuffer
+        // loaded via mmap. AAPT's default gzip would corrupt the mmap path and
+        // break model loading. Keep .task files uncompressed in the APK.
+        noCompress += "task"
     }
 }
 
@@ -179,4 +183,10 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // MediaPipe Tasks Vision — provides PoseLandmarker, BaseOptions, RunningMode,
+    // Delegate, MediaImageBuilder, MPImage. 0.10.29 matches Google's official
+    // sample, supports Android 15 (16KB page size), no conflicts with VisionCamera
+    // CameraX deps. Maven Central is already declared in android/build.gradle.
+    implementation 'com.google.mediapipe:tasks-vision:0.10.29'
 }

@@ -11,21 +11,22 @@ export const kneeFlexorRightRules: ExerciseRule = {
   category: 'strength',
   repConfig: {
     keypoints: ['right_hip', 'right_knee', 'right_ankle'],
-    startMin: 155, startMax: 180,
-    endMin: 50, endMax: 140,
+    startMin: 160, startMax: 180,
+    endMin: 50, endMax: 120,
     targetReps: 10,
   },
   totalSets: 3,
   unilateral: true,
-  cameraPrompt: 'Stand with your right side facing the camera. Your full body from head to ankles should be visible. Place your phone about 6-8 feet away.',
+  cameraPrompt: 'Stand sideways so the camera sees your RIGHT side — your right shoulder should be the one closest to the camera, not your face. Your full body, from head to feet, must be visible in frame. Place your phone about 6-8 feet away.',
   checks: [
     {
       type: 'angle',
       keypoints: ['right_hip', 'right_knee', 'right_ankle'],
-      min: 70,
-      max: 130,
+      min: 50,
+      max: 120,
       message: 'Bend your knee more',
       severity: 'warning',
+      gateOnRepZones: true,
     },
     {
       type: 'alignment',

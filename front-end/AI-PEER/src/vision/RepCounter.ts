@@ -4,6 +4,17 @@ import { calculateAngle, calculateAngle3D, isConfident } from './exercises/utils
 
 type RepPhase = 'idle' | 'in_start' | 'in_end';
 
+/** Per-rep angle summary captured each time the rep counter increments.
+ *  Field names use "Angle" but for distance-mode reps these are normalized
+ *  distance ratios — the consumer should branch on the rep config mode. */
+export type RepHistoryEntry = {
+  startAngle: number;
+  endAngle: number;
+  peakAngle: number;
+  romDeg: number;
+  durationMs: number;
+};
+
 const COOLDOWN_MS = 1200;
 
 // must stay in a zone for this many consecutive frames before transitioning
@@ -25,7 +36,12 @@ export class RepCounter {
 
   // movement tracking
   private startEntryValue: number | null = null;
+  private startEntryTime: number | null = null;
   private endPeakValue: number | null = null;
+
+  // per-rep angle history — appended on each successful _count++. consumed by
+  // exercise-session / chair-rise-test before stopTracking() resets the counter.
+  private _repHistory: RepHistoryEntry[] = [];
 
   constructor(config: RepConfig) {
     this.config = config;
@@ -43,8 +59,20 @@ export class RepCounter {
   get debugConfidences() { return this._debugConfidences; }
   get debugPositions() { return this._debugPositions; }
 
+  /** Snapshot copy of the per-rep history accumulated since the last reset. */
+  getRepHistory(): RepHistoryEntry[] {
+    return [...this._repHistory];
+  }
+
+  /** Clear rep history without touching count or phase. Used when a caller
+   *  has already drained the history into a per-set accumulator and wants a
+   *  fresh slate for the next set without resetting the counter itself. */
+  clearRepHistory() {
+    this._repHistory = [];
+  }
+
   private computeValue(pose: Pose): number | null {
-    const { keypoints, mode } = this.config;
+    const { keypoints, secondaryKeypoints, mode } = this.config;
     const [kp1Name, kp2Name, kp3Name] = keypoints;
 
     const kp1 = pose.keypoints.find(k => k.name === kp1Name);
@@ -75,9 +103,28 @@ export class RepCounter {
     }
 
     // default: angle mode (2D)
-    const angle = calculateAngle(kp1, kp2, kp3);
+    const angle1 = calculateAngle(kp1, kp2, kp3);
+
+    // bilateral: also require the secondary side's keypoints, average the two angles
+    if (secondaryKeypoints) {
+      const [s1Name, s2Name, s3Name] = secondaryKeypoints;
+      const s1 = pose.keypoints.find(k => k.name === s1Name);
+      const s2 = pose.keypoints.find(k => k.name === s2Name);
+      const s3 = pose.keypoints.find(k => k.name === s3Name);
+      if (!s1 || !s2 || !s3) return null;
+
+      this._debugConfidences += ` | ${s1Name}:${s1.confidence.toFixed(2)} ${s2Name}:${s2.confidence.toFixed(2)} ${s3Name}:${s3.confidence.toFixed(2)}`;
+
+      if (!isConfident(s1) || !isConfident(s2) || !isConfident(s3)) return null;
+
+      const angle2 = calculateAngle(s1, s2, s3);
+      const avg = (angle1 + angle2) / 2;
+      this._debugPositions = `L:${angle1.toFixed(0)}° R:${angle2.toFixed(0)}° avg:${avg.toFixed(0)}°`;
+      return avg;
+    }
+
     this._debugPositions = `${kp3Name}: (${kp3.x.toFixed(3)}, ${kp3.y.toFixed(3)})`;
-    return angle;
+    return angle1;
   }
 
   update(pose: Pose): number {
@@ -109,6 +156,7 @@ export class RepCounter {
         if (confirmedInStart) {
           this.phase = 'in_start';
           this.startEntryValue = value;
+          this.startEntryTime = Date.now();
           this.endPeakValue = null;
         }
         break;
@@ -137,9 +185,28 @@ export class RepCounter {
           if (traveled >= minMovement) {
             this._count++;
             this.lastRepTime = Date.now();
+
+            // record this rep's angle history. only push when the rep actually
+            // counted — partial movements that don't clear minMovement get the
+            // phase reset below but don't pollute the history.
+            if (
+              this.startEntryValue !== null &&
+              this.endPeakValue !== null &&
+              this.startEntryTime !== null
+            ) {
+              const round1 = (n: number) => Math.round(n * 10) / 10;
+              this._repHistory.push({
+                startAngle: round1(this.startEntryValue),
+                endAngle: round1(value),
+                peakAngle: round1(this.endPeakValue),
+                romDeg: round1(Math.abs(this.endPeakValue - this.startEntryValue)),
+                durationMs: Date.now() - this.startEntryTime,
+              });
+            }
           }
           this.phase = 'in_start';
           this.startEntryValue = value;
+          this.startEntryTime = Date.now();
           this.endPeakValue = null;
         }
         break;
@@ -155,6 +222,8 @@ export class RepCounter {
     this.framesInZone = 0;
     this.lastInZone = 'none';
     this.startEntryValue = null;
+    this.startEntryTime = null;
     this.endPeakValue = null;
+    this._repHistory = [];
   }
 }

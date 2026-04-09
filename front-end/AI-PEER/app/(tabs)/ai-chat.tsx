@@ -1,7 +1,7 @@
 /**
  * ai-chat.tsx - AI Chat screen with on-device LLM
  *
- * This screen provides a chat interface powered by Qwen3.5-0.8B running locally.
+ * This screen provides a chat interface powered by Qwen3.5-2B running locally.
  * All processing happens on-device - no patient data leaves the phone.
  *
  * Features:

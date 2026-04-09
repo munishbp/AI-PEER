@@ -26,7 +26,10 @@ export type Pose = {
 export type FormViolation={
     bodyPart:string;
     message:string;
-    severity:'error'|'warning';
+    // legacy 'warning'|'error' covers any rule without severityThresholds.
+    // 'mild'|'moderate'|'severe' is computed from how far the measured value
+    // is outside the acceptable range when the rule sets severityThresholds.
+    severity:'error'|'warning'|'mild'|'moderate'|'severe';
 };
 
 export type FormFeedback={

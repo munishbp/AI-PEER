@@ -5,52 +5,59 @@ UCF Senior Design Project 2025-2026. CS students collaborating with UCF College 
 ## Project Structure
 
 ```
-├── API/                         # Node.js backend (Cloud Run)
-│   ├── server.js                # Express entry point
-│   ├── routes/                  # Auth, user, video, & model endpoints
-│   ├── services/                # GCS, Firebase, Auth services
-│   ├── controllers/             # Request handlers (user, video, model)
-│   ├── middleware/               # Firebase token verification
-│   └── config/                  # Firebase Admin init
+├── API/                            # Node.js backend (Cloud Run)
+│   ├── server.js                   # Express entry point
+│   ├── routes/                     # Auth, user, video, model, & activities endpoints
+│   ├── services/                   # GCS, Firebase Admin, Auth services
+│   ├── controllers/                # Request handlers (user, video, model, activities)
+│   ├── middleware/                 # Firebase token verification (attaches req.user)
+│   └── config/                     # Firebase Admin init
 │
-├── front-end/AI-PEER/           # React Native mobile app (Expo bare workflow)
-│   ├── app/                     # Expo Router screens
-│   │   ├── index.tsx            # Login/Register with SMS 2FA
-│   │   ├── verify.tsx           # SMS code verification
-│   │   ├── questionnaire.tsx    # Fall risk assessment
-│   │   ├── chat-history.tsx     # Conversation list
-│   │   └── (tabs)/             # Tab navigation
-│   │       ├── index.tsx        # Home - FRA matrix, activity graphs
-│   │       ├── ai-chat.tsx      # On-device LLM chat
-│   │       ├── exercise.tsx     # Exercise category selector
-│   │       ├── exercise-session.tsx  # Full-screen exercise session
-│   │       ├── activity.tsx     # Activity tracking
-│   │       ├── contacts.tsx     # Emergency contacts
-│   │       └── settings.tsx     # User preferences
+├── front-end/AI-PEER/              # React Native mobile app (Expo bare workflow)
+│   ├── app/                        # Expo Router screens
+│   │   ├── index.tsx               # Login/Register with SMS 2FA
+│   │   ├── verify.tsx              # SMS code verification
+│   │   ├── questionnaire.tsx       # FES-I fall risk questionnaire
+│   │   ├── chat-history.tsx        # Conversation list
+│   │   └── (tabs)/                 # Tab navigation
+│   │       ├── index.tsx           # Home - FRA matrix, activity graphs
+│   │       ├── ai-chat.tsx         # On-device LLM chat
+│   │       ├── exercise.tsx        # Exercise category selector
+│   │       ├── exercise-session.tsx    # Multi-set exercise w/ camera, gesture-confirm start, rep counter
+│   │       ├── balance-test.tsx    # Fall-risk balance assessments landing page
+│   │       ├── chair-rise-test.tsx # 30-second sit-to-stand assessment
+│   │       ├── tug-test.tsx        # Timed Up and Go assessment
+│   │       ├── activity.tsx        # Activity tracking
+│   │       ├── contacts.tsx        # Emergency contacts
+│   │       └── settings.tsx        # User preferences
 │   ├── src/
-│   │   ├── auth/                # Firebase auth context
-│   │   ├── llm/                 # On-device LLM module (llama.rn)
-│   │   └── vision/              # MediaPipe Pose Landmarker
-│   │       ├── VisionService.ts # MediaPipe landmark → COCO keypoint mapper
-│   │       ├── VisionContext.tsx # React Context provider
-│   │       ├── FormAnalyzer.ts  # Joint angle calculation + rule matching
-│   │       ├── frameProcessor.ts # Camera frame processing
-│   │       ├── exercises/       # Per-exercise form rules
-│   │       └── components/      # Skeleton + guide overlays
-│   ├── components/              # Reusable UI components
-│   └── android/                 # Native Android project
+│   │   ├── auth/                   # Firebase auth context (two-token persistence)
+│   │   ├── llm/                    # On-device LLM module (llama.rn)
+│   │   ├── exercise-activity-storage.ts  # Local + backend activity persistence
+│   │   └── vision/                 # MediaPipe Pose + Hand Landmarker pipeline
+│   │       ├── VisionService.ts    # MediaPipe → COCO keypoint mapper, hand mapper
+│   │       ├── VisionContext.tsx   # React Context, trackingMode state machine, open-palm detector
+│   │       ├── FormAnalyzer.ts     # Per-frame check loop with rep-zone gating
+│   │       ├── RepCounter.ts       # Rep state machine + per-rep angle history
+│   │       ├── frameProcessor.ts   # VisionCamera worklet bridge to native plugin
+│   │       ├── exercises/          # Per-exercise form rules
+│   │       └── components/         # Skeleton + guide overlays
+│   ├── components/                 # Reusable UI (incl. GestureCountdownOverlay)
+│   ├── ios/AIPEER/                 # Swift PoseLandmarkerPlugin (Pose + Hand) + .task models
+│   ├── android/app/...             # Kotlin PoseLandmarkerFrameProcessorPlugin + .task models
+│   └── scripts/                    # ios-doctor, ios-clean, android-doctor, android-clean
 │
-├── functions/                   # Firebase Cloud Functions
-│   ├── index.js                 # Function entry point (REDCap sync)
+├── functions/                      # Firebase Cloud Functions
+│   ├── index.js                    # Function entry point (REDCap sync)
 │   └── services/
-│       └── REDCap_Service.js    # REDCap API wrapper
+│       └── REDCap_Service.js       # REDCap API wrapper
 │
-├── Training/                    # ML model training
-│   ├── slm/                     # SLM empathy training pipeline
-│   └── yolo/                    # Legacy YOLO pose model training (replaced by MediaPipe)
+├── Training/                       # ML model training
+│   ├── slm/                        # SLM empathy training pipeline
+│   └── yolo/                       # Legacy YOLO pose model training (replaced by MediaPipe)
 │
-├── firebase.json                # Firebase project config
-└── .firebaserc                  # Firebase project aliases
+├── firebase.json                   # Firebase project config
+└── .firebaserc                     # Firebase project aliases
 ```
 
 ## Quick Start
@@ -71,11 +78,32 @@ Health check: `GET http://localhost:3000/health`
 ```bash
 cd front-end/AI-PEER
 npm install
-npm run android         # Build and run on Android
-npm run ios             # Build and run on iOS
+cd ios && pod install && cd ..
+npm run ios:doctor       # Verify iOS environment is healthy
+npm run android:doctor   # Verify Android environment is healthy
+npm run ios              # Open Xcode workspace, then Cmd+R to build & run
+npm run android          # Build and run on Android
 ```
 
-> **Note:** This is a bare workflow project (ejected for llama.rn). You can't use Expo Go - you must build the native app.
+> **Note:** This is a bare workflow project (ejected for llama.rn). You can't use Expo Go — you must build the native app.
+
+### Build troubleshooting
+
+If a build fails or behaves oddly, run the doctor for the affected platform first. Both are read-only diagnostics that print PASS/FAIL for every required piece of the environment:
+
+```bash
+npm run ios:doctor      # iOS preflight (Xcode, CLT, CocoaPods, Pods, .env, worklets-core)
+npm run android:doctor  # Android preflight (JDK, SDK, Gradle, env, props)
+```
+
+If doctor passes but the build still fails, the clean scripts nuke caches and rebuild from scratch (use sparingly — they touch shared caches):
+
+```bash
+npm run ios:clean       # Pod deintegrate + reinstall, wipe DerivedData
+npm run android:clean   # Gradle clean + wipe build/, .gradle/, daemons
+```
+
+Full troubleshooting documentation (including the C++20 / Clang module cache story for iOS and the Gradle Worker Daemon failure mode for Android) lives in [`front-end/AI-PEER/README.md`](front-end/AI-PEER/README.md#ios-troubleshooting).
 
 ### Deploy to Cloud Run
 
@@ -94,24 +122,27 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 
 **Implemented:**
 - Fall risk assessment with FRA matrix visualization
-- SMS 2FA authentication via Identity Platform
-- On-device AI chat (Qwen3.5-0.8B finetuned on mental health counseling data, via llama.rn) - all processing stays on phone
+- SMS 2FA authentication via Identity Platform with two-token persistence (refresh token in AsyncStorage → custom token → ID token)
+- On-device AI chat (Qwen3.5-2B finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0), via llama.rn) — all processing stays on phone
 - Conversation history with 24-hour auto-archive
 - Secure video delivery with signed URLs (1-hour expiration)
+- Per-user exercise activity persistence to Firestore (`users/{uid}/activities/{activityId}` subcollection) with automatic ID-token refresh
 - Activity tracking and weekly summaries
 - Accessibility preferences (font scaling, high contrast)
-- Cloud Run deployment with SignBlob URL signing
-- MediaPipe Pose Landmarker real-time pose estimation for exercise form monitoring
-- 24 exercises with real-time pose-based form analysis (3 assessment, 5 warmup, 5 strength, 11 balance)
+- Cloud Run deployment with IAM signBlob URL signing
+- MediaPipe Pose + Hand Landmarker dual-task pipeline for real-time exercise form monitoring AND open-palm gesture-confirm start flow
+- Per-rep angle history capture and form-check feedback events with timestamps + severity gradation
+- 23 exercises with real-time pose-based form analysis (2 assessment, 5 warmup, 5 strength, 11 balance) — Chair Rise and TUG are the two clinical fall-risk assessments
 - Exercise recommendation system with compliance tracking
 - REDCap integration for clinical data sync (Firebase Cloud Function)
+- Cross-platform native plugins: Swift on iOS (Metal GPU) + Kotlin on Android (GPU→CPU fallback)
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
 | Mobile App | React Native, Expo bare workflow, TypeScript |
-| On-Device LLM | llama.rn, Qwen3.5-0.8B-aipeer-Q4_K_M (finetuned, ~505MB) |
+| On-Device LLM | llama.rn, Qwen3.5-2B-aipeer-Q4_K_M (finetuned, ~1.2GB) |
 | Pose Estimation | MediaPipe Pose Landmarker (on-device, GPU-accelerated) |
 | Backend | Node.js, Express, Cloud Run |
 | Cloud Functions | Firebase Functions (REDCap sync) |
@@ -136,7 +167,7 @@ gcloud run deploy aipeer-api --source . --region us-central1 --no-invoker-iam-ch
 - Beile Han
 - Pramodh Miryala - https://www.linkedin.com/in/pramodh-miryala-82ab28292/
 - Santiago Echeverry
-- Munish Persaud - https://www.linkedin.com/in/munish-persaud
+- Munish Persaud - https://munishbp.com
 
 UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
 
@@ -147,4 +178,4 @@ UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
 - [API Reference](API/README.md) -- endpoints, environment variables, deployment
 - [Frontend](front-end/AI-PEER/README.md) -- setup, features, project structure
 - [Cloud Functions](functions/README.md) -- REDCap sync schedule, logic, field mapping
-- [Training Pipeline](Training/slm/EMPATHY_TRAINING_PIPELINE.md) -- LLM finetuning methodology
+- [Training Pipeline](Training/slm/TRAINING_PLAN.md) -- LLM finetuning methodology, dataset, hardware setup, run stats

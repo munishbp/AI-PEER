@@ -36,6 +36,9 @@ const EXERCISE_VIDEO_ENDPOINTS: Record<string, string> = {
   "balance-9": "/video/getHWalkURL",
   "balance-10": "/video/getToeWalkURL",
   "balance-11": "/video/getHTWalkBkwdURL",
+  // Assessment (2) — clinical fall-risk tests, videos in GCS Assessment Videos/
+  "assessment-1": "/video/getCRiseURL",
+  "assessment-3": "/video/getTugURL",
 };
 
 /** Fetch a signed video URL for an exercise (requires auth token) */

@@ -6,13 +6,20 @@
 // and left/right label correction for the front camera mirror.
 //
 
+import { Platform } from 'react-native';
 import { Pose, Keypoint } from './types';
 
 // Maps MediaPipe 33 landmark indices to COCO 17 keypoint names.
-// Left/right labels are swapped because the coordinate transform
-// (x: lm.y, y: lm.x) mirrors the body on the iOS front camera.
-// MediaPipe's "left" landmarks appear on the user's right side on screen.
-const MEDIAPIPE_TO_COCO: Array<[number, string]> = [
+//
+// iOS: front camera image is pre-mirrored at capture, so MediaPipe's
+// "left_*" landmarks visually appear on the user's right side. The labels
+// must be swapped here so COCO right_wrist tracks the user's actual right
+// wrist, etc.
+//
+// Android: CameraX delivers the front camera buffer WITHOUT pre-mirroring,
+// so MediaPipe's labels already match the user's body directly. We use a
+// separate non-swapped table on Android. Choose at runtime via Platform.OS.
+const MEDIAPIPE_TO_COCO_IOS: Array<[number, string]> = [
   [0,  'nose'],
   [2,  'right_eye'],
   [5,  'left_eye'],
@@ -32,6 +39,26 @@ const MEDIAPIPE_TO_COCO: Array<[number, string]> = [
   [28, 'left_ankle'],
 ];
 
+const MEDIAPIPE_TO_COCO_ANDROID: Array<[number, string]> = [
+  [0,  'nose'],
+  [2,  'left_eye'],
+  [5,  'right_eye'],
+  [7,  'left_ear'],
+  [8,  'right_ear'],
+  [11, 'left_shoulder'],
+  [12, 'right_shoulder'],
+  [13, 'left_elbow'],
+  [14, 'right_elbow'],
+  [15, 'left_wrist'],
+  [16, 'right_wrist'],
+  [23, 'left_hip'],
+  [24, 'right_hip'],
+  [25, 'left_knee'],
+  [26, 'right_knee'],
+  [27, 'left_ankle'],
+  [28, 'right_ankle'],
+];
+
 export type MediaPipeLandmark = {
   x: number;
   y: number;
@@ -40,20 +67,61 @@ export type MediaPipeLandmark = {
   presence?: number;
 };
 
+export type MediaPipeHandLandmark = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+/** A single hand from MediaPipe Hand Landmarker. 21 landmarks per hand:
+ *  wrist (0), thumb (1-4), index (5-8), middle (9-12), ring (13-16), pinky (17-20).
+ *  Coordinates are in the SAME space as Pose keypoints (post-transform), so
+ *  gesture detectors can mix hand and body data without coordinate conversions.
+ *
+ *  handedness: MediaPipe's classification of which hand this is. iOS pre-mirrors
+ *  the front-camera buffer so MediaPipe's selfie convention is correct ("Right"
+ *  means user's actual right hand). Android doesn't pre-mirror, so MediaPipe's
+ *  output is inverted relative to the user's actual hand — but the y-axis flip
+ *  in mapMediaPipeToHands also flips the cross-product sign in the detector,
+ *  so the two errors cancel and the same detection logic works on both. */
+export type Hand = {
+  landmarks: HandLandmark[]; // length 21
+  handedness?: "Left" | "Right";
+};
+
+export type HandLandmark = {
+  x: number;
+  y: number;
+  z: number;
+};
+
 /**
  * Convert MediaPipe Pose Landmarker output (33 landmarks) to our Pose format.
- * MediaPipe coordinates are normalized 0-1 in the raw iOS landscape frame space.
- * We rotate 90° CW (x: lm.y, y: lm.x) to map landscape → portrait.
+ * MediaPipe coordinates are normalized 0-1 in the raw camera-sensor frame space.
+ *
+ * iOS:     front camera buffer arrives in landscape-right and is pre-mirrored
+ *          by the OS; transpose (x: lm.y, y: lm.x) maps landscape → portrait
+ *          with head at top, and the iOS label table swaps L/R to compensate
+ *          for the mirror so COCO right_wrist tracks the user's actual right.
+ *          iOS path is byte-identical to the original implementation.
+ * Android: CameraX delivers the front camera buffer in the opposite vertical
+ *          orientation, so we flip the resulting Y (y: 1 - lm.x). Since the
+ *          Android buffer is NOT pre-mirrored, MediaPipe's L/R labels already
+ *          match the user's body, so we use the natural (non-swapped) Android
+ *          label table. Empirically confirmed on Pixel 7 / Tensor G2.
  */
 export function mapMediaPipeToPose(landmarks: MediaPipeLandmark[]): Pose | null {
   if (!landmarks || landmarks.length < 33) return null;
 
-  const keypoints: Keypoint[] = MEDIAPIPE_TO_COCO.map(([mpIndex, name]) => {
+  const isAndroid = Platform.OS === 'android';
+  const labelTable = isAndroid ? MEDIAPIPE_TO_COCO_ANDROID : MEDIAPIPE_TO_COCO_IOS;
+
+  const keypoints: Keypoint[] = labelTable.map(([mpIndex, name]) => {
     const lm = landmarks[mpIndex];
     return {
       name,
       x: lm.y,
-      y: lm.x,
+      y: isAndroid ? 1 - lm.x : lm.x,
       confidence: lm.visibility ?? 0.5,
       z: lm.z,
       visibility: lm.visibility ?? 0.5,
@@ -62,4 +130,48 @@ export function mapMediaPipeToPose(landmarks: MediaPipeLandmark[]): Pose | null 
 
   const average_confidence = keypoints.reduce((sum, kp) => sum + kp.confidence, 0) / keypoints.length;
   return { keypoints, timestamp: Date.now(), confidence: average_confidence };
+}
+
+/**
+ * Convert MediaPipe Hand Landmarker output to our Hand[] format.
+ * Applies the SAME landscape→portrait coordinate transform that
+ * mapMediaPipeToPose applies, so hand and pose landmarks live in the
+ * same coordinate space and can be combined in gesture detectors.
+ *
+ * iOS:     transpose (x: lm.y, y: lm.x) — same as pose.
+ * Android: transpose with Y-flip (x: lm.y, y: 1 - lm.x) — same as pose.
+ *
+ * Per-hand input shape from the native plugin (both iOS Swift and Android
+ * Kotlin emit this): { landmarks: [{x,y,z}, ...21], handedness: "Left"|"Right" }.
+ * The handedness label is needed by detectOpenPalm to disambiguate the
+ * palm-normal cross-product sign.
+ */
+export function mapMediaPipeToHands(rawHands: any[] | null | undefined): Hand[] {
+  if (!Array.isArray(rawHands) || rawHands.length === 0) return [];
+
+  const isAndroid = Platform.OS === 'android';
+  const out: Hand[] = [];
+
+  for (const rawHand of rawHands) {
+    if (!rawHand || typeof rawHand !== 'object') continue;
+    const rawLandmarks = rawHand.landmarks;
+    const rawHandedness = rawHand.handedness;
+    if (!Array.isArray(rawLandmarks) || rawLandmarks.length < 21) continue;
+
+    const landmarks: HandLandmark[] = rawLandmarks.map((lm: MediaPipeHandLandmark) => ({
+      x: lm.y,
+      y: isAndroid ? 1 - lm.x : lm.x,
+      z: lm.z,
+    }));
+
+    out.push({
+      landmarks,
+      handedness:
+        rawHandedness === 'Left' || rawHandedness === 'Right'
+          ? rawHandedness
+          : undefined,
+    });
+  }
+
+  return out;
 }

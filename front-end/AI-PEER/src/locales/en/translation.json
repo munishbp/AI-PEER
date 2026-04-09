@@ -102,7 +102,7 @@
         "Consider using assistive devices if recommended", 
         "Review all medications with your healthcare provider"
     ],
-    "subtitle": "Fall Risk Questionnaire",
+    "subtitle": "Fall-Risk Questionnaire",
     "quit": "Quit",
     "instructionsTitle": "Instructions",
     "info1": "7 quick questions",
@@ -159,7 +159,7 @@
     "settings": "Settings"
   },
   "home": {
-    "subtitle": "Fall Risk Assessment",
+    "subtitle": "Fall-Risk Assessment",
     "overview": "Overview",
     "exercise": "Exercise",
     "balanceTest": "Balance Test",
@@ -287,7 +287,7 @@
     "cameraNeeded": "Camera access needed",
     "enableCamera": "Tap Start Monitoring to enable camera",
     "readyToMonitor": "Ready to monitor",
-    "placePhone": "Please place your phone so your full body is visible",
+    "placePhone": "Place your phone so your full body is visible.",
     "formScore": "Form Score",
     "secondsRemaining": "seconds remaining",
     "set": "Set {{current}}/{{total}}",

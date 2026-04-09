@@ -71,7 +71,34 @@ module.exports = {
     console.error("Firestore ReadUser Error:", error);
     throw error;
     }
+  },
+
+  // write a single completed activity to the user's activities subcollection.
+  // the doc id is the activity's own id (generated client-side) so a retry
+  // with the same id is idempotent rather than creating a duplicate.
+  async writeUserActivity(userId, activityRecord){
+    try {
+      const ref = db.collection('users').doc(userId).collection('activities').doc(activityRecord.id);
+      await ref.set(activityRecord);
+      return ref;
+    }
+    catch(error){
+      console.error("Firestore writeUserActivity Error:", error);
+      throw error;
+    }
+  },
+
+  // read a user's full activity history, newest first
+  async getUserActivities(userId){
+    try {
+      const snap = await db.collection('users').doc(userId).collection('activities').orderBy('completedAt', 'desc').get();
+      return snap.docs.map(d => d.data());
+    }
+    catch(error){
+      console.error("Firestore getUserActivities Error:", error);
+      throw error;
+    }
   }
-  
+
 }
 

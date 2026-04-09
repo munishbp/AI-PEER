@@ -10,13 +10,14 @@ export const sitToStandRules: ExerciseRule = {
   name: 'Sit to Stand',
   category: 'balance',
   repConfig: {
+    mode: 'angle3d',
     keypoints: ['left_hip', 'left_knee', 'left_ankle'],
     startMin: 50, startMax: 125,
     endMin: 145, endMax: 180,
     targetReps: 10,
   },
   totalSets: 3,
-  cameraPrompt: 'Sit in a chair facing the camera. Make sure your full body — head to ankles — is visible when both seated and standing. Place your phone about 6-8 feet away.',
+  cameraPrompt: 'Sit in a chair facing the camera. Your full body, from head to feet, must be visible both when seated and when standing. Place your phone about 6-8 feet away, propped at roughly chest height while you are seated — a low floor angle does not work well for this exercise.',
   checks: [
     {
       type: 'alignment',
@@ -29,10 +30,11 @@ export const sitToStandRules: ExerciseRule = {
     {
       type: 'angle',
       keypoints: ['left_hip', 'left_knee', 'left_ankle'],
-      min: 150,
+      min: 145,
       max: 180,
       message: 'Stand up fully',
       severity: 'warning',
+      gateOnRepZones: true,
     },
     {
       type: 'alignment',
