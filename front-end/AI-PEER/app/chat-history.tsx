@@ -8,7 +8,7 @@
  * - Swipe or button to delete
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -24,13 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { usePrefs } from "../src/prefs-context";
 import { useLLM } from "@/src/llm";
 import { Conversation } from "@/src/llm/types";
-
-// Same color scheme as other pages
-const beige = "#F7EDE4";
-const beigeTile = "#F4E3D6";
-const warmRed = "#D84535";
-const darkText = "#3F2F25";
-const subtleText = "#7A6659";
+import { type ContrastPalette } from "../src/theme";
 
 export default function ChatHistoryScreen() {
   const router = useRouter();
@@ -44,6 +38,7 @@ export default function ChatHistoryScreen() {
   } = useLLM();
 
   const { scaled, colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Handle selecting a conversation
   function handleSelect(id: string) {
@@ -82,7 +77,7 @@ export default function ChatHistoryScreen() {
           style={styles.backButton}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color={darkText} />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
@@ -111,12 +106,14 @@ export default function ChatHistoryScreen() {
             preview={getPreview(convo)}
             onSelect={() => handleSelect(convo.id)}
             onDelete={() => handleDelete(convo.id)}
+            styles={styles}
+            colors={colors}
           />
         ))}
         {/* Isn't necessary; LLMContext.tsx makes sure there's always >0 */}
         {conversations.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="chatbubbles-outline" size={48} color={subtleText} />
+            <Ionicons name="chatbubbles-outline" size={48} color={colors.muted} />
             <Text style={[styles.emptyText, { fontSize: scaled.base }]}>No conversations yet</Text>
             <TouchableOpacity
               onPress={handleNewConversation}
@@ -146,12 +143,16 @@ function ConversationCard({
   preview,
   onSelect,
   onDelete,
+  styles,
+  colors,
 }: {
   conversation: Conversation;
   isActive: boolean;
   preview: string;
   onSelect: () => void;
   onDelete: () => void;
+  styles: ReturnType<typeof createStyles>;
+  colors: ContrastPalette;
 }) {
   // Format timestamp as relative time ("2 hours ago", "Yesterday", etc.)
   const timeAgo = formatTimeAgo(conversation.lastMessageAt);
@@ -174,7 +175,7 @@ function ConversationCard({
         <Ionicons
           name={isActive ? "chatbubble" : "chatbubble-outline"}
           size={20}
-          color={isActive ? "#FFFFFF" : warmRed}
+          color={isActive ? "#FFFFFF" : colors.accent}
         />
       </View>
 
@@ -185,7 +186,7 @@ function ConversationCard({
         </Text>
         <View style={styles.cardMeta}>
           <Text style={[styles.cardTime, { fontSize: scaled.base*0.75 }]}>{timeAgo}</Text>
-          <Text style={[styles.cardDot, { fontSize: scaled.base*0.75 }]}>•</Text>
+          <Text style={[styles.cardDot, { fontSize: scaled.base * 0.75 }]}>|</Text>
           <Text style={[styles.cardCount, { fontSize: scaled.base*0.75 }]}>
             {messageCount} message{messageCount !== 1 ? "s" : ""}
           </Text>
@@ -199,7 +200,7 @@ function ConversationCard({
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="trash-outline" size={18} color={subtleText} />
+        <Ionicons name="trash-outline" size={18} color={colors.muted} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -234,7 +235,12 @@ function formatTimeAgo(timestamp: number): string {
   }
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ContrastPalette) => {
+  const beige = colors.background;
+  const beigeTile = colors.bgTile;
+  const warmRed = colors.accent;
+
+  return StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: beige,
@@ -257,11 +263,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "800",
-    color: darkText,
+    color: colors.text,
   },
   subtitle: {
     fontSize: 12,
-    color: subtleText,
+    color: colors.muted,
     marginTop: 2,
   },
   newButton: {
@@ -281,7 +287,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 14,
     padding: 14,
     gap: 12,
@@ -316,7 +322,7 @@ const styles = StyleSheet.create({
   cardPreview: {
     fontSize: 14,
     fontWeight: "600",
-    color: darkText,
+    color: colors.text,
     lineHeight: 20,
   },
   cardMeta: {
@@ -327,15 +333,15 @@ const styles = StyleSheet.create({
   },
   cardTime: {
     fontSize: 12,
-    color: subtleText,
+    color: colors.muted,
   },
   cardDot: {
     fontSize: 12,
-    color: subtleText,
+    color: colors.muted,
   },
   cardCount: {
     fontSize: 12,
-    color: subtleText,
+    color: colors.muted,
   },
   deleteButton: {
     width: 36,
@@ -354,7 +360,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: subtleText,
+    color: colors.muted,
     fontWeight: "600",
   },
   emptyButton: {
@@ -369,4 +375,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 14,
   },
-});
+  });
+};
+
+

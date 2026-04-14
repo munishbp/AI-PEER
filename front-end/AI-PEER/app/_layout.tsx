@@ -1,9 +1,50 @@
 // app/_layout.tsx
 import { Stack } from "expo-router";
 import { LLMProvider } from "@/src/llm";
-import {AuthProvider} from "@/src/auth"
-import { PrefsProvider } from "../src/prefs-context";
+import { AuthProvider } from "@/src/auth";
+import { PrefsProvider, usePrefs } from "../src/prefs-context";
 import { VisionProvider } from "@/src/vision";
+
+function RootStack() {
+  const { colors } = usePrefs();
+
+  return (
+    <Stack
+      screenOptions={{
+        contentStyle: { backgroundColor: colors.background },
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text },
+      }}
+    >
+      {/* Landing (Login) */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+
+      {/* Welcome - Accessibility Changes */}
+      <Stack.Screen name="welcome" options={{ headerShown: false }} />
+
+      {/* Verify - 2FA */}
+      <Stack.Screen name="verify" options={{ headerShown: false }} />
+
+      {/* Tutorial - post-2FA walkthrough */}
+      <Stack.Screen name="tutorial" options={{ headerShown: false }} />
+
+      {/* Tabs group (Home/AI Chat/Activity/Contacts/Settings) */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+      {/* Questionnaire */}
+      <Stack.Screen name="questionnaire" options={{ headerShown: false }} />
+
+      {/* Chat History - accessible from AI Chat */}
+      <Stack.Screen name="chat-history" options={{ headerShown: false }} />
+
+      {/* Optional routes from the Expo template */}
+      <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
+      <Stack.Screen name="+not-found" options={{ title: "Not found" }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   return (
@@ -11,33 +52,7 @@ export default function RootLayout() {
       <LLMProvider>
         <PrefsProvider>
           <VisionProvider>
-          <Stack>
-            {/* Landing (Login) */}
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-
-            {/* Welcome - Accessibility Changes */}
-            <Stack.Screen name="welcome" options={{ headerShown: false }} />
-
-            {/* Verify - 2FA */}
-            <Stack.Screen name="verify" options={{ headerShown: false }} />
-
-            {/* Tutorial - post-2FA walkthrough */}
-            <Stack.Screen name="tutorial" options={{ headerShown: false }} />
-
-            {/* Tabs group (Home/AI Chat/Activity/Contacts/Settings) */}
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
-            {/* Questionnaire */}
-            <Stack.Screen name="questionnaire" options={{ headerShown: false }} />
-
-            {/* Chat History - accessible from AI Chat */}
-            <Stack.Screen name="chat-history" options={{ headerShown: false }} />
-
-            {/* Optional routes from the Expo template */}
-            <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
-            <Stack.Screen name="+not-found" options={{ title: "Not found" }} />
-          </Stack>
+            <RootStack />
           </VisionProvider>
         </PrefsProvider>
       </LLMProvider>

@@ -39,7 +39,10 @@ Thumbs.db
 .env.*
 !.env.example
 src/firebaseConfig.ts
+android/keystore.properties
+android/keystore-credentials.local.txt
 *.keystore
+*.jks
 *.p12
 *.mobileprovision
 *.pem
