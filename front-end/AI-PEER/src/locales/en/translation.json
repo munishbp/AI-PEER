@@ -345,5 +345,17 @@
     "low": "Low",
     "physiologicalRisk": "Physiological fall risk",
     "editBTrack": "Edit BTrackS"
+  },
+  "exercise-summary": {
+    "title": "Workout Complete",
+    "done": "Done",
+    "reps": "Reps",
+    "sets": "Sets",
+    "duration": "Duration",
+    "topFeedback": "Top Feedback",
+    "greatForm": "Great form — no issues detected.",
+    "noFormAnalysis": "No form analysis available for this exercise.",
+    "notAvailable": "N/A",
+    "notFound": "Session not found."
   }
 }

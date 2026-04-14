@@ -345,5 +345,17 @@
     "low": "Low",
     "physiologicalRisk": "Riesgo fisiológico de caídas",
     "editBTrack": "Edit BTrackS"
+  },
+  "exercise-summary": {
+    "title": "Entrenamiento Completado",
+    "done": "Hecho",
+    "reps": "Repeticiones",
+    "sets": "Series",
+    "duration": "Duración",
+    "topFeedback": "Comentarios Principales",
+    "greatForm": "Buena forma — no se detectaron problemas.",
+    "noFormAnalysis": "No hay análisis de forma disponible para este ejercicio.",
+    "notAvailable": "N/D",
+    "notFound": "Sesión no encontrada."
   }
 }

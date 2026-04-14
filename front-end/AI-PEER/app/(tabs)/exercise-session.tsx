@@ -371,10 +371,14 @@ export default function ExerciseSessionPage() {
           ? activityScoresRef.current.reduce((a, b) => a + b, 0) / totalFrames
           : null;
 
+      resetActivityAccumulators();
+
       // only persist activities where at least one rep was counted across the
-      // whole session — guards against accidental empty completions
+      // whole session — guards against accidental empty completions. On
+      // successful persist, route to the summary screen with the record id so
+      // the user sees their form score + top feedback before going back.
       if (totalReps > 0) {
-        void submitCompletedActivity({
+        submitCompletedActivity({
           exerciseId,
           exerciseName,
           category: activityCategory,
@@ -390,16 +394,23 @@ export default function ExerciseSessionPage() {
           ),
           avgScore: activityAvgScore,
           framesAnalyzed: totalFrames,
-        }).catch((error) => {
-          console.error(
-            "[ExerciseSession] Failed to save activity record:",
-            error
-          );
-        });
+        })
+          .then((record) => {
+            router.replace({
+              pathname: "/(tabs)/exercise-summary",
+              params: { recordId: record.id },
+            });
+          })
+          .catch((error) => {
+            console.error(
+              "[ExerciseSession] Failed to save activity record:",
+              error
+            );
+            router.replace("/(tabs)/exercise");
+          });
+      } else {
+        router.replace("/(tabs)/exercise");
       }
-
-      resetActivityAccumulators();
-      router.replace("/(tabs)/exercise");
       return;
     } else {
       // more sets to go — show between-set summary card and queue the gesture
