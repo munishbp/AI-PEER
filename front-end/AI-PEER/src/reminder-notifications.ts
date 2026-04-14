@@ -40,3 +40,23 @@ export async function cancelReminderNotification(notificationId?: string) {
   if (!notificationId) return;
   await Notifications.cancelScheduledNotificationAsync(notificationId);
 }
+
+// Fires a local notification a second from now. Used by the Sound Alerts
+// preview button so users actually hear the real path they're opting into,
+// instead of a desktop-only WebAudio beep that silently fails on device.
+export async function scheduleTestNotification() {
+  const granted = await requestReminderPermissions();
+  if (!granted) return false;
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "AI PEER",
+      body: "Sound alert preview",
+      sound: true,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 1,
+    },
+  });
+  return true;
+}
