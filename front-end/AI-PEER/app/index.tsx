@@ -1,7 +1,7 @@
 // app/index.tsx
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
-import { ActivityIndicator, Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "../src/api";
 import { useAuth } from "../src/auth";
@@ -61,7 +61,7 @@ export default function Login() {
     try {
       setLoading(true);
       await api.sendCode(p, password, "login");
-      router.push(`/verify?phone=${p}&mode=login`);
+      router.replace(`/verify?phone=${p}&mode=login`);
     } catch (e: any) {
       setErr(e.message || t("login.invalidPhoneOrPassword"));
     } finally {
@@ -80,7 +80,7 @@ export default function Login() {
       setLoading(true);
       const btrack = btrackInput.trim() ? parseFloat(btrackInput.trim()) : undefined;
       await api.sendCode(p, password, "create", btrack);
-      router.push(`/verify?phone=${p}&mode=create`);
+      router.replace(`/verify?phone=${p}&mode=create`);
     } catch (e: any) {
       setErr(e.message || t("login.failedCreateAccount"));
     } finally {
@@ -107,6 +107,7 @@ export default function Login() {
   };
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={spacing(6)}>
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={s.wrap}>
         <Text style={s.brand}>AI PEER</Text>
@@ -228,6 +229,7 @@ export default function Login() {
         )}
       </View>
     </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

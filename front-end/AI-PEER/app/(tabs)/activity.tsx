@@ -247,8 +247,7 @@ export default function ActivityScreen() {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <Ionicons name="moon-outline" size={18} color="#555" />
-            <Ionicons name="notifications-outline" size={18} color="#555" />
+            
           </View>
         </View>
 

@@ -1,6 +1,6 @@
 // app/verify.tsx
 import { useState, useEffect } from "react";
-import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TextInput, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { signInWithCustomToken } from "firebase/auth";
@@ -70,7 +70,8 @@ export default function Verify() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={spacing(6)}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={s.wrap}>
             <TouchableOpacity onPress={onBack} style={s.backBtn}>
               <Text style={s.backText}>{t("verify.back")}</Text>
@@ -106,7 +107,8 @@ export default function Verify() {
                 </TouchableOpacity>
             </View>
         </View>
-    </TouchableWithoutFeedback>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -11,6 +11,10 @@ import {
   Vibration,
   Alert,
   TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -49,8 +53,8 @@ export default function SettingsScreen() {
   const { logout } = useAuth();
   const REMINDERS_KEY = "user_reminders_v1";
   const [reminders, setReminders] = useState<Reminder[]>([]);
-
   const [remindersLoaded, setRemindersLoaded] = useState(false);
+  
 
   async function addReminder(title: string, hour: number, minute: number) {
     const permissionGranted = await requestReminderPermissions();
@@ -219,7 +223,14 @@ export default function SettingsScreen() {
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Ionicons name="settings-outline" size={18} color="#555" />
+            <TouchableOpacity
+              onPress={() => router.replace("/tutorial?next=tabs")}
+              accessibilityLabel={t("settings.help")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="help-circle-outline" size={20} color="#555" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -258,6 +269,8 @@ export default function SettingsScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      
     </SafeAreaView>
   );
 }
@@ -436,17 +449,18 @@ function NotificationsTab({
   onLogout: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
 }) {
+  const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [hour, setHour] = useState("");
   const [minute, setMinute] = useState("");
+  const [ampm, setAmpm] = useState<"AM" | "PM">("AM");
   const { t } = useTranslation();
 
   async function handleAdd() {
     const h = Number(hour);
     const m = Number(minute);
 
-    if (!title.trim()) return;
-    if (!Number.isInteger(h) || h < 0 || h > 23) {
+    if (!Number.isInteger(h) || h < 1 || h > 12) {
       Alert.alert(t("settings.errorHour"), t("settings.errorHourRange"));
       return;
     }
@@ -455,10 +469,16 @@ function NotificationsTab({
       return;
     }
 
-    await addReminder(title.trim(), h, m);
-    setTitle("");
+    // convert to 24-hour (military) time
+    let military = h % 12; // 12 -> 0
+    if (ampm === "PM") military += 12;
+
+    await addReminder(title.trim(), military, m);
     setHour("");
+    setTitle("");
     setMinute("");
+    setAmpm("AM");
+    setShowModal(false);
   }
 
   return (
@@ -467,7 +487,7 @@ function NotificationsTab({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="alarm-outline" size={16} color={warmRed} />
           <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.reminders")}</Text>
-          </View>
+        </View>
           <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
             {t("settings.remindersDescription")}
           </Text>
@@ -494,36 +514,82 @@ function NotificationsTab({
           </View>
         ))}
 
-        <View style={styles.inputRow}>
-          <TextInput
-            placeholder={t("settings.reminderTitle")}
-            value={title}
-            onChangeText={setTitle}
-            style={[styles.input, { fontSize: scaled.small }]}
-          />
-          <TextInput
-            placeholder="HH (-23)"
-            value={hour}
-            onChangeText={(t) => setHour(t.replace(/\D/g, "").slice(0, 2))}
-            keyboardType="number-pad"
-            style={[styles.input, { fontSize: scaled.small, width: 60 }]}
-          />
-          <TextInput
-            placeholder="MM (-59)"
-            value={minute}
-            onChangeText={(t) => setMinute(t.replace(/\D/g, "").slice(0, 2))}
-            keyboardType="number-pad"
-            style={[styles.input, { fontSize: scaled.small, width: 60 }]}
-          />
+        <View style={{ marginTop: 12, flexDirection: "row", justifyContent: "center" }}>
           <TouchableOpacity
             style={[styles.primaryButton, { paddingHorizontal: 12 }]}
-            onPress={handleAdd}
+            onPress={() => setShowModal(true)}
             activeOpacity={0.85}
           >
             <Ionicons name="add-circle-outline" size={16} color="#fff" />
             <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>{t("settings.add")}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Add Reminder Modal */}
+        <Modal visible={showModal} animationType="slide" transparent>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+
+                  <Text style={[styles.modalTitle, { fontSize: scaled.h2 }]}>{t("settings.add") || "Add Reminder"}</Text>
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>{t("settings.reminderTitle")}</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: scaled.base }]}
+                    value={title}
+                    onChangeText={setTitle}
+                    placeholder={t("settings.reminderTitle")}
+                    placeholderTextColor="#999"
+                  />
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>HH (1-12)</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: scaled.base, width: 120 }]}
+                    value={hour}
+                    onChangeText={(t) => setHour(t.replace(/\D/g, "").slice(0, 2))}
+                    keyboardType="number-pad"
+                    placeholder="HH"
+                  />
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>MM (00-59)</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: scaled.base, width: 120 }]}
+                    value={minute}
+                    onChangeText={(t) => setMinute(t.replace(/\D/g, "").slice(0, 2))}
+                    keyboardType="number-pad"
+                    placeholder="MM"
+                  />
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>AM / PM</Text>
+                  <View style={{ flexDirection: "row", justifyContent: "flex-start", marginTop: 6, gap: 12 }}>
+                    <TouchableOpacity
+                      style={[styles.ampmButtons, ampm === "AM" && styles.optionButtonActive, { width: 100 }]}
+                      onPress={() => setAmpm("AM")}
+                    >
+                      <Text style={[styles.optionButtonText, ampm === "AM" && styles.optionButtonTextActive]}>AM</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.ampmButtons, ampm === "PM" && styles.optionButtonActive, { width: 100 }]}
+                      onPress={() => setAmpm("PM")}
+                    >
+                      <Text style={[styles.optionButtonText, ampm === "PM" && styles.optionButtonTextActive]}>PM</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowModal(false); setTitle(""); setHour(""); setMinute(""); setAmpm("AM"); }}>
+                      <Text style={[styles.cancelBtnText, { fontSize: scaled.base }]}>{t("settings.cancel")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.saveBtn} onPress={handleAdd}>
+                      <Text style={[styles.saveBtnText, { fontSize: scaled.base }]}>{t("contacts.save")}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
 
       <View style={styles.card}>
@@ -670,7 +736,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: warmRed,
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -685,12 +751,41 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   input: {
-    flex: 1,
-    backgroundColor: beigeTile,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FDFAF7",
+    backgroundColor: beige,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    fontSize: 16,
+    color: "#3F2F25",
   },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: { fontWeight: "800", color: "#3F2F25", marginBottom: 20 },
+  fieldLabel: { fontWeight: "600", color: "#7A6659", marginTop: 12, marginBottom: 6 },
+  ampmButtons: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: beigeTile,
+  },
+  modalButtons: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 12 },
+  cancelBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: "#EEE" },
+  saveBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: warmRed },
+  cancelBtnText: { color: "#555", fontWeight: "700" },
+  saveBtnText: { color: "#FFF", fontWeight: "700" },
 
   logoutButton: {
     backgroundColor: "#DC2626",

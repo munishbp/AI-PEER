@@ -211,8 +211,7 @@ export default function ContactsScreen() {
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Ionicons name="moon-outline" size={18} color="#555" />
-            <Ionicons name="notifications-outline" size={18} color="#555" />
+            
           </View>
         </View>
 

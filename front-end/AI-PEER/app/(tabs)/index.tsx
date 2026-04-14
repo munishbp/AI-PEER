@@ -93,15 +93,21 @@ export default function Home() {
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Ionicons name="moon-outline" size={18} color="#555" />
-            <Ionicons name="notifications-outline" size={18} color="#555" />
+            <TouchableOpacity
+              onPress={() => router.replace("/tutorial?next=tabs")}
+              accessibilityLabel={t("settings.help")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="help-circle-outline" size={20} color="#555" />
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Segmented (Overview | Exercise) */}
         <View style={styles.segmentOuter}>
           <TouchableOpacity style={[styles.segmentBtn, styles.segmentActive]}>
-            <Ionicons name="home-outline" size={14} />
+            <Ionicons name="home-outline" size={14} color="#FFF" />
             <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>{t("home.overview")}</Text>
           </TouchableOpacity>
 
@@ -126,7 +132,7 @@ export default function Home() {
 
         {/* Action Row 1 */}
         <View style={styles.rowTwo}>
-          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {router.push("/(tabs)/balance-test")}} scaled={scaled} />
+          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {router.replace("/(tabs)/balance-test")}} scaled={scaled} />
           <PillButton icon="clipboard-outline" label={t("home.questionnaire")} onPress={() => {router.push("/questionnaire")}} scaled={scaled} />
         </View>
 
@@ -135,7 +141,7 @@ export default function Home() {
           <PillButton
             icon="chatbubble-ellipses-outline"
             label={t("home.letsChat")}
-            onPress={() => router.push("/(tabs)/ai-chat")}
+            onPress={() => router.replace("/(tabs)/ai-chat")}
             full
             scaled={scaled}
           />

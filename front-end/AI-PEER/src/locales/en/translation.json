@@ -248,13 +248,13 @@
     "soundDescription": "Enable or disable notification sounds",
     "playPreview": "Play Preview",
     "errorHour": "Invalid hour",
-    "errorHourRange": "Enter an hour from 0 to 23.",
+    "errorHourRange": "Hour must be between 1 and 12.",
     "errorMinute": "Invalid minute",
     "errorMinuteRange": "Enter a minute from 0 to 59.",
     "reminders": "Reminders",
     "remindersDescription": "Create and manage personal reminders",
     "reminderTitle": "Reminder title",
-    "add": "Add",
+    "add": "Add Reminder",
     "account": "Account"
   },
   "exercise": {

@@ -80,7 +80,7 @@ export default function ExercisePage() {
   });
 
   const startCategory = (key: CategoryKey) => {
-    router.push({
+    router.replace({
       pathname: "/(tabs)/exercise-session",
       params: { cat: key },
     });
@@ -91,7 +91,7 @@ export default function ExercisePage() {
   };
 
   const openVideo = (cat: CategoryKey, exerciseId: string, name: string) => {
-    router.push({
+    router.replace({
       pathname: "/(tabs)/video-confirm",
       params: {
         cat,
@@ -115,8 +115,14 @@ export default function ExercisePage() {
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Ionicons name="moon-outline" size={18} color="#555" />
-            <Ionicons name="notifications-outline" size={18} color="#555" />
+            <TouchableOpacity
+              onPress={() => router.replace("/tutorial?next=tabs")}
+              accessibilityLabel={t("settings.help")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="help-circle-outline" size={20} color="#555" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -134,7 +140,7 @@ export default function ExercisePage() {
           <TouchableOpacity
             style={[styles.segmentBtn, styles.segmentActive]}
           >
-            <Ionicons name="barbell-outline" size={14} />
+            <Ionicons name="barbell-outline" size={14} color="#FFF" />
             <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>
               {t("exercise.exercise")}
             </Text>

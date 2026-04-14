@@ -97,7 +97,7 @@ export default function VideoConfirmPage() {
     : "\u2014";
 
   const onConfirm = () => {
-    router.push({
+    router.replace({
       pathname: (params.nextRoute ?? "/(tabs)/exercise-session") as any,
       params: {
         cat: params.cat,
@@ -123,7 +123,6 @@ export default function VideoConfirmPage() {
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
-          <Ionicons name="shield-checkmark-outline" size={18} color="#2E5AAC" />
         </View>
 
         <Text style={styles.pageTitle}>{t("video-confirm.pageTitle")}</Text>

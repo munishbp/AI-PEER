@@ -394,7 +394,7 @@ export default function ExerciseSessionPage() {
       }
 
       resetActivityAccumulators();
-      router.navigate("/(tabs)/exercise");
+      router.replace("/(tabs)/exercise");
       return;
     } else {
       // more sets to go — show between-set summary card and queue the gesture
@@ -555,7 +555,7 @@ export default function ExerciseSessionPage() {
               repCountRef.current = 0;
               clearTimer();
               stopTracking();
-              router.navigate("/(tabs)/exercise");
+              router.replace("/(tabs)/exercise");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
