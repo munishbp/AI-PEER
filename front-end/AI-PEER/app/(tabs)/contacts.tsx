@@ -229,10 +229,6 @@ export default function ContactsScreen() {
               <Text style={[styles.headerSubtitle, { fontSize: scaled.h2 / 2, color: colors.muted }]}>{t("contacts.contactLists")}</Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Ionicons name="moon-outline" size={18} color={colors.muted} />
-            <Ionicons name="notifications-outline" size={18} color={colors.muted} />
-          </View>
         </View>
 
         <View style={styles.segmentOuter}>

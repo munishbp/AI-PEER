@@ -1,10 +1,12 @@
 // app/_layout.tsx
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { LLMProvider } from "@/src/llm";
 import { AuthProvider } from "@/src/auth";
 import { PrefsProvider, usePrefs } from "../src/prefs-context";
 import { VisionProvider } from "@/src/vision";
 import * as Notifications from "expo-notifications";
+import { requestReminderPermissions } from "@/src/reminder-notifications";
 import "../src/i18n";
 
 Notifications.setNotificationHandler({
@@ -18,6 +20,14 @@ Notifications.setNotificationHandler({
 
 function RootStack() {
   const { colors } = usePrefs();
+
+  // Ask for notification permission on first launch. iOS only shows the
+  // system prompt once; after that requestPermissionsAsync returns the
+  // stored status without surfacing UI, so this is safe to call on every
+  // mount.
+  useEffect(() => {
+    requestReminderPermissions().catch(() => {});
+  }, []);
 
   return (
     <Stack

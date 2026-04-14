@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { usePrefs } from "../../src/prefs-context";
 import { getExerciseVideos } from "@/src/video";
-import { getTodaysWorkout } from "@/src/daily-workout";
+import { getTodaysRemainingWorkout } from "@/src/daily-workout";
 import { WorkoutCombo } from "@/src/workout-combos";
 import { getExerciseRules } from "@/src/vision/exercises";
 import { useTranslation } from "react-i18next";
@@ -71,9 +71,19 @@ export default function ExercisePage() {
     },
   ];
 
-  useEffect(() => {
-    getTodaysWorkout().then(setTodaysWorkout).catch(console.error);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getTodaysRemainingWorkout()
+        .then((w) => {
+          if (active) setTodaysWorkout(w);
+        })
+        .catch(console.error);
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   const [openFolders, setOpenFolders] = useState<Record<CategoryKey, boolean>>({
     warmup: false,
@@ -129,8 +139,6 @@ export default function ExercisePage() {
             >
               <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
             </TouchableOpacity>
-            <Ionicons name="moon-outline" size={18} color={colors.muted} />
-            <Ionicons name="notifications-outline" size={18} color={colors.muted} />
           </View>
         </View>
 

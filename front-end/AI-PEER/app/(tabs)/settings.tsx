@@ -30,6 +30,7 @@ import {
   requestReminderPermissions,
   scheduleReminderNotification,
   cancelReminderNotification,
+  scheduleTestNotification,
 } from "../../src/reminder-notifications";
 
 type SettingsTab = "accessibility" | "notifications";
@@ -122,18 +123,9 @@ export default function SettingsScreen() {
         if (stored) {
           const parsed = JSON.parse(stored) as Reminder[];
           setReminders(parsed);
-        } else {
-          // Seed with two defaults when nothing stored yet
-          setReminders([
-            { id: "1", title: "Morning walk", hour: 8, minute: 0, enabled: true },
-            { id: "2", title: "Take meds", hour: 21, minute: 0, enabled: true },
-          ]);
         }
       } catch {
-        setReminders([
-          { id: "1", title: "Morning walk", hour: 8, minute: 0, enabled: true },
-          { id: "2", title: "Take meds", hour: 21, minute: 0, enabled: true },
-        ]);
+        // ignore; reminders stay empty until the user adds one
       } finally {
         setRemindersLoaded(true);
       }
@@ -152,34 +144,14 @@ export default function SettingsScreen() {
     })();
   }, [reminders, remindersLoaded]);
 
-  function playAlertPreview() {
+  async function playAlertPreview() {
     if (!prefs.soundAlerts) return;
-
-    if (Platform.OS !== "web" && Vibration) {
-      Vibration.vibrate(120);
-      return;
-    }
-
-    try {
-      const AudioCtx =
-        (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = "sine";
-        o.frequency.value = 880;
-        g.gain.value = 0.05;
-        o.connect(g);
-        g.connect(ctx.destination);
-        o.start();
-        setTimeout(() => {
-          o.stop();
-          ctx.close?.();
-        }, 150);
-      }
-    } catch {
-      // no-op
+    // Small haptic tap immediately so the button feels responsive while
+    // the system notification spins up ~1s later.
+    if (Platform.OS !== "web") Vibration.vibrate(80);
+    const scheduled = await scheduleTestNotification();
+    if (!scheduled) {
+      Alert.alert(t("settings.notifsDisabled"), t("settings.notifsAlert"));
     }
   }
 
@@ -227,7 +199,6 @@ export default function SettingsScreen() {
             >
               <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
             </TouchableOpacity>
-            <Ionicons name="settings-outline" size={18} color={colors.muted} />
           </View>
         </View>
 
@@ -256,7 +227,7 @@ export default function SettingsScreen() {
           <AccessibilityTab
             prefs={prefs}
             updatePrefs={updatePrefs}
-            playAlert={playAlertPreview}
+            onLogout={handleLogout}
             scaled={scaled}
             styles={styles}
             colors={colors}
@@ -269,7 +240,9 @@ export default function SettingsScreen() {
             addReminder={addReminder}
             deleteReminder={deleteReminder}
             toggleReminder={toggleReminder}
-            onLogout={handleLogout}
+            prefs={prefs}
+            updatePrefs={updatePrefs}
+            playAlert={playAlertPreview}
             scaled={scaled}
             styles={styles}
             colors={colors}
@@ -287,14 +260,14 @@ export default function SettingsScreen() {
 function AccessibilityTab({
   prefs,
   updatePrefs,
-  playAlert,
+  onLogout,
   scaled,
   styles,
   colors,
 }: {
   prefs: Prefs;
   updatePrefs: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
-  playAlert: () => void;
+  onLogout: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
   styles: ReturnType<typeof createStyles>;
   colors: ContrastPalette;
@@ -402,41 +375,15 @@ function AccessibilityTab({
       </View>
 
       <View style={styles.card}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>{t("settings.account")}</Text>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={onLogout}
+          activeOpacity={0.85}
         >
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Ionicons name="volume-high-outline" size={16} color={colors.accent} />
-              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.soundAlerts")}</Text>
-            </View>
-            <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
-              {t("settings.soundDescription")}
-            </Text>
-          </View>
-          <Switch
-            value={prefs.soundAlerts}
-            onValueChange={(v) => updatePrefs("soundAlerts", v)}
-            trackColor={{ true: colors.accent, false: colors.background }}
-          />
-        </View>
-
-        {prefs.soundAlerts && (
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={playAlert}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="play-outline" size={14} color={colors.accent} />
-            <Text style={[styles.secondaryButtonText, { color: colors.accent, fontSize: scaled.small }]}>
-              {t("settings.playPreview")}
-            </Text>
-          </TouchableOpacity>
-        )}
+          <Ionicons name="log-out-outline" size={16} color="#fff" />
+          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>{t("settings.logout")}</Text>
+        </TouchableOpacity>
       </View>
     </>
   );
@@ -447,7 +394,9 @@ function NotificationsTab({
   addReminder,
   deleteReminder,
   toggleReminder,
-  onLogout,
+  prefs,
+  updatePrefs,
+  playAlert,
   scaled,
   styles,
   colors,
@@ -456,7 +405,9 @@ function NotificationsTab({
   addReminder: (title: string, hour: number, minute: number) => void | Promise<void>;
   deleteReminder: (id: string) => void | Promise<void>;
   toggleReminder: (id: string) => void | Promise<void>;
-  onLogout: () => void;
+  prefs: Prefs;
+  updatePrefs: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
+  playAlert: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
   styles: ReturnType<typeof createStyles>;
   colors: ContrastPalette;
@@ -605,15 +556,41 @@ function NotificationsTab({
       </View>
 
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>{t("settings.account")}</Text>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={onLogout}
-          activeOpacity={0.85}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          <Ionicons name="log-out-outline" size={16} color="#fff" />
-          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>{t("settings.logout")}</Text>
-        </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons name="volume-high-outline" size={16} color={colors.accent} />
+              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.soundAlerts")}</Text>
+            </View>
+            <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
+              {t("settings.soundDescription")}
+            </Text>
+          </View>
+          <Switch
+            value={prefs.soundAlerts}
+            onValueChange={(v) => updatePrefs("soundAlerts", v)}
+            trackColor={{ true: colors.accent, false: colors.background }}
+          />
+        </View>
+
+        {prefs.soundAlerts && (
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={playAlert}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="play-outline" size={14} color={colors.accent} />
+            <Text style={[styles.secondaryButtonText, { color: colors.accent, fontSize: scaled.small }]}>
+              {t("settings.playPreview")}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </>
   );
