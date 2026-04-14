@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { getExerciseVideos } from "@/src/video";
 import { getTodaysWorkout } from "@/src/daily-workout";
 import { WorkoutCombo } from "@/src/workout-combos";
 import { getExerciseRules } from "@/src/vision/exercises";
+import { usePrefs } from "../../src/prefs-context";
+import { type ContrastPalette } from "../../src/theme";
 
 type CategoryKey = "warmup" | "strength" | "balance";
 
@@ -63,6 +65,8 @@ function exerciseName(id: string): string {
 
 export default function ExercisePage() {
   const router = useRouter();
+  const { colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [todaysWorkout, setTodaysWorkout] = useState<WorkoutCombo | null>(null);
 
   useEffect(() => {
@@ -107,16 +111,16 @@ export default function ExercisePage() {
             <Ionicons
               name="shield-checkmark-outline"
               size={20}
-              color="#2E5AAC"
+              color={colors.accent}
             />
             <Text style={styles.brand}>AI PEER</Text>
           </View>
           <View style={{ flex: 1 }} />
-          <Ionicons name="moon-outline" size={18} color="#555" />
+          <Ionicons name="moon-outline" size={18} color={colors.muted} />
           <Ionicons
             name="notifications-outline"
             size={18}
-            color="#555"
+            color={colors.muted}
             style={{ marginLeft: 12 }}
           />
         </View>
@@ -159,7 +163,7 @@ export default function ExercisePage() {
               <View style={[styles.iconCircle, { backgroundColor: "#FFE9DA" }]}>
                 <Ionicons name="fitness-outline" size={18} color="#8A5A3C" />
               </View>
-              <Text style={styles.todayTitle}>Today's Workout</Text>
+              <Text style={styles.todayTitle}>Today&apos;s Workout</Text>
             </View>
 
             {([
@@ -176,9 +180,9 @@ export default function ExercisePage() {
                     activeOpacity={0.8}
                     onPress={() => openVideo(group.cat, id, exerciseName(id))}
                   >
-                    <Ionicons name="play-circle-outline" size={18} color="#2E5AAC" />
+                    <Ionicons name="play-circle-outline" size={18} color={colors.accent} />
                     <Text style={styles.todayExerciseText}>{exerciseName(id)}</Text>
-                    <Ionicons name="chevron-forward" size={14} color="#8C7A6C" />
+                    <Ionicons name="chevron-forward" size={14} color={colors.muted} />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -225,7 +229,7 @@ export default function ExercisePage() {
                       <Ionicons
                         name="folder-open-outline"
                         size={18}
-                        color="#3D2F27"
+                        color={colors.text}
                       />
                       <Text style={styles.folderTitle}>Videos</Text>
                       <View style={styles.countPill}>
@@ -238,7 +242,7 @@ export default function ExercisePage() {
                         isOpen ? "chevron-up-outline" : "chevron-down-outline"
                       }
                       size={18}
-                      color="#6B5E55"
+                      color={colors.muted}
                     />
                   </TouchableOpacity>
 
@@ -256,7 +260,7 @@ export default function ExercisePage() {
                             <Ionicons
                               name="play-circle-outline"
                               size={26}
-                              color="#8C7A6C"
+                              color={colors.muted}
                             />
                           </View>
 
@@ -269,7 +273,7 @@ export default function ExercisePage() {
                           <Ionicons
                             name="chevron-forward-outline"
                             size={18}
-                            color="#8C7A6C"
+                            color={colors.muted}
                           />
                         </TouchableOpacity>
                       ))}
@@ -297,19 +301,20 @@ export default function ExercisePage() {
   );
 }
 
-const beige = "#F7EDE4";
-const beigeTrack = "#F4E3D6";
-const beigeStrip = "#F3E7D9";
-const beigeDark = "#E6D4C6";
-const warmRed = "#D84535";
+const createStyles = (colors: ContrastPalette) => {
+  const beige = colors.background;
+  const beigeTrack = colors.bgTile;
+  const beigeStrip = colors.bgTile;
+  const beigeDark = colors.bgTile;
+  const warmRed = colors.accent;
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   container: { paddingHorizontal: 16, paddingBottom: 12 },
 
   header: { paddingTop: 6, flexDirection: "row", alignItems: "center" },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 4, marginBottom: 10, color: "#6B5E55" },
+  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
+  subtitle: { marginTop: 4, marginBottom: 10, color: colors.muted },
 
   segmentOuter: {
     backgroundColor: beigeTrack,
@@ -329,15 +334,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   segmentActive: { backgroundColor: warmRed },
-  segmentText: { fontWeight: "800", color: "#7A6659" },
+  segmentText: { fontWeight: "800", color: colors.muted },
   segmentTextActive: { color: "#FFF" },
 
   centerHead: { alignItems: "center", marginBottom: 16 },
-  centerTitle: { fontSize: 16, fontWeight: "900", color: "#222" },
-  centerSub: { marginTop: 4, color: "#6B5E55", fontWeight: "600" },
+  centerTitle: { fontSize: 16, fontWeight: "900", color: colors.text },
+  centerSub: { marginTop: 4, color: colors.muted, fontWeight: "600" },
 
   categoryCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     ...Platform.select({
@@ -359,8 +364,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  catTitle: { fontSize: 14, fontWeight: "900", color: "#222" },
-  catSubtitle: { marginTop: 2, color: "#6B5E55", fontWeight: "600" },
+  catTitle: { fontSize: 14, fontWeight: "900", color: colors.text },
+  catSubtitle: { marginTop: 2, color: colors.muted, fontWeight: "600" },
 
   infoStrip: {
     marginTop: 14,
@@ -372,7 +377,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  infoText: { color: "#3D2F27", fontWeight: "600" },
+  infoText: { color: colors.text, fontWeight: "600" },
   infoLabel: { fontWeight: "900" },
 
   scorePill: {
@@ -398,7 +403,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  folderTitle: { fontWeight: "900", color: "#3D2F27" },
+  folderTitle: { fontWeight: "900", color: colors.text },
   countPill: {
     backgroundColor: "#EDE3D9",
     borderRadius: 999,
@@ -407,11 +412,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0D3C7",
   },
-  countText: { fontWeight: "900", color: "#6B5E55", fontSize: 12 },
+  countText: { fontWeight: "900", color: colors.muted, fontSize: 12 },
 
   videoList: { marginTop: 10, gap: 10 },
   videoRow: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#EEE",
@@ -430,8 +435,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: beigeDark,
   },
-  videoName: { fontWeight: "900", color: "#222" },
-  videoMeta: { marginTop: 2, color: "#6B5E55", fontWeight: "700", fontSize: 12 },
+  videoName: { fontWeight: "900", color: colors.text },
+  videoMeta: { marginTop: 2, color: colors.muted, fontWeight: "700", fontSize: 12 },
 
   startBtn: {
     marginTop: 12,
@@ -446,7 +451,7 @@ const styles = StyleSheet.create({
   startText: { color: "#FFF", fontWeight: "900" },
 
   todayCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     marginBottom: 18,
@@ -461,9 +466,9 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
-  todayTitle: { fontSize: 16, fontWeight: "900", color: "#3D2F27" },
+  todayTitle: { fontSize: 16, fontWeight: "900", color: colors.text },
   todayGroup: { marginBottom: 10 },
-  todayGroupLabel: { fontSize: 12, fontWeight: "900", color: "#6B5E55", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 },
+  todayGroupLabel: { fontSize: 12, fontWeight: "900", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 },
   todayExercise: {
     flexDirection: "row",
     alignItems: "center",
@@ -474,5 +479,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 6,
   },
-  todayExerciseText: { flex: 1, fontWeight: "800", color: "#3D2F27" },
-});
+  todayExerciseText: { flex: 1, fontWeight: "800", color: colors.text },
+  });
+};

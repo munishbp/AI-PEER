@@ -1,10 +1,11 @@
 // app/index.tsx
 import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ActivityIndicator, Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { api } from "../src/api";
 import { useAuth } from "../src/auth";
-import { colors, fontSizes, radii, spacing } from "../src/theme";
+import { usePrefs } from "../src/prefs-context";
+import { type ContrastPalette, scaleFontSizes, radii, spacing } from "../src/theme";
 
 function normalizePhone(input: string) {
   // keep digits only; backend can decide final validation
@@ -14,6 +15,8 @@ function normalizePhone(input: string) {
 export default function Login() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { colors, scaled } = usePrefs();
+  const s = useMemo(() => createStyles(colors, scaled), [colors, scaled]);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -60,6 +63,7 @@ const onLogin = async () => {
     setLoading(true);
     await api.sendCode(p, password, "login");
     router.push(`/verify?phone=${p}&mode=login`);
+    //router.replace("/(tabs)");
   } catch (e: any) {
     setErr(e.message || "Invalid phone or password");
   } finally {
@@ -99,7 +103,7 @@ const switch_clearPages = async () => {
   if (authLoading || user) {
     return (
       <View style={[s.wrap, { alignItems: "center" }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -229,26 +233,30 @@ const switch_clearPages = async () => {
   );
 }
 
-const s = StyleSheet.create({
+const createStyles = (
+  colors: ContrastPalette,
+  scaled: ReturnType<typeof scaleFontSizes>
+) =>
+StyleSheet.create({
   wrap: { flex: 1, padding: spacing(6), backgroundColor: colors.background, justifyContent: "center" },
-  brand: { fontSize: fontSizes.h1, fontWeight: "800", color: colors.primary, textAlign: "center" },
-  subtitle: { fontSize: fontSizes.small, color: colors.text, textAlign: "center", marginTop: spacing(1), marginBottom: spacing(3) },
+  brand: { fontSize: scaled.h1, fontWeight: "800", color: colors.accent, textAlign: "center" },
+  subtitle: { fontSize: scaled.small, color: colors.text, textAlign: "center", marginTop: spacing(1), marginBottom: spacing(3) },
 
   form: { marginTop: spacing(6) },
-  label: { fontSize: fontSizes.small, color: colors.text, marginBottom: spacing(1) },
+  label: { fontSize: scaled.small, color: colors.text, marginBottom: spacing(1) },
   input: {
-    borderWidth: 1, borderColor: colors.gray, borderRadius: radii.lg,
-    paddingVertical: spacing(3), paddingHorizontal: spacing(3), fontSize: fontSizes.base, color: colors.text, backgroundColor: "#fff",
+    borderWidth: 1, borderColor: colors.muted, borderRadius: radii.lg,
+    paddingVertical: spacing(3), paddingHorizontal: spacing(3), fontSize: scaled.base, color: colors.text, backgroundColor: colors.bgTile,
   },
   row: { flexDirection: "row", alignItems: "center", gap: spacing(0) },
   toggle: { marginLeft: spacing(1), paddingVertical: spacing(3), paddingHorizontal: spacing(3) },
-  toggleText: { color: colors.primary, fontWeight: "600" },
+  toggleText: { color: colors.accent, fontWeight: "600" },
 
   error: { color: "#b91c1c", marginTop: spacing(2) },
 
-  loginBtn: { marginTop: spacing(8), backgroundColor: colors.primary, paddingVertical: spacing(3.5), borderRadius: radii.lg, alignItems: "center" },
-  loginTxt: { color: "#fff", fontWeight: "700", fontSize: fontSizes.base },
-  link: { color: colors.primary, textAlign: "center", marginTop: spacing(2.5), fontWeight: "600" },
+  loginBtn: { marginTop: spacing(8), backgroundColor: colors.accent, paddingVertical: spacing(3.5), borderRadius: radii.lg, alignItems: "center" },
+  loginTxt: { color: "#fff", fontWeight: "700", fontSize: scaled.base },
+  link: { color: colors.accent, textAlign: "center", marginTop: spacing(2.5), fontWeight: "600" },
   switchWrap: { marginTop: spacing(3), alignItems: "center" },
-  switchText: { color: colors.primary, textAlign: "center", fontWeight: "700" },
+  switchText: { color: colors.accent, textAlign: "center", fontWeight: "700" },
 });

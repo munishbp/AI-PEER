@@ -17,7 +17,7 @@ type Props = {
 function computeFRA(btrackScore: number, fesI: number) {
   // BTrackS: > 30cm = high physiological risk, <= 30cm = low
   const physical: PhysicalRisk = btrackScore > 30 ? "High" : "Low";
-  // FES-I: 16–23 low perceived, 24–64 high perceived
+  // FES-I: 16-23 low perceived, 24-64 high perceived
   const perceived: PerceivedRisk = fesI > 23 ? "High" : "Low";
 
   let quadrant: Quadrant;
@@ -63,7 +63,7 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
         { text: "Cancel", style: "cancel" },
         {
           text: "Save",
-          onPress: (value) => {
+          onPress: (value?: string) => {
             const num = parseFloat(value || "");
             if (!isNaN(num) && num >= 0) {
               onBtrackUpdate?.(num);
@@ -83,7 +83,7 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Today's Risk (FRA)</Text>
+        <Text style={styles.title}>Today&apos;s Risk (FRA)</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View style={[styles.pill, elevated ? styles.pillBad : styles.pillGood]}>
             <Text style={styles.pillText}>
@@ -100,9 +100,9 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
 
       {/* Readouts */}
       <View style={styles.readoutRow}>
-        <Readout label="BTrackS" value={btrackScore !== null ? `${btrackScore} cm` : "—"} />
-        <Readout label="FES-I" value={fesI !== null ? `${fesI}` : "—"} />
-        <Readout label="Quadrant" value={hasBothScores ? fra.quadrant : "—"} />
+        <Readout label="BTrackS" value={btrackScore !== null ? `${btrackScore} cm` : "-"} />
+        <Readout label="FES-I" value={fesI !== null ? `${fesI}` : "-"} />
+        <Readout label="Quadrant" value={hasBothScores ? fra.quadrant : "-"} />
       </View>
 
       {/* Matrix */}
@@ -110,8 +110,8 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
         <View style={styles.yRail}>
           <View style={styles.yRailInner}>
             <Text style={styles.ySideTitle}>Perceived fall risk</Text>
-            <Text style={styles.ySideTick}>High: 24–64</Text>
-            <Text style={styles.ySideTick}>Low: 16–23</Text>
+            <Text style={styles.ySideTick}>High: 24-64</Text>
+            <Text style={styles.ySideTick}>Low: 16-23</Text>
           </View>
         </View>
 
@@ -145,7 +145,7 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
       {/* X axis */}
       <View style={styles.xAxis}>
         <Text style={styles.axisTitle}>Physiological fall risk</Text>
-        <Text style={styles.axisHint}>≤ 30cm (Low) · &gt; 30cm (High)</Text>
+        <Text style={styles.axisHint}>{`<= 30cm (Low) | > 30cm (High)`}</Text>
         {onBtrackUpdate && (
           <TouchableOpacity onPress={handleEditBtrack} style={styles.editBtrackBtn}>
             <Ionicons name="create-outline" size={14} color="#555" />
