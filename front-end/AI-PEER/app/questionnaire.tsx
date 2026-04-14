@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { fontSizes } from "../src/theme";
+import { fontSizes, type ContrastPalette } from "../src/theme";
 import { usePrefs } from "../src/prefs-context";
 import { saveQuestionnaireResult } from "../src/fra-storage";
 
@@ -42,14 +42,13 @@ const answerOptions = [
 
 type AssessmentView = "start" | "questions" | "results";
 
-const warmRed = "#A24135";
-const beigeDark = "#EED7C8";
-
 export default function Questionnaire() {
   const [view, setView] = useState<AssessmentView>("start");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const { scaled } = usePrefs();
+  const { scaled, colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const warmRed = colors.accent;
 
   const handleStart = () => {
     setView("questions");
@@ -151,7 +150,7 @@ export default function Questionnaire() {
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.header}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
+              <Ionicons name="clipboard-outline" size={20} color={colors.accent} />
               <View>
                 <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
                 <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
@@ -209,7 +208,7 @@ export default function Questionnaire() {
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.header}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
+              <Ionicons name="clipboard-outline" size={20} color={colors.accent} />
               <View>
                 <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
                 <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
@@ -256,7 +255,7 @@ export default function Questionnaire() {
                         : "radio-button-off"
                     }
                     size={20}
-                    color={answers[currentQ.id] === option.score ? warmRed : "#666"}
+                    color={answers[currentQ.id] === option.score ? warmRed : colors.muted}
                   />
                   <Text style={[styles.optionText, { fontSize: scaled.base }]}>
                     {option.label}
@@ -325,7 +324,7 @@ export default function Questionnaire() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="clipboard-outline" size={20} color="#2E5AAC" />
+            <Ionicons name="clipboard-outline" size={20} color={colors.accent} />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
               <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
@@ -344,7 +343,7 @@ export default function Questionnaire() {
               marginBottom: 12,
             }}
           >
-            <Ionicons name="checkmark-circle" size={24} color="#38A169" />
+            <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
             <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>Assessment Complete</Text>
           </View>
 
@@ -444,183 +443,184 @@ export default function Questionnaire() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F6F2EF" },
-  container: { padding: 16, gap: 12 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  brand: { fontWeight: "800", color: "#1A2D4D" },
-  subtitle: { color: "#56616F" },
-  backBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ff9b9bff",
-  },
-  backText: { color: "#333", fontSize: fontSizes.small, fontWeight: "600" },
-  card: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-      },
-      android: { elevation: 1.5 },
-    }),
-  },
-  cardTitle: { fontWeight: "800", fontSize: 18 },
-  infoBox: {
-    backgroundColor: "#F4E3D6",
-    borderColor: beigeDark,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    gap: 10,
-  },
-  infoText: { color: "#333", lineHeight: 20 },
-  primaryButton: {
-    backgroundColor: warmRed,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    marginTop: 20,
-    gap: 5,
-  },
-  primaryButtonText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
-  badge: {
-    alignSelf: "flex-start",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "#F4E3D6",
-    borderWidth: 1,
-    borderColor: beigeDark,
-    marginBottom: 10,
-  },
-  badgeText: { color: "#5A2A26", fontWeight: "700" },
-  progressBar: {
-    width: "100%",
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "#ECECEC",
-    overflow: "hidden",
-  },
-  progressFill: { height: "100%", backgroundColor: warmRed },
-  questionBox: {
-    backgroundColor: "#FFF9F6",
-    borderWidth: 1,
-    borderColor: "#F0DFD6",
-    borderRadius: 10,
-    padding: 12,
-    gap: 8,
-  },
-  questionLabel: { color: "#666", fontWeight: "600" },
-  questionText: { color: "#222", fontWeight: "700" },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "#FFF",
-    borderWidth: 2,
-    borderColor: "#E0E0E0",
-    borderRadius: 8,
-    gap: 12,
-  },
-  optionSelected: { borderColor: warmRed, backgroundColor: "#F4E3D6" },
-  optionText: { flex: 1, color: "#333" },
-  optionScore: { color: "#666", fontWeight: "600" },
-  secondaryButton: {
-    backgroundColor: beigeDark,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    marginTop: 20,
-    gap: 5,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  secondaryButtonText: { color: "#666", fontWeight: "700", fontSize: 14 },
-  disabledButton: { opacity: 0.5 },
-  progressText: {
-    textAlign: "center",
-    color: "#666",
-    marginTop: 12,
-    fontSize: 12,
-  },
-  thankYouText: {
-    fontSize: 18,
-    color: "#333",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  resultsText: { color: "#666", textAlign: "center" },
-  scoreBox: {
-    borderWidth: 2,
-    borderColor: warmRed,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  scoreLabel: { fontSize: 14, color: "#666", marginBottom: 8 },
-  scoreValue: { fontSize: 48, fontWeight: "900", marginBottom: 4 },
-  scoreOutOf: { fontSize: 12, color: "#666" },
-  levelBadge: {
-    borderRadius: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginTop: 12,
-  },
-  levelText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
-  section: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: beigeDark,
-    borderRadius: 8,
-  },
-  sectionTitle: { fontWeight: "600", color: "#333", marginBottom: 8 },
-  sectionText: { color: "#333", lineHeight: 20 },
-  recItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    marginBottom: 8,
-  },
-  recText: { flex: 1, color: "#333" },
-  responseItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 8,
-    backgroundColor: beigeDark,
-    borderRadius: 6,
-    marginBottom: 6,
-    gap: 8,
-  },
-  responseText: { flex: 1, color: "#333" },
-  responseBadge: {
-    backgroundColor: "#E0E0E0",
-    borderRadius: 6,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-  },
-  responseBadgeText: { color: "#666" },
-});
+const createStyles = (colors: ContrastPalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    container: { padding: 16, gap: 12 },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    brand: { fontWeight: "800", color: colors.text },
+    subtitle: { color: colors.muted },
+    backBtn: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      backgroundColor: "transparent",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    backText: { color: colors.text, fontSize: fontSizes.small, fontWeight: "600" },
+    card: {
+      backgroundColor: colors.bgTile,
+      borderRadius: 12,
+      padding: 14,
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 4 },
+        },
+        android: { elevation: 1.5 },
+      }),
+    },
+    cardTitle: { fontWeight: "800", fontSize: 18, color: colors.text },
+    infoBox: {
+      backgroundColor: colors.background,
+      borderColor: colors.bgTile,
+      borderWidth: 1,
+      borderRadius: 8,
+      padding: 12,
+      gap: 10,
+    },
+    infoText: { color: colors.text, lineHeight: 20 },
+    primaryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      marginTop: 20,
+      gap: 5,
+    },
+    primaryButtonText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
+    badge: {
+      alignSelf: "flex-start",
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.bgTile,
+      marginBottom: 10,
+    },
+    badgeText: { color: colors.text, fontWeight: "700" },
+    progressBar: {
+      width: "100%",
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: colors.background,
+      overflow: "hidden",
+    },
+    progressFill: { height: "100%", backgroundColor: colors.accent },
+    questionBox: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.bgTile,
+      borderRadius: 10,
+      padding: 12,
+      gap: 8,
+    },
+    questionLabel: { color: colors.muted, fontWeight: "600" },
+    questionText: { color: colors.text, fontWeight: "700" },
+    option: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 12,
+      backgroundColor: colors.bgTile,
+      borderWidth: 2,
+      borderColor: colors.background,
+      borderRadius: 8,
+      gap: 12,
+    },
+    optionSelected: { borderColor: colors.accent, backgroundColor: colors.background },
+    optionText: { flex: 1, color: colors.text },
+    optionScore: { color: colors.muted, fontWeight: "600" },
+    secondaryButton: {
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      marginTop: 20,
+      gap: 5,
+      borderWidth: 1,
+      borderColor: colors.bgTile,
+    },
+    secondaryButtonText: { color: colors.text, fontWeight: "700", fontSize: 14 },
+    disabledButton: { opacity: 0.5 },
+    progressText: {
+      textAlign: "center",
+      color: colors.muted,
+      marginTop: 12,
+      fontSize: 12,
+    },
+    thankYouText: {
+      fontSize: 18,
+      color: colors.text,
+      textAlign: "center",
+      marginBottom: 4,
+    },
+    resultsText: { color: colors.muted, textAlign: "center" },
+    scoreBox: {
+      borderWidth: 2,
+      borderColor: colors.accent,
+      borderRadius: 12,
+      padding: 20,
+      alignItems: "center",
+      marginTop: 16,
+    },
+    scoreLabel: { fontSize: 14, color: colors.muted, marginBottom: 8 },
+    scoreValue: { fontSize: 48, fontWeight: "900", marginBottom: 4 },
+    scoreOutOf: { fontSize: 12, color: colors.muted },
+    levelBadge: {
+      borderRadius: 12,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      marginTop: 12,
+    },
+    levelText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
+    section: {
+      marginTop: 16,
+      padding: 12,
+      backgroundColor: colors.background,
+      borderRadius: 8,
+    },
+    sectionTitle: { fontWeight: "600", color: colors.text, marginBottom: 8 },
+    sectionText: { color: colors.text, lineHeight: 20 },
+    recItem: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      marginBottom: 8,
+    },
+    recText: { flex: 1, color: colors.text },
+    responseItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 8,
+      backgroundColor: colors.bgTile,
+      borderRadius: 6,
+      marginBottom: 6,
+      gap: 8,
+    },
+    responseText: { flex: 1, color: colors.text },
+    responseBadge: {
+      backgroundColor: colors.background,
+      borderRadius: 6,
+      paddingVertical: 2,
+      paddingHorizontal: 6,
+    },
+    responseBadgeText: { color: colors.muted },
+  });

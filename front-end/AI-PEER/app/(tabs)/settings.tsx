@@ -1,5 +1,5 @@
 // app/(tabs)/settings.tsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,19 +19,25 @@ import { scaleFontSizes } from "../../src/theme";
 import type { Prefs } from "../../src/prefs-context";
 import { usePrefs } from "../../src/prefs-context";
 import { useAuth } from "../../src/auth";
+import { type ContrastPalette } from "../../src/theme";
 
 type SettingsTab = "accessibility" | "notifications";
 
-const beige = "#F7EDE4";
-const beigeTile = "#F4E3D6";
-const warmRed = "#D84535";
+type Reminder = {
+  id: string;
+  title: string;
+  time?: string;
+  enabled: boolean;
+};
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
   const { prefs, updatePrefs, scaled, colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { logout } = useAuth();
-  const [reminders, setReminders] = useState<Array<{ id: string; title: string; time?: string; enabled: boolean }>>([
+
+  const [reminders, setReminders] = useState<Reminder[]>([
     { id: "1", title: "Morning walk", time: "8:00 AM", enabled: true },
     { id: "2", title: "Take meds", time: "9:00 PM", enabled: true },
   ]);
@@ -51,10 +57,12 @@ export default function SettingsScreen() {
 
   function playAlertPreview() {
     if (!prefs.soundAlerts) return;
+
     if (Platform.OS !== "web" && Vibration) {
       Vibration.vibrate(120);
       return;
     }
+
     try {
       const AudioCtx =
         (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -93,35 +101,29 @@ export default function SettingsScreen() {
             await mod.default.removeItem("token");
             await mod.default.removeItem("user");
           } catch {
-            // no-op (no backend/auth yet)
+            // no-op
           }
 
-          // Prevent back-navigation into tabs
           router.replace(LOGIN_ROUTE);
         },
       },
     ]);
   }
 
-
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Header */}
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC"/>
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>Settings & Preferences</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2 / 2 }]}>Settings & Preferences</Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Ionicons name="settings-outline" size={18} color="#555" />
-          </View>
+          <Ionicons name="settings-outline" size={18} color={colors.muted} />
         </View>
 
-        {/* Segmented Control */}
         <View style={styles.segmentOuter}>
           <SegmentButton
             label="Access"
@@ -129,6 +131,8 @@ export default function SettingsScreen() {
             active={tab === "accessibility"}
             onPress={() => setTab("accessibility")}
             scaled={scaled}
+            styles={styles}
+            colors={colors}
           />
           <SegmentButton
             label="Alerts"
@@ -136,13 +140,22 @@ export default function SettingsScreen() {
             active={tab === "notifications"}
             onPress={() => setTab("notifications")}
             scaled={scaled}
+            styles={styles}
+            colors={colors}
           />
         </View>
 
-        {/* Tab Content */}
         {tab === "accessibility" && (
-          <AccessibilityTab prefs={prefs} updatePrefs={updatePrefs} playAlert={playAlertPreview} scaled={scaled} />
+          <AccessibilityTab
+            prefs={prefs}
+            updatePrefs={updatePrefs}
+            playAlert={playAlertPreview}
+            scaled={scaled}
+            styles={styles}
+            colors={colors}
+          />
         )}
+
         {tab === "notifications" && (
           <NotificationsTab
             reminders={reminders}
@@ -151,6 +164,8 @@ export default function SettingsScreen() {
             toggleReminder={toggleReminder}
             onLogout={handleLogout}
             scaled={scaled}
+            styles={styles}
+            colors={colors}
           />
         )}
 
@@ -160,34 +175,33 @@ export default function SettingsScreen() {
   );
 }
 
-/* ===================== ACCESSIBILITY TAB ===================== */
-
 function AccessibilityTab({
   prefs,
   updatePrefs,
   playAlert,
   scaled,
+  styles,
+  colors,
 }: {
   prefs: Prefs;
   updatePrefs: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
   playAlert: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
+  styles: ReturnType<typeof createStyles>;
+  colors: ContrastPalette;
 }) {
   const fontSizesLabels = ["Small (90%)", "Normal (100%)", "Large (120%)"];
   const contrastOptions = ["Light", "Dark", "High Contrast"];
-  const languages = ["English", "Espa鐢郸l", "Fran閼剧禈is"];
+  const languages = ["English", "Spanish", "French"];
 
   return (
     <>
-      {/* Font Scale */}
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Ionicons name="text-outline" size={16} color={warmRed} />
+          <Ionicons name="text-outline" size={16} color={colors.accent} />
           <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Text Size</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-          Choose a comfortable reading size
-        </Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Choose a comfortable reading size</Text>
         <View style={styles.optionsRow}>
           {fontSizesLabels.map((size, i) => (
             <TouchableOpacity
@@ -198,29 +212,26 @@ function AccessibilityTab({
                 prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonActive,
               ]}
             >
-                <Text
-                  style={[
-                    styles.optionButtonText,
-                    prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonTextActive,
-                    { fontSize: scaled.base*0.75 },
-                  ]}
-                >
-                  {size.split(" ")[0]}
-                </Text>
+              <Text
+                style={[
+                  styles.optionButtonText,
+                  prefs.fontScale === 0.9 + i * 0.1 && styles.optionButtonTextActive,
+                  { fontSize: scaled.base * 0.75 },
+                ]}
+              >
+                {size.split(" ")[0]}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Contrast */}
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Ionicons name="contrast-outline" size={16} color={warmRed} />
+          <Ionicons name="contrast-outline" size={16} color={colors.accent} />
           <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Display Contrast</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-          Choose colors that are easy on your eyes
-        </Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Choose colors that are easy on your eyes</Text>
         <View style={styles.optionsRow}>
           {(["light", "dark", "high"] as const).map((contrast, i) => (
             <TouchableOpacity
@@ -235,22 +246,22 @@ function AccessibilityTab({
                 style={[
                   styles.optionButtonText,
                   prefs.contrast === contrast && styles.optionButtonTextActive,
-                  { fontSize: scaled.base*0.75 },
-                ]}>
-                  {contrastOptions[i]}
-                </Text>
+                  { fontSize: scaled.base * 0.75 },
+                ]}
+              >
+                {contrastOptions[i]}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Language */}
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Ionicons name="globe-outline" size={16} color={warmRed} />
+          <Ionicons name="globe-outline" size={16} color={colors.accent} />
           <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Language</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>Select your preferred language</Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Select your preferred language</Text>
         <View style={styles.optionsRow}>
           {(["en", "es", "fr"] as const).map((lang, i) => (
             <TouchableOpacity
@@ -265,8 +276,8 @@ function AccessibilityTab({
                 style={[
                   styles.optionButtonText,
                   prefs.language === lang && styles.optionButtonTextActive,
-                  { fontSize: scaled.base*0.75 },
-              ]}
+                  { fontSize: scaled.base * 0.75 },
+                ]}
               >
                 {languages[i]}
               </Text>
@@ -275,7 +286,6 @@ function AccessibilityTab({
         </View>
       </View>
 
-      {/* Sound Alerts */}
       <View style={styles.card}>
         <View
           style={{
@@ -286,37 +296,28 @@ function AccessibilityTab({
         >
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Ionicons name="volume-high-outline" size={16} color={warmRed} />
+              <Ionicons name="volume-high-outline" size={16} color={colors.accent} />
               <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Sound Alerts</Text>
             </View>
-            <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-              Enable notification sounds
-            </Text>
+            <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Enable notification sounds</Text>
           </View>
           <Switch
             value={prefs.soundAlerts}
             onValueChange={(v) => updatePrefs("soundAlerts", v)}
-            trackColor={{ true: warmRed, false: "#ccc" }}
+            trackColor={{ true: colors.accent, false: colors.background }}
           />
         </View>
+
         {prefs.soundAlerts && (
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={playAlert}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="play-outline" size={14} color={warmRed} />
-            <Text style={[styles.secondaryButtonText, { color: warmRed, fontSize: scaled.small }]}> 
-              Play Preview
-            </Text>
+          <TouchableOpacity style={styles.secondaryButton} onPress={playAlert} activeOpacity={0.85}>
+            <Ionicons name="play-outline" size={14} color={colors.accent} />
+            <Text style={[styles.secondaryButtonText, { color: colors.accent, fontSize: scaled.small }]}>Play Preview</Text>
           </TouchableOpacity>
         )}
       </View>
     </>
   );
 }
-
-/* ===================== NOTIFICATIONS TAB ===================== */
 
 function NotificationsTab({
   reminders,
@@ -325,13 +326,17 @@ function NotificationsTab({
   toggleReminder,
   onLogout,
   scaled,
+  styles,
+  colors,
 }: {
-  reminders: Array<{ id: string; title: string; time?: string; enabled: boolean }>;
+  reminders: Reminder[];
   addReminder: (title: string, time?: string) => void;
   deleteReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
   onLogout: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
+  styles: ReturnType<typeof createStyles>;
+  colors: ContrastPalette;
 }) {
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
@@ -347,29 +352,27 @@ function NotificationsTab({
     <>
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Ionicons name="alarm-outline" size={16} color={warmRed} />
+          <Ionicons name="alarm-outline" size={16} color={colors.accent} />
           <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Reminders</Text>
-          </View>
-          <Text style={[styles.settingDescription, { fontSize: scaled.base*0.75 }]}>
-            Create and manage personal reminders
-          </Text>
+        </View>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Create and manage personal reminders</Text>
 
         {reminders.map((rem) => (
           <View key={rem.id} style={styles.notificationRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="time-outline" size={16} color={warmRed} />
+              <Ionicons name="time-outline" size={16} color={colors.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.notificationLabel, { fontSize: scaled.small }]}>{rem.title}</Text>
-                <Text style={[styles.notificationDescription, { fontSize: scaled.h2/2 }]}>{rem.time || ""}</Text>
+                <Text style={[styles.notificationDescription, { fontSize: scaled.h2 / 2 }]}>{rem.time || ""}</Text>
               </View>
-            <Switch
-              value={rem.enabled}
-              onValueChange={() => toggleReminder(rem.id)}
-              trackColor={{ true: warmRed, false: "#ccc" }}
-            />
-            <TouchableOpacity onPress={() => deleteReminder(rem.id)} style={{ marginLeft: 8 }}>
-              <Ionicons name="trash-outline" size={16} color="#C0392B" />
-            </TouchableOpacity>
+              <Switch
+                value={rem.enabled}
+                onValueChange={() => toggleReminder(rem.id)}
+                trackColor={{ true: colors.accent, false: colors.background }}
+              />
+              <TouchableOpacity onPress={() => deleteReminder(rem.id)} style={{ marginLeft: 8 }}>
+                <Ionicons name="trash-outline" size={16} color={colors.accent} />
+              </TouchableOpacity>
             </View>
           </View>
         ))}
@@ -380,12 +383,14 @@ function NotificationsTab({
             value={title}
             onChangeText={setTitle}
             style={[styles.input, { fontSize: scaled.small }]}
+            placeholderTextColor={colors.muted}
           />
           <TextInput
             placeholder="Time (optional)"
             value={time}
             onChangeText={setTime}
             style={[styles.input, { fontSize: scaled.small, width: 110 }]}
+            placeholderTextColor={colors.muted}
           />
           <TouchableOpacity style={[styles.primaryButton, { paddingHorizontal: 12 }]} onPress={handleAdd} activeOpacity={0.85}>
             <Ionicons name="add-circle-outline" size={16} color="#fff" />
@@ -396,11 +401,7 @@ function NotificationsTab({
 
       <View style={styles.card}>
         <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>Account</Text>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={onLogout}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={styles.logoutButton} onPress={onLogout} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={16} color="#fff" />
           <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>Logout</Text>
         </TouchableOpacity>
@@ -409,166 +410,156 @@ function NotificationsTab({
   );
 }
 
-/* ===================== SEGMENT BUTTON ===================== */
-
 function SegmentButton({
   label,
   icon,
   active,
   onPress,
   scaled,
+  styles,
+  colors,
 }: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   active: boolean;
   onPress: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
+  styles: ReturnType<typeof createStyles>;
+  colors: ContrastPalette;
 }) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
-      style={[styles.segmentBtn, active && { backgroundColor: warmRed }]}
+      style={[styles.segmentBtn, active && { backgroundColor: colors.accent }]}
     >
-      <Ionicons
-        name={icon}
-        size={14}
-        color={active ? "#FFF" : "#7A6659"}
-      />
-      <Text
-        style={[
-          styles.segmentText,
-          active && { color: "#FFF" },
-          { fontSize: scaled.small },
-        ]}
-      >
+      <Ionicons name={icon} size={14} color={active ? "#FFF" : colors.muted} />
+      <Text style={[styles.segmentText, active && { color: "#FFF" }, { fontSize: scaled.small }]}>
         {label}
       </Text>
     </TouchableOpacity>
   );
 }
 
-/* ===================== STYLES ===================== */
+const createStyles = (colors: ContrastPalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    container: { paddingHorizontal: 16, paddingBottom: 16, gap: 14 },
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: beige },
-  container: { paddingHorizontal: 16, paddingBottom: 16, gap: 14 },
+    header: {
+      paddingTop: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
+    subtitle: { marginTop: 3, marginBottom: 6, color: colors.muted, fontSize: 13 },
 
-  header: {
-    paddingTop: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 3, marginBottom: 6, color: "#6B5E55", fontSize: 13 },
+    segmentOuter: {
+      backgroundColor: colors.bgTile,
+      borderRadius: 999,
+      padding: 4,
+      flexDirection: "row",
+      gap: 6,
+    },
+    segmentBtn: {
+      flex: 1,
+      paddingVertical: 8,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    segmentText: { fontWeight: "700", color: colors.muted, fontSize: 13 },
 
-  segmentOuter: {
-    backgroundColor: "#F4E3D6",
-    borderRadius: 999,
-    padding: 4,
-    flexDirection: "row",
-    gap: 6,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  segmentText: { fontWeight: "700", color: "#7A6659", fontSize: 13 },
+    card: {
+      backgroundColor: colors.bgTile,
+      borderRadius: 12,
+      padding: 14,
+      marginTop: 10,
+      ...Platform.select({
+        ios: { shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+        android: { elevation: 1.5 },
+      }),
+    },
+    cardTitle: { fontWeight: "800", fontSize: 14, color: colors.text },
+    settingDescription: { fontSize: 12, color: colors.muted, marginTop: 4, marginBottom: 12 },
 
-  card: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 10,
-    ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-      android: { elevation: 1.5 },
-    }),
-  },
-  cardTitle: { fontWeight: "800", fontSize: 14, color: "#3F2F25" },
-  settingDescription: { fontSize: 12, color: "#7A6659", marginTop: 4, marginBottom: 12 },
+    optionsRow: { flexDirection: "row", gap: 8 },
+    optionButton: {
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      backgroundColor: colors.background,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    optionButtonActive: {
+      backgroundColor: colors.accent,
+    },
+    optionButtonText: { fontWeight: "600", color: colors.text, fontSize: 12, textAlign: "center" },
+    optionButtonTextActive: { color: "#FFF" },
 
-  optionsRow: { flexDirection: "row", gap: 8 },
-  optionButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: beigeTile,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  optionButtonActive: {
-    backgroundColor: warmRed,
-  },
-  optionButtonText: { fontWeight: "600", color: "#5B4636", fontSize: 12, textAlign: "center" },
-  optionButtonTextActive: { color: "#FFF" },
+    secondaryButton: {
+      marginTop: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: colors.background,
+    },
+    secondaryButtonText: { fontWeight: "700", fontSize: 12 },
 
-  secondaryButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: beigeTile,
-  },
-  secondaryButtonText: { fontWeight: "700", fontSize: 12 },
+    notificationRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.background,
+    },
+    notificationLabel: { fontWeight: "700", color: colors.text, fontSize: 13 },
+    notificationDescription: { fontSize: 11, color: colors.muted, marginTop: 2 },
 
+    primaryButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    primaryButtonText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
 
-  notificationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  notificationLabel: { fontWeight: "700", color: "#3F2F25", fontSize: 13 },
-  notificationDescription: { fontSize: 11, color: "#7A6659", marginTop: 2 },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 12,
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+      color: colors.text,
+    },
 
-  primaryButton: {
-    backgroundColor: warmRed,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  primaryButtonText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
-
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 12,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: beigeTile,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-
-  logoutButton: {
-    backgroundColor: "#DC2626",
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  logoutButtonText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
-});
-
+    logoutButton: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    logoutButtonText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
+  });

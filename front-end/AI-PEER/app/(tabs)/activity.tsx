@@ -12,10 +12,7 @@ import {
 } from "../../src/exercise-activity-storage";
 import { useAuth } from "../../src/auth/AuthContext";
 import { api } from "../../src/api";
-
-const beige = "#F7EDE4";
-const beigeTile = "#F4E3D6";
-const warmRed = "#D84535";
+import { type ContrastPalette } from "../../src/theme";
 const PROGRESS_SCALE = 5;
 
 const CATEGORY_META = [
@@ -34,6 +31,8 @@ function toLocalDateKey(date: Date): string {
 
 export default function ActivityScreen() {
   const { scaled, colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const warmRed = colors.accent;
   const { user, token } = useAuth();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -218,7 +217,7 @@ export default function ActivityScreen() {
   }, [user?.uid, token, loading, complianceStats]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background || beige }]}>
+    <SafeAreaView style={styles.safe}>
       <ScrollView
         contentContainerStyle={[
           styles.container,
@@ -229,7 +228,7 @@ export default function ActivityScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
               <Text style={[styles.headerSubtitle, { fontSize: scaled.h2 / 2 }]}>
@@ -238,8 +237,8 @@ export default function ActivityScreen() {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <Ionicons name="moon-outline" size={18} color="#555" />
-            <Ionicons name="notifications-outline" size={18} color="#555" />
+            <Ionicons name="moon-outline" size={18} color={colors.muted} />
+            <Ionicons name="notifications-outline" size={18} color={colors.muted} />
           </View>
         </View>
 
@@ -293,7 +292,7 @@ export default function ActivityScreen() {
           {categoryTotals.map((item) => (
             <View key={item.key} style={styles.breakdownRow}>
               <View style={styles.breakdownLeft}>
-                <Ionicons name={item.icon} size={16} color="#5B4636" />
+                <Ionicons name={item.icon} size={16} color={colors.text} />
                 <Text style={[styles.breakdownLabel, { fontSize: scaled.small }]}>
                   {item.label}
                 </Text>
@@ -388,8 +387,12 @@ export default function ActivityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: beige },
+const createStyles = (colors: ContrastPalette) => {
+  const beigeTile = colors.bgTile;
+  const warmRed = colors.accent;
+
+  return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   container: { paddingHorizontal: 16, gap: 14 },
 
   header: {
@@ -400,12 +403,12 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#3F2F25" },
-  headerSubtitle: { marginTop: 3, marginBottom: 6, color: "#7A6659" },
+  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
+  headerSubtitle: { marginTop: 3, marginBottom: 6, color: colors.muted },
 
   card: {
     marginTop: 10,
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     ...Platform.select({
@@ -419,11 +422,11 @@ const styles = StyleSheet.create({
     }),
   },
   cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  cardTitle: { fontWeight: "800", fontSize: 14, color: "#3F2F25" },
-  sectionHint: { marginTop: 6, color: "#7A6659", fontWeight: "600" },
+  cardTitle: { fontWeight: "800", fontSize: 14, color: colors.text },
+  sectionHint: { marginTop: 6, color: colors.muted, fontWeight: "600" },
 
   loadingWrap: { marginTop: 12, flexDirection: "row", alignItems: "center", gap: 8 },
-  loadingText: { color: "#7A6659", fontWeight: "700" },
+  loadingText: { color: colors.muted, fontWeight: "700" },
 
   progressStatsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   progressStat: {
@@ -434,8 +437,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: "center",
   },
-  progressValue: { fontWeight: "900", color: "#5B4636" },
-  progressLabel: { marginTop: 4, color: "#7A6659", textAlign: "center" },
+  progressValue: { fontWeight: "900", color: colors.text },
+  progressLabel: { marginTop: 4, color: colors.muted, textAlign: "center" },
   progressTrack: {
     marginTop: 12,
     height: 10,
@@ -448,7 +451,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: warmRed,
   },
-  progressHelper: { marginTop: 8, color: "#7A6659", fontWeight: "700" },
+  progressHelper: { marginTop: 8, color: colors.muted, fontWeight: "700" },
 
   breakdownRow: {
     marginTop: 12,
@@ -458,7 +461,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   breakdownLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  breakdownLabel: { color: "#5B4636", fontWeight: "700" },
+  breakdownLabel: { color: colors.text, fontWeight: "700" },
   breakdownRight: { flexDirection: "row", alignItems: "center", gap: 8, width: 150 },
   breakdownTrack: {
     flex: 1,
@@ -472,7 +475,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: warmRed,
   },
-  breakdownCount: { width: 20, textAlign: "right", color: "#5B4636", fontWeight: "800" },
+  breakdownCount: { width: 20, textAlign: "right", color: colors.text, fontWeight: "800" },
 
   complianceStatsRow: {
     flexDirection: "row",
@@ -487,13 +490,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: "center",
   },
-  complianceValue: { fontWeight: "900", color: "#5B4636" },
-  complianceLabel: { marginTop: 4, color: "#7A6659", textAlign: "center", fontWeight: "600" },
+  complianceValue: { fontWeight: "900", color: colors.text },
+  complianceLabel: { marginTop: 4, color: colors.muted, textAlign: "center", fontWeight: "600" },
 
   calendarMonth: {
     marginTop: 14,
     fontWeight: "900",
-    color: "#3F2F25",
+    color: colors.text,
     textAlign: "center",
     marginBottom: 8,
   },
@@ -505,7 +508,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontWeight: "800",
-    color: "#7A6659",
+    color: colors.muted,
     fontSize: 12,
   },
   calendarGrid: {
@@ -533,10 +536,11 @@ const styles = StyleSheet.create({
   calendarCellText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#7A6659",
+    color: colors.muted,
   },
   calendarCellTextActive: {
-    color: "#1E7A3A",
+    color: colors.accent,
     fontWeight: "900",
   },
-});
+  });
+};
