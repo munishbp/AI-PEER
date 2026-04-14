@@ -255,7 +255,7 @@ export default function SettingsScreen() {
           <AccessibilityTab
             prefs={prefs}
             updatePrefs={updatePrefs}
-            playAlert={playAlertPreview}
+            onLogout={handleLogout}
             scaled={scaled}
             styles={styles}
             colors={colors}
@@ -268,7 +268,9 @@ export default function SettingsScreen() {
             addReminder={addReminder}
             deleteReminder={deleteReminder}
             toggleReminder={toggleReminder}
-            onLogout={handleLogout}
+            prefs={prefs}
+            updatePrefs={updatePrefs}
+            playAlert={playAlertPreview}
             scaled={scaled}
             styles={styles}
             colors={colors}
@@ -286,14 +288,14 @@ export default function SettingsScreen() {
 function AccessibilityTab({
   prefs,
   updatePrefs,
-  playAlert,
+  onLogout,
   scaled,
   styles,
   colors,
 }: {
   prefs: Prefs;
   updatePrefs: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
-  playAlert: () => void;
+  onLogout: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
   styles: ReturnType<typeof createStyles>;
   colors: ContrastPalette;
@@ -401,41 +403,15 @@ function AccessibilityTab({
       </View>
 
       <View style={styles.card}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>{t("settings.account")}</Text>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={onLogout}
+          activeOpacity={0.85}
         >
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Ionicons name="volume-high-outline" size={16} color={colors.accent} />
-              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.soundAlerts")}</Text>
-            </View>
-            <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
-              {t("settings.soundDescription")}
-            </Text>
-          </View>
-          <Switch
-            value={prefs.soundAlerts}
-            onValueChange={(v) => updatePrefs("soundAlerts", v)}
-            trackColor={{ true: colors.accent, false: colors.background }}
-          />
-        </View>
-
-        {prefs.soundAlerts && (
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={playAlert}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="play-outline" size={14} color={colors.accent} />
-            <Text style={[styles.secondaryButtonText, { color: colors.accent, fontSize: scaled.small }]}>
-              {t("settings.playPreview")}
-            </Text>
-          </TouchableOpacity>
-        )}
+          <Ionicons name="log-out-outline" size={16} color="#fff" />
+          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>{t("settings.logout")}</Text>
+        </TouchableOpacity>
       </View>
     </>
   );
@@ -446,7 +422,9 @@ function NotificationsTab({
   addReminder,
   deleteReminder,
   toggleReminder,
-  onLogout,
+  prefs,
+  updatePrefs,
+  playAlert,
   scaled,
   styles,
   colors,
@@ -455,7 +433,9 @@ function NotificationsTab({
   addReminder: (title: string, hour: number, minute: number) => void | Promise<void>;
   deleteReminder: (id: string) => void | Promise<void>;
   toggleReminder: (id: string) => void | Promise<void>;
-  onLogout: () => void;
+  prefs: Prefs;
+  updatePrefs: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
+  playAlert: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
   styles: ReturnType<typeof createStyles>;
   colors: ContrastPalette;
@@ -604,15 +584,41 @@ function NotificationsTab({
       </View>
 
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>{t("settings.account")}</Text>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={onLogout}
-          activeOpacity={0.85}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          <Ionicons name="log-out-outline" size={16} color="#fff" />
-          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>{t("settings.logout")}</Text>
-        </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons name="volume-high-outline" size={16} color={colors.accent} />
+              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.soundAlerts")}</Text>
+            </View>
+            <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
+              {t("settings.soundDescription")}
+            </Text>
+          </View>
+          <Switch
+            value={prefs.soundAlerts}
+            onValueChange={(v) => updatePrefs("soundAlerts", v)}
+            trackColor={{ true: colors.accent, false: colors.background }}
+          />
+        </View>
+
+        {prefs.soundAlerts && (
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={playAlert}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="play-outline" size={14} color={colors.accent} />
+            <Text style={[styles.secondaryButtonText, { color: colors.accent, fontSize: scaled.small }]}>
+              {t("settings.playPreview")}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </>
   );
