@@ -102,8 +102,6 @@ export default function Home() {
             >
               <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
             </TouchableOpacity>
-            <Ionicons name="moon-outline" size={18} color={colors.muted} />
-            <Ionicons name="notifications-outline" size={18} color={colors.muted} />
           </View>
         </View>
 

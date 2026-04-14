@@ -227,7 +227,6 @@ export default function SettingsScreen() {
             >
               <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
             </TouchableOpacity>
-            <Ionicons name="settings-outline" size={18} color={colors.muted} />
           </View>
         </View>
 

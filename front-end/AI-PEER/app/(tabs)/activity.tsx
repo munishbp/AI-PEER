@@ -245,10 +245,6 @@ export default function ActivityScreen() {
                   <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>{t("activity.subtitle")}</Text>
             </View>
           </View>
-          <View style={styles.headerRight}>
-            <Ionicons name="moon-outline" size={18} color={colors.muted} />
-            <Ionicons name="notifications-outline" size={18} color={colors.muted} />
-          </View>
         </View>
 
         {/* Today's Progress */}
