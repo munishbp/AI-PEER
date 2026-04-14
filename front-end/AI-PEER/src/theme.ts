@@ -12,20 +12,20 @@ export const colors = {
 };
 
 export const darkColors = {
-  background: "#1a1a1a",
-  darkTile: "#0F1720",
-  text: "#E5E7EB",
-  darkMuted: "#f0f3f9ff",
-  border: "#1F2937",
-  primary: "#ff8f4aff",
+  background: "#1F2229",
+  darkTile: "#2D353F",
+  text: "#D8D8D8",
+  darkMuted: "#9EA6B0",
+  border: "#3C4652",
+  primary: "#7AA8F0",
 };
 
 export const highContrast = {
   background: "#000000",
-  highTile: "#000000",
-  text: "#FFFF00",
-  muted: "#FFFFAF",
-  accent: "#EA580C",
+  highTile: "#111111",
+  text: "#FFFFFF",
+  muted: "#B0E0FF",
+  accent: "#00D1FF",
 };
 
 export const colorsByContrast = {
@@ -45,9 +45,9 @@ export const colorsByContrast = {
     text: darkColors.text,
     muted: darkColors.darkMuted,
     accent: darkColors.primary,
-    tabs: "#121212",
+    tabs: darkColors.background,
     tabColor: darkColors.primary,
-    tabInactive: darkColors.primary,
+    tabInactive: darkColors.darkMuted,
   },
   high: {
     background: highContrast.background,
@@ -55,10 +55,14 @@ export const colorsByContrast = {
     text: highContrast.text,
     muted: highContrast.muted,
     accent: highContrast.accent,
-    tabs: "#000000",
+    tabs: highContrast.background,
     tabColor: highContrast.accent,
-    tabInactive: highContrast.accent },
+    tabInactive: highContrast.muted,
+  },
 };
+
+export type ContrastPalette =
+  (typeof colorsByContrast)[keyof typeof colorsByContrast];
 
 export const radii = { md: 12, lg: 16 };
 export const spacing = (n: number) => n * 4; // spacing(4) = 16

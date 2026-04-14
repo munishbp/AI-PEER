@@ -1,16 +1,19 @@
 // app/verify.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { signInWithCustomToken } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../src/firebaseClient";
 import { api } from "../src/api";
-import { colors, spacing, radii, fontSizes } from "../src/theme";
+import { usePrefs } from "../src/prefs-context";
+import { type ContrastPalette, scaleFontSizes, spacing, radii } from "../src/theme";
 
 export default function Verify() {
   const router = useRouter();
   const { phone, mode } = useLocalSearchParams();
+  const { colors, scaled } = usePrefs();
+  const s = useMemo(() => createStyles(colors, scaled), [colors, scaled]);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -108,25 +111,36 @@ export default function Verify() {
   );
 }
 
-const s = StyleSheet.create({
-  wrap: { flex: 1, padding: spacing(6), backgroundColor: colors.background, justifyContent: "center" },
-  backBtn: { position: "absolute", top: spacing(16), left: spacing(6) },
-  backText: { color: colors.primary, fontSize: fontSizes.base, fontWeight: "600" },
-  brand: { fontSize: fontSizes.h1, fontWeight: "800", color: colors.primary, textAlign: "center" },
-  subtitle: { fontSize: fontSizes.small, color: colors.text, textAlign: "center", marginTop: spacing(1), marginBottom: spacing(3) },
+const createStyles = (
+  colors: ContrastPalette,
+  scaled: ReturnType<typeof scaleFontSizes>
+) =>
+  StyleSheet.create({
+    wrap: { flex: 1, padding: spacing(6), backgroundColor: colors.background, justifyContent: "center" },
+    backBtn: { position: "absolute", top: spacing(16), left: spacing(6) },
+    backText: { color: colors.accent, fontSize: scaled.base, fontWeight: "600" },
+    brand: { fontSize: scaled.h1, fontWeight: "800", color: colors.accent, textAlign: "center" },
+    subtitle: { fontSize: scaled.small, color: colors.text, textAlign: "center", marginTop: spacing(1), marginBottom: spacing(3) },
 
-  form: { marginTop: spacing(6) },
-  label: { fontSize: fontSizes.small, color: colors.text, marginBottom: spacing(1) },
-  input: {
-    borderWidth: 1, borderColor: colors.gray, borderRadius: radii.lg,
-    paddingVertical: spacing(3), paddingHorizontal: spacing(3), fontSize: fontSizes.h1, color: colors.text, backgroundColor: "#fff",
-    textAlign: "center", letterSpacing: spacing(1),
-  },
+    form: { marginTop: spacing(6) },
+    label: { fontSize: scaled.small, color: colors.text, marginBottom: spacing(1) },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.muted,
+      borderRadius: radii.lg,
+      paddingVertical: spacing(3),
+      paddingHorizontal: spacing(3),
+      fontSize: scaled.h1,
+      color: colors.text,
+      backgroundColor: colors.bgTile,
+      textAlign: "center",
+      letterSpacing: spacing(1),
+    },
 
-  error: { color: "#b91c1c", marginTop: spacing(2), textAlign: "center" },
+    error: { color: "#b91c1c", marginTop: spacing(2), textAlign: "center" },
 
-  verifyBtn: { marginTop: spacing(8), backgroundColor: colors.primary, paddingVertical: spacing(3.5), borderRadius: radii.lg, alignItems: "center" },
-  verifyTxt: { color: "#fff", fontWeight: "700", fontSize: fontSizes.base },
-  resendWrap: { marginTop: spacing(3), alignItems: "center" },
-  resendText: { color: colors.primary, textAlign: "center", fontWeight: "600" },
-});
+    verifyBtn: { marginTop: spacing(8), backgroundColor: colors.accent, paddingVertical: spacing(3.5), borderRadius: radii.lg, alignItems: "center" },
+    verifyTxt: { color: "#fff", fontWeight: "700", fontSize: scaled.base },
+    resendWrap: { marginTop: spacing(3), alignItems: "center" },
+    resendText: { color: colors.accent, textAlign: "center", fontWeight: "600" },
+  });

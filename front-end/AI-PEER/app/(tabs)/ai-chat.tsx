@@ -11,7 +11,7 @@
  * - Clear conversation option
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -29,13 +29,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLLM } from "@/src/llm";
 import ModelDownloadModal from "@/components/ModelDownloadModal";
 import { usePrefs } from "../../src/prefs-context";
-
-// App color scheme
-const beige = "#F7EDE4";
-const beigeTile = "#F4E3D6";
-const warmRed = "#D84535";
-const darkText = "#3F2F25";
-const subtleText = "#7A6659";
+import { type ContrastPalette } from "../../src/theme";
 
 export default function AiChatScreen() {
   const router = useRouter();
@@ -59,6 +53,10 @@ export default function AiChatScreen() {
   const [isDownloading, setIsDownloading] = useState(false);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const { scaled, colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const warmRed = colors.accent;
+  const darkText = colors.text;
+  const subtleText = colors.muted;
 
   // Show download modal if model not downloaded
   useEffect(() => {
@@ -206,7 +204,7 @@ export default function AiChatScreen() {
 
                 {m.role === "user" && (
                   <View style={styles.avatarUser}>
-                    <Ionicons name="person-outline" size={16} color="#5B4636" />
+                    <Ionicons name="person-outline" size={16} color={colors.muted} />
                   </View>
                 )}
               </View>
@@ -236,7 +234,7 @@ export default function AiChatScreen() {
                   ? "Model loading..."
                   : "Type your question..."
               }
-              placeholderTextColor="#A58D7B"
+              placeholderTextColor={colors.muted}
               value={input}
               onChangeText={setInput}
               multiline
@@ -264,8 +262,8 @@ export default function AiChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: beige, paddingBottom: 30 },
+const createStyles = (colors: ContrastPalette) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background, paddingBottom: 30 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -275,17 +273,17 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     gap: 8,
   },
-  title: { fontSize: 18, fontWeight: "800", letterSpacing: 0.3, color: darkText },
-  subtitle: { fontSize: 12, color: subtleText, marginTop: 3, marginBottom: 4 },
+  title: { fontSize: 18, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
+  subtitle: { fontSize: 12, color: colors.muted, marginTop: 3, marginBottom: 4 },
   headerButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: beigeTile,
+    backgroundColor: colors.bgTile,
   },
 
   chatCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.bgTile,
     marginHorizontal: 16,
     marginTop: 10,
     borderRadius: 14,
@@ -319,7 +317,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 999,
-    backgroundColor: beigeTile,
+    backgroundColor: colors.bgTile,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 6,
@@ -328,7 +326,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 999,
-    backgroundColor: beigeTile,
+    backgroundColor: colors.bgTile,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 6,
@@ -340,16 +338,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   bubbleAi: {
-    backgroundColor: beigeTile,
+    backgroundColor: colors.bgTile,
     borderBottomLeftRadius: 2,
   },
   bubbleUser: {
-    backgroundColor: warmRed,
+    backgroundColor: colors.accent,
     borderBottomRightRadius: 2,
   },
   bubbleText: {
     fontSize: 14,
-    color: darkText,
+    color: colors.text,
   },
 
   inputRow: {
@@ -362,22 +360,22 @@ const styles = StyleSheet.create({
   inputBox: {
     flex: 1,
     borderRadius: 25,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.bgTile,
     paddingHorizontal: 13,
     paddingVertical: 5,
     maxHeight: 90,
     borderWidth: 1,
-    borderColor: "#E4D4C8",
+    borderColor: colors.muted,
   },
   input: {
     fontSize: 14,
-    color: darkText,
+    color: colors.text,
   },
   sendBtn: {
     width: 40,
     height: 40,
     borderRadius: 999,
-    backgroundColor: warmRed,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },

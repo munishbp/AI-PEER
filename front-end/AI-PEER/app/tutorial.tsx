@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { usePrefs } from "../src/prefs-context";
-import { colors, fontSizes, radii, spacing } from "../src/theme";
+import { type ContrastPalette, radii, spacing } from "../src/theme";
 
 type Step = {
   title: string;
@@ -35,7 +35,8 @@ const steps: Step[] = [
 export default function Tutorial() {
   const router = useRouter();
   const { next } = useLocalSearchParams<{ next?: string }>();
-  const { scaled } = usePrefs();
+  const { scaled, colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [current, setCurrent] = useState(0);
 
   const isFirst = current === 0;
@@ -76,8 +77,8 @@ export default function Tutorial() {
         </Text>
 
         <View style={styles.imageFrame}>
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="image-outline" size={38} color="#7A6659" />
+        <View style={styles.imagePlaceholder}>
+            <Ionicons name="image-outline" size={38} color={colors.muted} />
             <Text style={[styles.imageNote, { fontSize: scaled.small }]}>
               {step.imageNote}
             </Text>
@@ -113,7 +114,7 @@ export default function Tutorial() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ContrastPalette) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -131,11 +132,11 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   skipText: {
-    color: colors.primary,
+    color: colors.accent,
     fontWeight: "700",
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.bgTile,
     borderRadius: radii.lg,
     padding: spacing(4),
     gap: spacing(3),
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   description: {
-    color: "#5B4636",
+    color: colors.text,
     lineHeight: 22,
   },
   imageFrame: {
@@ -165,13 +166,13 @@ const styles = StyleSheet.create({
   },
   imageNote: {
     textAlign: "center",
-    color: "#6B5E55",
+    color: colors.muted,
     fontWeight: "600",
   },
   bottomNav: {
     borderTopWidth: 1,
     borderTopColor: "#E6D4C6",
-    backgroundColor: "#F7EDE4",
+    backgroundColor: colors.background,
     paddingHorizontal: spacing(3),
     paddingVertical: spacing(3),
     flexDirection: "row",
@@ -192,12 +193,12 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   navText: {
-    color: "#5B4636",
+    color: colors.text,
     fontWeight: "700",
   },
   navBtnPrimary: {
     borderRadius: radii.md,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(4),
     minWidth: 80,
@@ -220,6 +221,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#D8C7B8",
   },
   dotActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
   },
 });

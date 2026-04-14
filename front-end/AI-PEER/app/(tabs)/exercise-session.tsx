@@ -31,6 +31,8 @@ import {
   AngleSummarySet,
   FeedbackEvent,
 } from "@/src/exercise-activity-storage";
+import { usePrefs } from "../../src/prefs-context";
+import { type ContrastPalette } from "../../src/theme";
 
 type CatKey = "warmup" | "strength" | "balance";
 
@@ -59,6 +61,9 @@ function toActivityCategory(
 
 export default function ExerciseSessionPage() {
   const router = useRouter();
+  const { colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const warmRed = colors.accent;
   const params = useLocalSearchParams<{
     cat?: CatKey;
     video?: string;
@@ -564,7 +569,7 @@ export default function ExerciseSessionPage() {
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
-          <Ionicons name="shield-checkmark-outline" size={18} color="#2E5AAC" />
+          <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
         <Text style={styles.pageTitle}>{title} Session</Text>
@@ -761,7 +766,7 @@ export default function ExerciseSessionPage() {
             </Text>
             {isUnilateral && currentSet === setsPerSide && (
               <View style={styles.switchSidesBox}>
-                <Ionicons name="swap-horizontal" size={24} color="#2E5AAC" />
+                <Ionicons name="swap-horizontal" size={24} color={colors.accent} />
                 <Text style={styles.switchSidesText}>
                   Switch to your Right Side
                 </Text>
@@ -884,11 +889,12 @@ export default function ExerciseSessionPage() {
   );
 }
 
-const beige = "#F7EDE4";
-const beigeStrip = "#F3E7D9";
-const warmRed = "#D84535";
+const createStyles = (colors: ContrastPalette) => {
+  const beige = colors.background;
+  const beigeStrip = colors.bgTile;
+  const warmRed = colors.accent;
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   container: { flex: 1, paddingHorizontal: 16 },
   containerContent: { paddingBottom: 24 },
@@ -901,10 +907,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 6,
   },
-  backText: { fontWeight: "900", color: "#3D2F27" },
+  backText: { fontWeight: "900", color: colors.text },
 
-  pageTitle: { fontSize: 18, fontWeight: "900", color: "#222", marginTop: 4 },
-  pageSub: { color: "#6B5E55", fontWeight: "600", marginBottom: 10 },
+  pageTitle: { fontSize: 18, fontWeight: "900", color: colors.text, marginTop: 4 },
+  pageSub: { color: colors.muted, fontWeight: "600", marginBottom: 10 },
 
   cameraContainer: {
     height: 500,
@@ -925,7 +931,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 16,
   },
-  cameraHint: { color: "#6B5E55", fontWeight: "800", fontSize: 20 },
+  cameraHint: { color: colors.muted, fontWeight: "800", fontSize: 20 },
   cameraSmall: {
     color: "#5B4636",
     fontWeight: "700",
@@ -978,9 +984,9 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
-  timerText: { fontSize: 28, fontWeight: "900", color: "#222" },
+  timerText: { fontSize: 28, fontWeight: "900", color: colors.text },
   timerTextUrgent: { color: warmRed },
-  timerLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+  timerLabel: { fontSize: 10, fontWeight: "800", color: colors.muted, marginTop: 2 },
 
   setOverlay: {
     position: "absolute",
@@ -996,8 +1002,8 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
-  setText: { fontSize: 14, fontWeight: "900", color: "#222" },
-  sideText: { fontSize: 11, fontWeight: "800", color: "#2E5AAC", marginTop: 2 },
+  setText: { fontSize: 14, fontWeight: "900", color: colors.text },
+  sideText: { fontSize: 11, fontWeight: "800", color: colors.accent, marginTop: 2 },
 
   switchSidesBox: {
     flexDirection: "row",
@@ -1008,7 +1014,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 10,
   },
-  switchSidesText: { fontSize: 16, fontWeight: "900", color: "#2E5AAC" },
+  switchSidesText: { fontSize: 16, fontWeight: "900", color: colors.accent },
   sideLabel: { fontSize: 13, fontWeight: "700", color: "#6B5E55", marginTop: 8 },
 
   repCounterBar: {
@@ -1055,7 +1061,7 @@ const styles = StyleSheet.create({
   errorText: { color: warmRed, fontWeight: "700" },
 
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     marginTop: 10,
@@ -1069,7 +1075,7 @@ const styles = StyleSheet.create({
       android: { elevation: 1.5 },
     }),
   },
-  cardTitle: { fontWeight: "900", color: "#222", marginBottom: 4 },
+  cardTitle: { fontWeight: "900", color: colors.text, marginBottom: 4 },
 
   feedbackRow: { flexDirection: "row", alignItems: "center", marginTop: 8 },
   feedbackLabel: { width: 140, fontWeight: "900", color: "#3D2F27" },
@@ -1118,4 +1124,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryText: { fontWeight: "900", color: "#FFF" },
-});
+  });
+};

@@ -30,6 +30,8 @@ import {
   AngleSummarySet,
   FeedbackEvent,
 } from "@/src/exercise-activity-storage";
+import { usePrefs } from "../../src/prefs-context";
+import { type ContrastPalette } from "../../src/theme";
 
 const TEST_DURATION_SEC = 30;
 const EXERCISE_ID = "assessment-1";
@@ -40,14 +42,17 @@ const EXERCISE_NAME = "Chair Rise";
  * The CDC publishes age- and gender-stratified norms; this is a simplified
  * starting threshold per the plan and should be refined later.
  */
-function fallRiskBand(reps: number): { label: string; color: string } {
+function fallRiskBand(reps: number, accent: string): { label: string; color: string } {
   if (reps >= 12) return { label: "Above Average", color: "#1E7A3A" };
   if (reps >= 8) return { label: "Normal", color: "#B8860B" };
-  return { label: "Below Average — Increased Fall Risk", color: warmRed };
+  return { label: "Below Average — Increased Fall Risk", color: accent };
 }
 
 export default function ChairRiseTestPage() {
   const router = useRouter();
+  const { colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const warmRed = colors.accent;
 
   const exerciseRule = useMemo(() => getExerciseRules(EXERCISE_ID), []);
 
@@ -221,7 +226,7 @@ export default function ChairRiseTestPage() {
     stopTracking();
 
     // announce the result
-    const band = fallRiskBand(finalRepCount);
+    const band = fallRiskBand(finalRepCount, warmRed);
     Speech.stop();
     Speech.speak(`Test complete. ${finalRepCount} reps. ${band.label}.`);
   }, [clearTimer, stopTracking, getRepHistory]);
@@ -290,7 +295,7 @@ export default function ChairRiseTestPage() {
   const cameraActive =
     trackingMode !== "idle" && hasPermission && !!device;
   const currentScore = currentFeedback?.score ?? null;
-  const band = fallRiskBand(finalReps);
+  const band = fallRiskBand(finalReps, warmRed);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -317,7 +322,7 @@ export default function ChairRiseTestPage() {
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
-          <Ionicons name="shield-checkmark-outline" size={18} color="#2E5AAC" />
+          <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
         <Text style={styles.pageTitle}>Chair Rise Test</Text>
@@ -544,11 +549,12 @@ export default function ChairRiseTestPage() {
   );
 }
 
-const beige = "#F7EDE4";
-const beigeStrip = "#F3E7D9";
-const warmRed = "#D84535";
+const createStyles = (colors: ContrastPalette) => {
+  const beige = colors.background;
+  const beigeStrip = colors.bgTile;
+  const warmRed = colors.accent;
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   container: { flex: 1, paddingHorizontal: 16 },
   containerContent: { paddingBottom: 24 },
@@ -561,10 +567,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 6,
   },
-  backText: { fontWeight: "900", color: "#3D2F27" },
+  backText: { fontWeight: "900", color: colors.text },
 
-  pageTitle: { fontSize: 18, fontWeight: "900", color: "#222", marginTop: 4 },
-  pageSub: { color: "#6B5E55", fontWeight: "600", marginBottom: 10 },
+  pageTitle: { fontSize: 18, fontWeight: "900", color: colors.text, marginTop: 4 },
+  pageSub: { color: colors.muted, fontWeight: "600", marginBottom: 10 },
 
   cameraContainer: {
     height: 500,
@@ -585,7 +591,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 16,
   },
-  cameraHint: { color: "#6B5E55", fontWeight: "800", fontSize: 20 },
+  cameraHint: { color: colors.muted, fontWeight: "800", fontSize: 20 },
   cameraSmall: {
     color: "#5B4636",
     fontWeight: "700",
@@ -613,9 +619,9 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
-  timerText: { fontSize: 28, fontWeight: "900", color: "#222" },
+  timerText: { fontSize: 28, fontWeight: "900", color: colors.text },
   timerTextUrgent: { color: warmRed },
-  timerLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+  timerLabel: { fontSize: 10, fontWeight: "800", color: colors.muted, marginTop: 2 },
 
   scoreOverlay: {
     position: "absolute",
@@ -661,7 +667,7 @@ const styles = StyleSheet.create({
   violationText: { color: "#FFF", fontWeight: "800", fontSize: 12 },
 
   repCounterBar: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     paddingVertical: 12,
     marginTop: 10,
@@ -676,8 +682,8 @@ const styles = StyleSheet.create({
       android: { elevation: 1.5 },
     }),
   },
-  repCounterText: { fontSize: 50, fontWeight: "900", color: "#222" },
-  repCounterLabel: { fontSize: 12, fontWeight: "800", color: "#6B5E55" },
+  repCounterText: { fontSize: 50, fontWeight: "900", color: colors.text },
+  repCounterLabel: { fontSize: 12, fontWeight: "800", color: colors.muted },
   repCounterFlash: {
     backgroundColor: "#E8F5E9",
     borderColor: "#1E7A3A",
@@ -693,7 +699,7 @@ const styles = StyleSheet.create({
   errorText: { color: warmRed, fontWeight: "700" },
 
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     marginTop: 10,
@@ -707,7 +713,7 @@ const styles = StyleSheet.create({
       android: { elevation: 1.5 },
     }),
   },
-  cardTitle: { fontWeight: "900", color: "#222", marginBottom: 4, fontSize: 16 },
+  cardTitle: { fontWeight: "900", color: colors.text, marginBottom: 4, fontSize: 16 },
   cardFootnote: {
     marginTop: 10,
     color: "#8C7A6C",
@@ -722,8 +728,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  scoreNumber: { fontSize: 48, fontWeight: "900", color: "#222" },
-  scoreUnit: { fontSize: 14, fontWeight: "700", color: "#6B5E55" },
+  scoreNumber: { fontSize: 48, fontWeight: "900", color: colors.text },
+  scoreUnit: { fontSize: 14, fontWeight: "700", color: colors.muted },
 
   bandBox: {
     marginTop: 12,
@@ -777,4 +783,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryText: { fontWeight: "900", color: "#FFF" },
-});
+  });
+};
