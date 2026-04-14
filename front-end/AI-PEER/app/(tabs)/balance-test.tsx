@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { usePrefs } from "../../src/prefs-context";
+import { useTranslation } from "react-i18next";
+import { usePrefs } from "@/src/prefs-context";
 import { type ContrastPalette } from "../../src/theme";
 
 type Test = {
@@ -54,11 +55,12 @@ const TESTS: Test[] = [
 
 export default function BalanceTestPage() {
   const router = useRouter();
-  const { colors } = usePrefs();
+  const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const startTest = (test: Test) => {
-    router.push({
+    router.replace({
       pathname: "/(tabs)/video-confirm",
       params: {
         cat: "assessment",
@@ -81,7 +83,10 @@ export default function BalanceTestPage() {
               size={20}
               color={colors.accent}
             />
-            <Text style={styles.brand}>AI PEER</Text>
+            <View>
+              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("balance-test.subtitle")}</Text>
+            </View>
           </View>
           <View style={{ flex: 1 }} />
           <Ionicons name="moon-outline" size={18} color={colors.muted} />
@@ -92,7 +97,6 @@ export default function BalanceTestPage() {
             style={{ marginLeft: 12 }}
           />
         </View>
-        <Text style={styles.subtitle}>Balance Test</Text>
 
         {/* Segmented control */}
         <View style={styles.segmentOuter}>
@@ -102,7 +106,7 @@ export default function BalanceTestPage() {
             onPress={() => router.replace("/(tabs)")}
           >
             <Ionicons name="home-outline" size={14} />
-            <Text style={styles.segmentText}>Overview</Text>
+            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>{t("balance-test.overview")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -110,15 +114,15 @@ export default function BalanceTestPage() {
             activeOpacity={1}
           >
             <Ionicons name="pulse-outline" size={14} color="#FFF" />
-            <Text style={[styles.segmentText, styles.segmentTextActive]}>
-              Balance Test
+            <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>
+              {t("balance-test.subtitle")}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Center heading */}
         <View style={styles.centerHead}>
-          <Text style={styles.centerTitle}>Fall-Risk Assessments</Text>
+          <Text style={styles.centerTitle}>{t("home.subtitle")}</Text>
           <Text style={styles.centerSub}>
             Two clinical tests to assess your balance and mobility
           </Text>
@@ -179,23 +183,23 @@ const createStyles = (colors: ContrastPalette) => {
 
   return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
-  container: { paddingHorizontal: 16, paddingBottom: 12 },
+  container: { paddingHorizontal: 16, gap:14, paddingBottom: 12 },
 
-  header: { paddingTop: 6, flexDirection: "row", alignItems: "center" },
+  header: { paddingTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
-  subtitle: { marginTop: 4, marginBottom: 10, color: colors.muted },
+  subtitle: { marginTop: 3, marginBottom: 6, color: colors.muted },
 
   segmentOuter: {
     backgroundColor: beigeTrack,
     borderRadius: 999,
-    padding: 6,
+    padding: 4,
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
     marginBottom: 14,
   },
   segmentBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",

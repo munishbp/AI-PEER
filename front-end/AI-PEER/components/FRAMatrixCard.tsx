@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 type PhysicalRisk = "Low" | "High";
 type PerceivedRisk = "Low" | "High";
@@ -39,8 +40,8 @@ function dotPosition(
 }
 
 export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
-  const btrackScore =
-    typeof inputs?.btrackScore === "number" ? inputs.btrackScore : null;
+  const { t } = useTranslation();
+  const btrackScore = typeof inputs?.btrackScore === "number" ? inputs.btrackScore : null;
   const fesI = typeof inputs?.fesI === "number" ? inputs.fesI : null;
 
   const displayBtrack = btrackScore ?? 0;
@@ -57,18 +58,18 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
 
   const handleEditBtrack = () => {
     Alert.prompt(
-      "Update BTrackS Score",
-      "Enter your new BTrackS score in cm:",
+      t("FRAMatrixCard.updateBtrackScore"),
+      t("FRAMatrixCard.enterBtrackScore"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("contacts.cancel"), style: "cancel" },
         {
-          text: "Save",
+          text: t("contacts.save"),
           onPress: (value?: string) => {
-            const num = parseFloat(value || "");
+            const num = parseFloat(value ?? "");
             if (!isNaN(num) && num >= 0) {
               onBtrackUpdate?.(num);
             } else {
-              Alert.alert("Invalid", "Please enter a valid number.");
+              Alert.alert(t("FRAMatrixCard.invalid"), t("FRAMatrixCard.pleaseEnterValidNumber"));
             }
           },
         },
@@ -83,20 +84,17 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Today&apos;s Risk (FRA)</Text>
+        <Text style={styles.title}>{t("FRAMatrixCard.todaysRisk")}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View style={[styles.pill, elevated ? styles.pillBad : styles.pillGood]}>
             <Text style={styles.pillText}>
-              {!hasBothScores ? "Incomplete" : elevated ? "Elevated Risk" : "Low Risk"}
+              {!hasBothScores ? t("FRAMatrixCard.incomplete") : elevated ? t("FRAMatrixCard.elevatedRisk") : t("FRAMatrixCard.lowRisk")}
             </Text>
           </View>
         </View>
       </View>
 
-      <Text style={styles.subtitle}>
-        Based on alignment of physical fall risk (BTrackS) and perceived
-        fall risk (FES-I).
-      </Text>
+      <Text style={styles.subtitle}>{t("FRAMatrixCard.riskBasedOn")}</Text>
 
       {/* Readouts */}
       <View style={styles.readoutRow}>
@@ -109,9 +107,9 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
       <View style={styles.matrixArea}>
         <View style={styles.yRail}>
           <View style={styles.yRailInner}>
-            <Text style={styles.ySideTitle}>Perceived fall risk</Text>
-            <Text style={styles.ySideTick}>High: 24-64</Text>
-            <Text style={styles.ySideTick}>Low: 16-23</Text>
+            <Text style={styles.ySideTitle}>{t("FRAMatrixCard.perceivedRisk")}</Text>
+            <Text style={styles.ySideTick}>{t("FRAMatrixCard.high")}: 24–64</Text>
+            <Text style={styles.ySideTick}>{t("FRAMatrixCard.low")}: 16–23</Text>
           </View>
         </View>
 
@@ -144,12 +142,12 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
 
       {/* X axis */}
       <View style={styles.xAxis}>
-        <Text style={styles.axisTitle}>Physiological fall risk</Text>
-        <Text style={styles.axisHint}>{`<= 30cm (Low) | > 30cm (High)`}</Text>
+        <Text style={styles.axisTitle}>{t("FRAMatrixCard.physiologicalRisk")}</Text>
+        <Text style={styles.axisHint}>≤ 30cm ({t("FRAMatrixCard.low")}) · &gt; 30cm ({t("FRAMatrixCard.high")})</Text>
         {onBtrackUpdate && (
           <TouchableOpacity onPress={handleEditBtrack} style={styles.editBtrackBtn}>
             <Ionicons name="create-outline" size={14} color="#555" />
-            <Text style={styles.editBtrackText}>Edit BTrackS</Text>
+            <Text style={styles.editBtrackText}>{t("FRAMatrixCard.editBTrack")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -198,6 +196,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderColor: "#E6E6E6",
+    maxHeight: 600,
   },
 
   headerRow: {
@@ -205,14 +204,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  title: { fontSize: 16, fontWeight: "900", color: "#111" },
+  title: { fontSize: 18.5, fontWeight: "900", color: "#111" },
 
   pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   pillGood: { backgroundColor: "#DFF3E5" },
   pillBad: { backgroundColor: "#FFE2E0" },
   pillText: { fontWeight: "900", color: "#111", fontSize: 12 },
 
-  subtitle: { marginTop: 4, fontSize: 11, color: "#555" },
+  subtitle: { marginTop: 16, fontSize: 11, color: "#555" },
 
   readoutRow: {
     flexDirection: "row",
@@ -261,7 +260,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     backgroundColor: "#FAFAFA",
-    minHeight: 180,
+    minHeight: 235, // bigger than before
   },
 
   quad: { position: "absolute", width: "50%", height: "50%" },
@@ -335,16 +334,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 56,
-    marginBottom: -48,
+    marginTop: 25,
+    marginBottom: -8,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#E6D4C6",
     borderRadius: 10,
   },
   editBtrackText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
-    color: "#555",
+    color: "#5B4636",
   },
 });

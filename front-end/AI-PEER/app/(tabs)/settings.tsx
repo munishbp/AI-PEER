@@ -1,5 +1,5 @@
 // app/(tabs)/settings.tsx
-import { useMemo, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,14 @@ import {
   Vibration,
   Alert,
   TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { scaleFontSizes } from "../../src/theme";
@@ -20,40 +26,131 @@ import type { Prefs } from "../../src/prefs-context";
 import { usePrefs } from "../../src/prefs-context";
 import { useAuth } from "../../src/auth";
 import { type ContrastPalette } from "../../src/theme";
+import {
+  requestReminderPermissions,
+  scheduleReminderNotification,
+  cancelReminderNotification,
+} from "../../src/reminder-notifications";
 
 type SettingsTab = "accessibility" | "notifications";
-
 type Reminder = {
   id: string;
   title: string;
-  time?: string;
+  hour: number;
+  minute: number;
   enabled: boolean;
+  notificationId?: string;
 };
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<SettingsTab>("accessibility");
   const { prefs, updatePrefs, scaled, colors } = usePrefs();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { logout } = useAuth();
+  const REMINDERS_KEY = "user_reminders_v1";
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [remindersLoaded, setRemindersLoaded] = useState(false);
 
-  const [reminders, setReminders] = useState<Reminder[]>([
-    { id: "1", title: "Morning walk", time: "8:00 AM", enabled: true },
-    { id: "2", title: "Take meds", time: "9:00 PM", enabled: true },
-  ]);
+  async function addReminder(title: string, hour: number, minute: number) {
+    const permissionGranted = await requestReminderPermissions();
+    if (!permissionGranted) {
+      Alert.alert(t("settings.notifsDisabled"), t("settings.notifsAlert"));
+      return;
+    }
 
-  function addReminder(title: string, time?: string) {
     const id = Date.now().toString();
-    setReminders((r) => [{ id, title, time, enabled: true }, ...r]);
+
+    const reminderBase: Reminder = {
+      id,
+      title,
+      hour,
+      minute,
+      enabled: true,
+    };
+
+    const notificationId = await scheduleReminderNotification(reminderBase);
+
+    setReminders((r) => [
+      { ...reminderBase, notificationId },
+      ...r,
+    ]);
   }
 
-  function deleteReminder(id: string) {
+  async function deleteReminder(id: string) {
+    const existing = reminders.find((x) => x.id === id);
+    if (existing?.notificationId) {
+      await cancelReminderNotification(existing.notificationId);
+    }
     setReminders((r) => r.filter((x) => x.id !== id));
   }
 
-  function toggleReminder(id: string) {
-    setReminders((r) => r.map((x) => (x.id === id ? { ...x, enabled: !x.enabled } : x)));
+  async function toggleReminder(id: string) {
+    const existing = reminders.find((x) => x.id === id);
+    if (!existing) return;
+
+    if (existing.enabled) {
+      await cancelReminderNotification(existing.notificationId);
+      setReminders((r) =>
+        r.map((x) =>
+          x.id === id ? { ...x, enabled: false, notificationId: undefined } : x
+        )
+      );
+    } else {
+      const permissionGranted = await requestReminderPermissions();
+      if (!permissionGranted) {
+        Alert.alert(t("settings.notifsDisabled"), t("settings.notifsAlert"));
+        return;
+      }
+
+      const notificationId = await scheduleReminderNotification(existing);
+
+      setReminders((r) =>
+        r.map((x) =>
+          x.id === id ? { ...x, enabled: true, notificationId } : x
+        )
+      );
+    }
   }
+
+  // Load reminders from AsyncStorage once on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(REMINDERS_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored) as Reminder[];
+          setReminders(parsed);
+        } else {
+          // Seed with two defaults when nothing stored yet
+          setReminders([
+            { id: "1", title: "Morning walk", hour: 8, minute: 0, enabled: true },
+            { id: "2", title: "Take meds", hour: 21, minute: 0, enabled: true },
+          ]);
+        }
+      } catch {
+        setReminders([
+          { id: "1", title: "Morning walk", hour: 8, minute: 0, enabled: true },
+          { id: "2", title: "Take meds", hour: 21, minute: 0, enabled: true },
+        ]);
+      } finally {
+        setRemindersLoaded(true);
+      }
+    })();
+  }, []);
+
+  // Persist reminders whenever they change (after initial load)
+  useEffect(() => {
+    if (!remindersLoaded) return;
+    (async () => {
+      try {
+        await AsyncStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
+      } catch {
+        // no-op
+      }
+    })();
+  }, [reminders, remindersLoaded]);
 
   function playAlertPreview() {
     if (!prefs.soundAlerts) return;
@@ -89,10 +186,10 @@ export default function SettingsScreen() {
   function handleLogout() {
     const LOGIN_ROUTE = "../login";
 
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("settings.logout"), t("settings.logoutConfirmation"), [
+      { text: t("settings.cancel"), style: "cancel" },
       {
-        text: "Logout",
+        text: t("settings.logout"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -118,15 +215,25 @@ export default function SettingsScreen() {
             <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.subtitle, { fontSize: scaled.h2 / 2 }]}>Settings & Preferences</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2 / 2 }]}>{t("settings.title")}</Text>
             </View>
           </View>
-          <Ionicons name="settings-outline" size={18} color={colors.muted} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => router.replace("/tutorial?next=tabs")}
+              accessibilityLabel={t("settings.help")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
+            </TouchableOpacity>
+            <Ionicons name="settings-outline" size={18} color={colors.muted} />
+          </View>
         </View>
 
         <View style={styles.segmentOuter}>
           <SegmentButton
-            label="Access"
+            label={t("settings.access")}
             icon="accessibility-outline"
             active={tab === "accessibility"}
             onPress={() => setTab("accessibility")}
@@ -135,7 +242,7 @@ export default function SettingsScreen() {
             colors={colors}
           />
           <SegmentButton
-            label="Alerts"
+            label={t("settings.alerts")}
             icon="alarm-outline"
             active={tab === "notifications"}
             onPress={() => setTab("notifications")}
@@ -171,6 +278,8 @@ export default function SettingsScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      
     </SafeAreaView>
   );
 }
@@ -190,18 +299,22 @@ function AccessibilityTab({
   styles: ReturnType<typeof createStyles>;
   colors: ContrastPalette;
 }) {
-  const fontSizesLabels = ["Small (90%)", "Normal (100%)", "Large (120%)"];
-  const contrastOptions = ["Light", "Dark", "High Contrast"];
-  const languages = ["English", "Spanish", "French"];
+  const { t } = useTranslation();
+  const fontSizesLabels = t("settings.fontSizes", { returnObjects: true }) as string[];
+  const contrastOptions = t("settings.contrastModes", { returnObjects: true }) as string[];
+  const languages = ["English", "Español", "Kreyòl Ayisyen"];
 
   return (
     <>
+      {/* Font Scale - 90% 100% 110%*/}
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="text-outline" size={16} color={colors.accent} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Text Size</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.textSize")}</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Choose a comfortable reading size</Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
+          {t("settings.testDescription")}
+        </Text>
         <View style={styles.optionsRow}>
           {fontSizesLabels.map((size, i) => (
             <TouchableOpacity
@@ -219,7 +332,7 @@ function AccessibilityTab({
                   { fontSize: scaled.base * 0.75 },
                 ]}
               >
-                {size.split(" ")[0]}
+                {size}
               </Text>
             </TouchableOpacity>
           ))}
@@ -229,9 +342,11 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="contrast-outline" size={16} color={colors.accent} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Display Contrast</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.displayContrast")}</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Choose colors that are easy on your eyes</Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
+          {t("settings.displayDescription")}
+        </Text>
         <View style={styles.optionsRow}>
           {(["light", "dark", "high"] as const).map((contrast, i) => (
             <TouchableOpacity
@@ -259,11 +374,11 @@ function AccessibilityTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="globe-outline" size={16} color={colors.accent} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Language</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.language")}</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Select your preferred language</Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>{t("settings.languageDescription")}</Text>
         <View style={styles.optionsRow}>
-          {(["en", "es", "fr"] as const).map((lang, i) => (
+          {(["en", "es", "ht"] as const).map((lang, i) => (
             <TouchableOpacity
               key={lang}
               onPress={() => updatePrefs("language", lang)}
@@ -297,9 +412,11 @@ function AccessibilityTab({
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Ionicons name="volume-high-outline" size={16} color={colors.accent} />
-              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Sound Alerts</Text>
+              <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.soundAlerts")}</Text>
             </View>
-            <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Enable notification sounds</Text>
+            <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
+              {t("settings.soundDescription")}
+            </Text>
           </View>
           <Switch
             value={prefs.soundAlerts}
@@ -309,9 +426,15 @@ function AccessibilityTab({
         </View>
 
         {prefs.soundAlerts && (
-          <TouchableOpacity style={styles.secondaryButton} onPress={playAlert} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={playAlert}
+            activeOpacity={0.85}
+          >
             <Ionicons name="play-outline" size={14} color={colors.accent} />
-            <Text style={[styles.secondaryButtonText, { color: colors.accent, fontSize: scaled.small }]}>Play Preview</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.accent, fontSize: scaled.small }]}>
+              {t("settings.playPreview")}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -330,22 +453,44 @@ function NotificationsTab({
   colors,
 }: {
   reminders: Reminder[];
-  addReminder: (title: string, time?: string) => void;
-  deleteReminder: (id: string) => void;
-  toggleReminder: (id: string) => void;
+  addReminder: (title: string, hour: number, minute: number) => void | Promise<void>;
+  deleteReminder: (id: string) => void | Promise<void>;
+  toggleReminder: (id: string) => void | Promise<void>;
   onLogout: () => void;
   scaled: ReturnType<typeof scaleFontSizes>;
   styles: ReturnType<typeof createStyles>;
   colors: ContrastPalette;
 }) {
+  const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
-  const [time, setTime] = useState("");
+  const [hour, setHour] = useState("");
+  const [minute, setMinute] = useState("");
+  const [ampm, setAmpm] = useState<"AM" | "PM">("AM");
+  const { t } = useTranslation();
 
-  function handleAdd() {
-    if (!title.trim()) return;
-    addReminder(title.trim(), time.trim() || undefined);
+  async function handleAdd() {
+    const h = Number(hour);
+    const m = Number(minute);
+
+    if (!Number.isInteger(h) || h < 1 || h > 12) {
+      Alert.alert(t("settings.errorHour"), t("settings.errorHourRange"));
+      return;
+    }
+    if (!Number.isInteger(m) || m < 0 || m > 59) {
+      Alert.alert(t("settings.errorMinute"), t("settings.errorMinuteRange"));
+      return;
+    }
+
+    // convert to 24-hour (military) time
+    let military = h % 12; // 12 -> 0
+    if (ampm === "PM") military += 12;
+
+    await addReminder(title.trim(), military, m);
+    setHour("");
     setTitle("");
-    setTime("");
+    setMinute("");
+    setAmpm("AM");
+    setShowModal(false);
   }
 
   return (
@@ -353,9 +498,11 @@ function NotificationsTab({
       <View style={styles.card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="alarm-outline" size={16} color={colors.accent} />
-          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Reminders</Text>
+          <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("settings.reminders")}</Text>
         </View>
-        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>Create and manage personal reminders</Text>
+        <Text style={[styles.settingDescription, { fontSize: scaled.base * 0.75 }]}>
+          {t("settings.remindersDescription")}
+        </Text>
 
         {reminders.map((rem) => (
           <View key={rem.id} style={styles.notificationRow}>
@@ -363,7 +510,9 @@ function NotificationsTab({
               <Ionicons name="time-outline" size={16} color={colors.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.notificationLabel, { fontSize: scaled.small }]}>{rem.title}</Text>
-                <Text style={[styles.notificationDescription, { fontSize: scaled.h2 / 2 }]}>{rem.time || ""}</Text>
+                <Text style={[styles.notificationDescription, { fontSize: scaled.h2 / 2 }]}>
+                  {String(rem.hour).padStart(2, "0")}:{String(rem.minute).padStart(2, "0")}
+                </Text>
               </View>
               <Switch
                 value={rem.enabled}
@@ -377,33 +526,93 @@ function NotificationsTab({
           </View>
         ))}
 
-        <View style={styles.inputRow}>
-          <TextInput
-            placeholder="Reminder title"
-            value={title}
-            onChangeText={setTitle}
-            style={[styles.input, { fontSize: scaled.small }]}
-            placeholderTextColor={colors.muted}
-          />
-          <TextInput
-            placeholder="Time (optional)"
-            value={time}
-            onChangeText={setTime}
-            style={[styles.input, { fontSize: scaled.small, width: 110 }]}
-            placeholderTextColor={colors.muted}
-          />
-          <TouchableOpacity style={[styles.primaryButton, { paddingHorizontal: 12 }]} onPress={handleAdd} activeOpacity={0.85}>
+        <View style={{ marginTop: 12, flexDirection: "row", justifyContent: "center" }}>
+          <TouchableOpacity
+            style={[styles.primaryButton, { paddingHorizontal: 12 }]}
+            onPress={() => setShowModal(true)}
+            activeOpacity={0.85}
+          >
             <Ionicons name="add-circle-outline" size={16} color="#fff" />
-            <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>Add</Text>
+            <Text style={[styles.primaryButtonText, { fontSize: scaled.small }]}>{t("settings.add")}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Add Reminder Modal */}
+        <Modal visible={showModal} animationType="slide" transparent>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+
+                  <Text style={[styles.modalTitle, { fontSize: scaled.h2 }]}>{t("settings.add") || "Add Reminder"}</Text>
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>{t("settings.reminderTitle")}</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: scaled.base }]}
+                    value={title}
+                    onChangeText={setTitle}
+                    placeholder={t("settings.reminderTitle")}
+                    placeholderTextColor="#999"
+                  />
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>HH (1-12)</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: scaled.base, width: 120 }]}
+                    value={hour}
+                    onChangeText={(t) => setHour(t.replace(/\D/g, "").slice(0, 2))}
+                    keyboardType="number-pad"
+                    placeholder="HH"
+                  />
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>MM (00-59)</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: scaled.base, width: 120 }]}
+                    value={minute}
+                    onChangeText={(t) => setMinute(t.replace(/\D/g, "").slice(0, 2))}
+                    keyboardType="number-pad"
+                    placeholder="MM"
+                  />
+
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>AM / PM</Text>
+                  <View style={{ flexDirection: "row", justifyContent: "flex-start", marginTop: 6, gap: 12 }}>
+                    <TouchableOpacity
+                      style={[styles.ampmButtons, ampm === "AM" && styles.optionButtonActive, { width: 100 }]}
+                      onPress={() => setAmpm("AM")}
+                    >
+                      <Text style={[styles.optionButtonText, ampm === "AM" && styles.optionButtonTextActive]}>AM</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.ampmButtons, ampm === "PM" && styles.optionButtonActive, { width: 100 }]}
+                      onPress={() => setAmpm("PM")}
+                    >
+                      <Text style={[styles.optionButtonText, ampm === "PM" && styles.optionButtonTextActive]}>PM</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowModal(false); setTitle(""); setHour(""); setMinute(""); setAmpm("AM"); }}>
+                      <Text style={[styles.cancelBtnText, { fontSize: scaled.base }]}>{t("settings.cancel")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.saveBtn} onPress={handleAdd}>
+                      <Text style={[styles.saveBtnText, { fontSize: scaled.base }]}>{t("contacts.save")}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
 
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>Account</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout} activeOpacity={0.85}>
+        <Text style={[styles.cardTitle, { fontSize: scaled.base, marginBottom: 8 }]}>{t("settings.account")}</Text>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={onLogout}
+          activeOpacity={0.85}
+        >
           <Ionicons name="log-out-outline" size={16} color="#fff" />
-          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>Logout</Text>
+          <Text style={[styles.logoutButtonText, { fontSize: scaled.small }]}>{t("settings.logout")}</Text>
         </TouchableOpacity>
       </View>
     </>
@@ -551,6 +760,32 @@ const createStyles = (colors: ContrastPalette) =>
       borderRadius: 8,
       color: colors.text,
     },
+
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.4)",
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      backgroundColor: colors.bgTile,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 24,
+      paddingBottom: 40,
+    },
+    modalTitle: { fontWeight: "800", color: colors.text, marginBottom: 20 },
+    fieldLabel: { fontWeight: "600", color: colors.muted, marginTop: 12, marginBottom: 6 },
+    ampmButtons: {
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      backgroundColor: colors.background,
+    },
+    modalButtons: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 12 },
+    cancelBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: colors.background },
+    saveBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: colors.accent },
+    cancelBtnText: { color: colors.muted, fontWeight: "700" },
+    saveBtnText: { color: "#FFF", fontWeight: "700" },
 
     logoutButton: {
       backgroundColor: colors.accent,

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import {
@@ -36,13 +37,6 @@ import { type ContrastPalette } from "../../src/theme";
 
 type CatKey = "warmup" | "strength" | "balance";
 
-function prettyCat(cat?: string) {
-  if (cat === "warmup") return "Warm-Up";
-  if (cat === "strength") return "Strength";
-  if (cat === "balance") return "Balance";
-  return "Exercise";
-}
-
 function toActivityCategory(
   cat?: string,
   fallbackCategory?: string
@@ -61,6 +55,7 @@ function toActivityCategory(
 
 export default function ExerciseSessionPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { colors } = usePrefs();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const warmRed = colors.accent;
@@ -71,6 +66,12 @@ export default function ExerciseSessionPage() {
     duration?: string;
   }>();
 
+  const prettyCat = (cat?: string) => {
+    if (cat === "warmup") return t("exercise.warmupTitle");
+    if (cat === "strength") return t("exercise.strengthTitle");
+    if (cat === "balance") return t("exercise.balanceTitle");
+    return t("exercise.exercise");
+  }
   const title = useMemo(() => prettyCat(params.cat), [params.cat]);
   const exerciseId = params.video || `${params.cat || "warmup"}-1`;
   const exerciseRule = useMemo(() => getExerciseRules(exerciseId), [exerciseId]);
@@ -160,7 +161,7 @@ export default function ExerciseSessionPage() {
   const [currentSet, setCurrentSet] = useState(1);
   const [setComplete, setSetComplete] = useState(false);
   const currentSide = isUnilateral
-    ? currentSet <= setsPerSide ? "Left" : "Right"
+    ? currentSet <= setsPerSide ? t("exercise-session.leftSide") : t("exercise-session.rightSide")
     : null;
   // exercise ID with -right suffix for right-side sets
   const trackingExerciseId = isUnilateral && currentSide === "Right"
@@ -168,7 +169,7 @@ export default function ExerciseSessionPage() {
     : exerciseId;
   // next set's side (for display in between-set screen)
   const nextSide = isUnilateral
-    ? (currentSet + 1) <= setsPerSide ? "Left" : "Right"
+    ? (currentSet + 1) <= setsPerSide ? t("exercise-session.leftSide") : t("exercise-session.rightSide")
     : null;
 
   // the exercise rule the user is *about* to perform — used to source the
@@ -398,7 +399,7 @@ export default function ExerciseSessionPage() {
       }
 
       resetActivityAccumulators();
-      router.navigate("/(tabs)/exercise");
+      router.replace("/(tabs)/exercise");
       return;
     } else {
       // more sets to go — show between-set summary card and queue the gesture
@@ -559,20 +560,20 @@ export default function ExerciseSessionPage() {
               repCountRef.current = 0;
               clearTimer();
               stopTracking();
-              router.navigate("/(tabs)/exercise");
+              router.replace("/(tabs)/exercise");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
           >
             <Ionicons name="chevron-back" size={18} color="#3D2F27" />
-            <Text style={styles.backText}>Back</Text>
+              <Text style={styles.backText}>{t("exercise-session.back")}</Text>
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
           <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
-        <Text style={styles.pageTitle}>{title} Session</Text>
+        <Text style={styles.pageTitle}>{title} {t("exercise-session.session")}</Text>
         <Text style={styles.pageSub}>
           {exerciseName}
         </Text>
@@ -592,12 +593,12 @@ export default function ExerciseSessionPage() {
               {isModelLoading ? (
                 <>
                   <ActivityIndicator size="large" color={warmRed} />
-                  <Text style={styles.cameraHint}>Loading model...</Text>
+                  <Text style={styles.cameraHint}>{t("exercise-session.loadingModel")}</Text>
                 </>
               ) : modelError ? (
                 <>
                   <Ionicons name="alert-circle-outline" size={34} color={warmRed} />
-                  <Text style={[styles.cameraHint, { color: warmRed }]}>Model failed to load</Text>
+                  <Text style={[styles.cameraHint, { color: warmRed }]}>{t("exercise-session.modelFailed")}</Text>
                   <Text style={styles.cameraSmall}>
                     {modelError.message}
                   </Text>
@@ -605,15 +606,15 @@ export default function ExerciseSessionPage() {
               ) : !hasPermission ? (
                 <>
                   <Ionicons name="camera-outline" size={34} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Camera access needed</Text>
-                  <Text style={styles.cameraSmall}>Tap Start Monitoring to enable camera</Text>
+                  <Text style={styles.cameraHint}>{t("exercise-session.cameraNeeded")}</Text>
+                  <Text style={styles.cameraSmall}>{t("exercise-session.enableCamera")}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="camera-outline" size={40} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Ready to monitor</Text>
+                  <Text style={styles.cameraHint}>{t("exercise-session.readyToMonitor")}</Text>
                   <Text style={styles.cameraSmall}>
-                    {upcomingRule?.cameraPrompt ?? "Place your phone so your full body is visible."}
+                    {upcomingRule?.cameraPrompt ?? t("exercise-session.placePhone")}
                   </Text>
                 </>
               )}
@@ -653,7 +654,7 @@ export default function ExerciseSessionPage() {
               <Text style={[styles.scoreText, { color: scoreColor(currentScore) }]}>
                 {currentScore}
               </Text>
-              <Text style={styles.scoreLabel}>Form Score</Text>
+              <Text style={styles.scoreLabel}>{t("exercise-session.formScore")}</Text>
             </View>
           )}
 
@@ -698,9 +699,9 @@ export default function ExerciseSessionPage() {
           {isTracking && secondsLeft !== null && (
             <View style={styles.timerOverlay}>
               <Text style={[styles.timerText, secondsLeft <= 5 && styles.timerTextUrgent]}>
-                {secondsLeft}s
+                {secondsLeft}
               </Text>
-              <Text style={styles.timerLabel}>remaining</Text>
+              <Text style={styles.timerLabel}>{t("exercise-session.secondsRemaining")}</Text>
             </View>
           )}
 
@@ -709,9 +710,9 @@ export default function ExerciseSessionPage() {
           {/* set indicator overlay */}
           {isTracking && totalSets > 1 && (
             <View style={styles.setOverlay}>
-              <Text style={styles.setText}>Set {currentSet}/{totalSets}</Text>
+              <Text style={styles.setText}>{t("exercise-session.set", { current: currentSet, total: totalSets })}</Text>
               {currentSide && (
-                <Text style={styles.sideText}>{currentSide} Side</Text>
+                <Text style={styles.sideText}>{currentSide}</Text>
               )}
             </View>
           )}
@@ -738,7 +739,7 @@ export default function ExerciseSessionPage() {
         {isTracking && visionTargetReps !== null && repCount !== null && (
           <View style={[styles.repCounterBar, repFlash && styles.repCounterFlash]}>
             <Text style={[styles.repCounterText, repCount >= visionTargetReps && { color: warmRed }]}>
-              {repCount} / {visionTargetReps} reps
+              {t("exercise-session.repCount", { current: repCount, total: visionTargetReps })}
             </Text>
             {repFlash && (
               <Text style={styles.repCountedLabel}>Rep counted!</Text>
@@ -749,7 +750,7 @@ export default function ExerciseSessionPage() {
         {/* error display */}
         {modelError && (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>Model failed to load: {modelError.message}</Text>
+            <Text style={styles.errorText}>{t("exercise-session.modelFailed")} {modelError.message}</Text>
           </View>
         )}
         {visionError && (
@@ -762,19 +763,19 @@ export default function ExerciseSessionPage() {
         {setComplete && !isTracking && !showSummary && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
-              Set {currentSet}/{totalSets} Complete!
+              {t("exercise-session.setComplete", { current: currentSet, total: totalSets })}
             </Text>
             {isUnilateral && currentSet === setsPerSide && (
               <View style={styles.switchSidesBox}>
                 <Ionicons name="swap-horizontal" size={24} color={colors.accent} />
                 <Text style={styles.switchSidesText}>
-                  Switch to your Right Side
+                  {t("exercise-session.switchSide")}
                 </Text>
               </View>
             )}
             {nextSide && (
               <Text style={styles.sideLabel}>
-                Next: {nextSide} Side
+                {t("exercise-session.next")} {nextSide}
               </Text>
             )}
           </View>
@@ -783,22 +784,22 @@ export default function ExerciseSessionPage() {
         {/* session summary */}
         {showSummary && !isTracking && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Session Summary</Text>
+          <Text style={styles.cardTitle}>{t("exercise-session.sessionSummary")}</Text>
             {avgScore !== null ? (
               <>
                 <View style={styles.feedbackRow}>
-                  <Text style={styles.feedbackLabel}>Average Score:</Text>
+                  <Text style={styles.feedbackLabel}>{t("exercise-session.averageScore")}</Text>
                   <Text style={[styles.feedbackValue, { color: scoreColor(avgScore) }]}>
                     {avgScore} / 100
                   </Text>
                 </View>
                 <View style={styles.feedbackRow}>
-                  <Text style={styles.feedbackLabel}>Frames Analyzed:</Text>
+                  <Text style={styles.feedbackLabel}>{t("exercise-session.framesAnalyzed")}</Text>
                   <Text style={styles.feedbackValue}>{framesAnalyzed}</Text>
                 </View>
                 {topViolations.length > 0 && (
                   <View style={styles.tipBox}>
-                    <Text style={styles.tipTitle}>Top Issues</Text>
+                    <Text style={styles.tipTitle}>{t("exercise-session.topIssues")}</Text>
                     {topViolations.map(([msg, event]) => (
                       <Text key={msg} style={styles.tipText}>
                         {"\u2022"} {msg} ({event.count}x)
@@ -808,7 +809,7 @@ export default function ExerciseSessionPage() {
                 )}
               </>
             ) : (
-              <Text style={styles.feedbackValue}>No data recorded</Text>
+              <Text style={styles.feedbackValue}>{t("exercise-session.noDataRecorded")}</Text>
             )}
           </View>
         )}
@@ -816,13 +817,13 @@ export default function ExerciseSessionPage() {
         {/* tips card when truly idle (no gesture flow running) */}
         {trackingMode === "idle" && !showSummary && !setComplete && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Tips</Text>
+            <Text style={styles.cardTitle}>{t("exercise-session.tips")}</Text>
             <View style={styles.tipBox}>
               <Text style={styles.tipText}>
-                {"\u2022"} Place your phone so your full body is visible{"\n"}
-                {"\u2022"} Use good lighting{"\n"}
-                {"\u2022"} Stand ~6-8 feet away{"\n"}
-                {"\u2022"} Front-facing camera works best
+                {"\u2022"} {t("exercise-session.tip1")} {"\n"}
+                {"\u2022"} {t("exercise-session.tip2")} {"\n"}
+                {"\u2022"} {t("exercise-session.tip3")} {"\n"}
+                {"\u2022"} {t("exercise-session.tip4")}
               </Text>
             </View>
           </View>
@@ -839,7 +840,7 @@ export default function ExerciseSessionPage() {
               onPress={handleSetComplete}
             >
               <Ionicons name="square" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Stop Monitoring</Text>
+              <Text style={styles.primaryText}>{t("exercise-session.stopMonitoring")}</Text>
             </TouchableOpacity>
           ) : trackingMode === "waiting_for_gesture" ||
             trackingMode === "countdown" ? (
@@ -865,7 +866,7 @@ export default function ExerciseSessionPage() {
                   onPress={() => setShowSummary(false)}
                 >
                   <Ionicons name="close" size={16} color="#5B4636" />
-                  <Text style={styles.secondaryText}>Dismiss</Text>
+                  <Text style={styles.secondaryText}>{t("exercise-session.dismiss")}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -876,7 +877,7 @@ export default function ExerciseSessionPage() {
               >
                 <Ionicons name="play" size={16} color="#FFF" />
                 <Text style={styles.primaryText}>
-                  {isModelLoading ? "Loading..." : "Start Monitoring"}
+                  {isModelLoading ? t("exercise-session.loading") : t("exercise-session.startMonitoring")}
                 </Text>
               </TouchableOpacity>
             </>

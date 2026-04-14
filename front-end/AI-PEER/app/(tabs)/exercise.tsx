@@ -10,11 +10,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { usePrefs } from "../../src/prefs-context";
 import { getExerciseVideos } from "@/src/video";
 import { getTodaysWorkout } from "@/src/daily-workout";
 import { WorkoutCombo } from "@/src/workout-combos";
 import { getExerciseRules } from "@/src/vision/exercises";
-import { usePrefs } from "../../src/prefs-context";
+import { useTranslation } from "react-i18next";
 import { type ContrastPalette } from "../../src/theme";
 
 type CategoryKey = "warmup" | "strength" | "balance";
@@ -29,45 +30,46 @@ type Category = {
   iconBg: string;
 };
 
-const CATEGORIES: Category[] = [
-  {
-    key: "warmup",
-    title: "Warm-Up",
-    subtitle: "Gentle movements to loosen muscles",
-    purpose: "Light activities to prepare for exercise",
-    score: 92,
-    icon: "flame-outline",
-    iconBg: "#FFE9DA",
-  },
-  {
-    key: "strength",
-    title: "Strength",
-    subtitle: "Targeted exercises to increase strength",
-    purpose: "Builds muscle power",
-    score: 88,
-    icon: "barbell-outline",
-    iconBg: "#E8F0FF",
-  },
-  {
-    key: "balance",
-    title: "Balance",
-    subtitle: "Exercises to enhance balance and prevent falls",
-    purpose: "Improves stability and coordination",
-    score: 90,
-    icon: "walk-outline",
-    iconBg: "#F0E9FF",
-  },
-];
-
 function exerciseName(id: string): string {
   return getExerciseRules(id)?.name ?? id;
 }
 
 export default function ExercisePage() {
   const router = useRouter();
-  const { colors } = usePrefs();
+  const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [todaysWorkout, setTodaysWorkout] = useState<WorkoutCombo | null>(null);
+
+  const CATEGORIES: Category[] = [
+    {
+      key: "warmup",
+      title: t("exercise.warmupTitle"),
+      subtitle: t("exercise.warmupSubtitle"),
+      purpose: t("exercise.warmupPurpose"),
+      score: 92,
+      icon: "flame-outline",
+      iconBg: "#FFE9DA",
+    },
+    {
+      key: "strength",
+      title: t("exercise.strengthTitle"),
+      subtitle: t("exercise.strengthSubtitle"),
+      purpose: t("exercise.strengthPurpose"),
+      score: 88,
+      icon: "barbell-outline",
+      iconBg: "#E8F0FF",
+    },
+    {
+      key: "balance",
+      title: t("exercise.balanceTitle"),
+      subtitle: t("exercise.balanceSubtitle"),
+      purpose: t("exercise.balancePurpose"),
+      score: 90,
+      icon: "walk-outline",
+      iconBg: "#F0E9FF",
+    },
+  ];
 
   useEffect(() => {
     getTodaysWorkout().then(setTodaysWorkout).catch(console.error);
@@ -80,7 +82,7 @@ export default function ExercisePage() {
   });
 
   const startCategory = (key: CategoryKey) => {
-    router.push({
+    router.replace({
       pathname: "/(tabs)/exercise-session",
       params: { cat: key },
     });
@@ -91,7 +93,7 @@ export default function ExercisePage() {
   };
 
   const openVideo = (cat: CategoryKey, exerciseId: string, name: string) => {
-    router.push({
+    router.replace({
       pathname: "/(tabs)/video-confirm",
       params: {
         cat,
@@ -113,18 +115,24 @@ export default function ExercisePage() {
               size={20}
               color={colors.accent}
             />
-            <Text style={styles.brand}>AI PEER</Text>
+            <View>
+              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("exercise.exercisePage")}</Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }} />
-          <Ionicons name="moon-outline" size={18} color={colors.muted} />
-          <Ionicons
-            name="notifications-outline"
-            size={18}
-            color={colors.muted}
-            style={{ marginLeft: 12 }}
-          />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => router.replace("/tutorial?next=tabs")}
+              accessibilityLabel={t("settings.help")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
+            </TouchableOpacity>
+            <Ionicons name="moon-outline" size={18} color={colors.muted} />
+            <Ionicons name="notifications-outline" size={18} color={colors.muted} />
+          </View>
         </View>
-        <Text style={styles.subtitle}>Exercise</Text>
 
         {/* Segmented */}
         <View style={styles.segmentOuter}>
@@ -134,26 +142,23 @@ export default function ExercisePage() {
             onPress={() => router.replace("/(tabs)")}
           >
             <Ionicons name="home-outline" size={14} />
-            <Text style={styles.segmentText}>Overview</Text>
+            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>{t("exercise.overview")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.segmentBtn, styles.segmentActive]}
-            activeOpacity={1}
           >
             <Ionicons name="barbell-outline" size={14} color="#FFF" />
-            <Text style={[styles.segmentText, styles.segmentTextActive]}>
-              Exercise
+            <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>
+              {t("exercise.exercise")}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Center heading */}
         <View style={styles.centerHead}>
-          <Text style={styles.centerTitle}>Exercise Categories</Text>
-          <Text style={styles.centerSub}>
-            Choose a category to start your workout
-          </Text>
+          <Text style={styles.centerTitle}>{t("exercise.exerciseCategories")}</Text>
+          <Text style={styles.centerSub}>{t("exercise.categoriesDescription")}</Text>
         </View>
 
         {/* Today's Workout */}
@@ -163,13 +168,13 @@ export default function ExercisePage() {
               <View style={[styles.iconCircle, { backgroundColor: "#FFE9DA" }]}>
                 <Ionicons name="fitness-outline" size={18} color="#8A5A3C" />
               </View>
-              <Text style={styles.todayTitle}>Today&apos;s Workout</Text>
+              <Text style={styles.todayTitle}>{t("exercise.todayWorkout")}</Text>
             </View>
 
             {([
-              { label: "Warm-Up", ids: todaysWorkout.warmup, cat: "warmup" as CategoryKey },
-              { label: "Strength", ids: todaysWorkout.strength, cat: "strength" as CategoryKey },
-              { label: "Balance", ids: todaysWorkout.balance, cat: "balance" as CategoryKey },
+              { label: t("exercise.warmupTitle"), ids: todaysWorkout.warmup, cat: "warmup" as CategoryKey },
+              { label: t("exercise.strengthTitle"), ids: todaysWorkout.strength, cat: "strength" as CategoryKey },
+              { label: t("exercise.balanceTitle"), ids: todaysWorkout.balance, cat: "balance" as CategoryKey },
             ]).map((group) => (
               <View key={group.label} style={styles.todayGroup}>
                 <Text style={styles.todayGroupLabel}>{group.label}</Text>
@@ -213,7 +218,7 @@ export default function ExercisePage() {
                 <View style={styles.infoStrip}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.infoText}>
-                      <Text style={styles.infoLabel}>Purpose:</Text> {c.purpose}
+                      <Text style={styles.infoLabel}>{t("exercise.purpose")}</Text> {c.purpose}
                     </Text>
                   </View>
                 </View>
@@ -231,7 +236,7 @@ export default function ExercisePage() {
                         size={18}
                         color={colors.text}
                       />
-                      <Text style={styles.folderTitle}>Videos</Text>
+                      <Text style={styles.folderTitle}>{t("exercise.videos")}</Text>
                       <View style={styles.countPill}>
                         <Text style={styles.countText}>{videos.length}</Text>
                       </View>
@@ -288,7 +293,7 @@ export default function ExercisePage() {
                   onPress={() => startCategory(c.key)}
                 >
                   <Ionicons name="play" size={16} color="#FFF" />
-                  <Text style={styles.startText}>Start {c.title}</Text>
+                  <Text style={styles.startText}>{t("exercise.start")} {c.title}</Text>
                 </TouchableOpacity>
               </View>
             );
@@ -310,23 +315,22 @@ const createStyles = (colors: ContrastPalette) => {
 
   return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
-  container: { paddingHorizontal: 16, paddingBottom: 12 },
+  container: { paddingHorizontal: 16, paddingBottom: 12, gap: 14 },
 
-  header: { paddingTop: 6, flexDirection: "row", alignItems: "center" },
+  header: { paddingTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
-  subtitle: { marginTop: 4, marginBottom: 10, color: colors.muted },
+  subtitle: { marginTop: 3, marginBottom: 6, color: colors.muted },
 
   segmentOuter: {
     backgroundColor: beigeTrack,
     borderRadius: 999,
-    padding: 6,
+    padding: 4,
     flexDirection: "row",
-    gap: 8,
-    marginBottom: 14,
+    gap: 6,
   },
   segmentBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",

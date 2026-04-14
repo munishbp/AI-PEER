@@ -314,7 +314,7 @@ export default function TugTestPage() {
           <TouchableOpacity
             onPress={() => {
               handleAbort();
-              router.navigate("/(tabs)/balance-test");
+              router.replace("/(tabs)/balance-test");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
@@ -485,7 +485,7 @@ export default function TugTestPage() {
               <TouchableOpacity
                 style={styles.secondaryBtn}
                 activeOpacity={0.9}
-                onPress={() => router.navigate("/(tabs)/balance-test")}
+                onPress={() => router.replace("/(tabs)/balance-test")}
               >
                 <Ionicons name="arrow-back" size={16} color="#5B4636" />
                 <Text style={styles.secondaryText}>Back to Tests</Text>

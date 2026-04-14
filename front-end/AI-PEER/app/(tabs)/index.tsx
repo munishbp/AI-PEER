@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -23,6 +24,7 @@ export default function Home() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, token: authToken } = useAuth();
   const [fesI, setFesI] = useState<number | null>(null);
@@ -88,10 +90,18 @@ export default function Home() {
             <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>Fall Risk Assessment</Text>
+              <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("home.subtitle")}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => router.replace("/tutorial?next=tabs")}
+              accessibilityLabel={t("settings.help")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
+            </TouchableOpacity>
             <Ionicons name="moon-outline" size={18} color={colors.muted} />
             <Ionicons name="notifications-outline" size={18} color={colors.muted} />
           </View>
@@ -100,17 +110,17 @@ export default function Home() {
         {/* Segmented (Overview | Exercise) */}
         <View style={styles.segmentOuter}>
           <TouchableOpacity style={[styles.segmentBtn, styles.segmentActive]}>
-            <Ionicons name="home-outline" size={14} />
-            <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>Overview</Text>
+            <Ionicons name="home-outline" size={14} color="#FFF" />
+            <Text style={[styles.segmentText, styles.segmentTextActive, { fontSize: scaled.base }]}>{t("home.overview")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.segmentBtn}
             activeOpacity={0.85}
-            onPress={() => router.push("/(tabs)/exercise")}
+            onPress={() => router.replace("/(tabs)/exercise")}
           >
             <Ionicons name="barbell-outline" size={14} />
-            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>Exercise</Text>
+            <Text style={[styles.segmentText, { fontSize: scaled.base }]}>{t("home.exercise")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -125,16 +135,16 @@ export default function Home() {
 
         {/* Action Row 1 */}
         <View style={styles.rowTwo}>
-          <PillButton icon="pulse-outline" label="Balance Test" onPress={() => {router.push("/(tabs)/balance-test")}} scaled={scaled} colors={colors} />
-          <PillButton icon="clipboard-outline" label="Questionnaire" onPress={() => {router.push("/questionnaire")}} scaled={scaled} colors={colors} />
+          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {router.replace("/(tabs)/balance-test")}} scaled={scaled} colors={colors} />
+          <PillButton icon="clipboard-outline" label={t("home.questionnaire")} onPress={() => {router.push("/questionnaire")}} scaled={scaled} colors={colors} />
         </View>
 
         {/* Let's Chat */}
         <View style={styles.rowOne}>
           <PillButton
             icon="chatbubble-ellipses-outline"
-            label="Let's Chat"
-            onPress={() => router.push("/(tabs)/ai-chat")}
+            label={t("home.letsChat")}
+            onPress={() => router.replace("/(tabs)/ai-chat")}
             full
             scaled={scaled}
             colors={colors}
@@ -215,7 +225,7 @@ const createStyles = (colors: ContrastPalette) => StyleSheet.create({
       android: { elevation: 1.5 },
     }),
   },
-  cardTitle: { fontWeight: "800", fontSize: 14 },
+  cardTitle: { fontWeight: "800", fontSize: 14, marginBottom: 8 },
 
   scoreCaption: {
     textAlign: "center",

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -20,26 +21,6 @@ interface Question {
   text: string;
 }
 
-const questions: Question[] = [
-  { id: 1, text: "Getting dressed or undressed" },
-  { id: 2, text: "Taking a bath or shower" },
-  { id: 3, text: "Getting in or out of a chair" },
-  { id: 4, text: "Going up or down stairs" },
-  { id: 5, text: "Reaching for something above your head or on the ground" },
-  { id: 6, text: "Walking up or down a slope" },
-  {
-    id: 7,
-    text: "Going out to a social event (e.g. religious service, family gathering or club meeting)",
-  },
-];
-
-const answerOptions = [
-  { value: "1", label: "Not at all concerned", score: 1 },
-  { value: "2", label: "Somewhat concerned", score: 2 },
-  { value: "3", label: "Fairly concerned", score: 3 },
-  { value: "4", label: "Very concerned", score: 4 },
-];
-
 type AssessmentView = "start" | "questions" | "results";
 
 export default function Questionnaire() {
@@ -47,8 +28,26 @@ export default function Questionnaire() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const warmRed = colors.accent;
+
+  const questions: Question[] = [
+    { id: 1, text: t("questionnaire.question1") },
+    { id: 2, text: t("questionnaire.question2") },
+    { id: 3, text: t("questionnaire.question3") },
+    { id: 4, text: t("questionnaire.question4") },
+    { id: 5, text: t("questionnaire.question5") },
+    { id: 6, text: t("questionnaire.question6") },
+    { id: 7, text: t("questionnaire.question7") },
+  ];
+
+  const answerOptions = [
+    { value: "1", label: t("questionnaire.notAtAll"), score: 1 },
+    { value: "2", label: t("questionnaire.somewhat"), score: 2 },
+    { value: "3", label: t("questionnaire.fairly"), score: 3 },
+    { value: "4", label: t("questionnaire.very"), score: 4 },
+  ];
 
   const handleStart = () => {
     setView("questions");
@@ -62,7 +61,7 @@ export default function Questionnaire() {
 
   const handleNext = () => {
     if (!answers[questions[currentQuestion].id]) {
-      Alert.alert("Error", "Please select an answer before continuing");
+      Alert.alert(t("questionnaire.errorTitle"), t("questionnaire.notAnsweredError"));
       return;
     }
 
@@ -93,48 +92,33 @@ export default function Questionnaire() {
   const getScoreInterpretation = (score: number) => {
     if (score >= 7 && score <= 13) {
       return {
-        level: "Low Concern",
+        level: t("questionnaire.lowConcern"),
         color: "#38A169",
         bgColor: "#F0FFF4",
         description:
-          "You have expressed low concern about falling during daily activities. Continue with your current activities and maintain your strength and balance.",
-        recommendations: [
-          "Continue regular physical activity",
-          "Maintain home safety practices",
-          "Schedule annual check-ups with your doctor",
-        ],
+          t("questionnaire.lowDescription"),
+        recommendations: t("questionnaire.lowRecs", { returnObjects: true }) as string[],
       };
     }
 
     if (score >= 14 && score <= 20) {
       return {
-        level: "Moderate Concern",
+        level: t("questionnaire.moderateConcern"),
         color: "#D69E2E",
         bgColor: "#FFFBEB",
         description:
-          "You have expressed moderate concern about falling. Consider discussing these concerns with your healthcare provider and implementing fall prevention strategies.",
-        recommendations: [
-          "Talk to your doctor about fall prevention",
-          "Consider a balance and strength training program",
-          "Review your medications with your healthcare provider",
-          "Conduct a home safety assessment",
-        ],
+          t("questionnaire.moderateDescription"),
+        recommendations: t("questionnaire.moderateRecs", { returnObjects: true }) as string[],
       };
     }
 
     return {
-      level: "High Concern",
+      level: t("questionnaire.highConcern"),
       color: "#E53E3E",
       bgColor: "#FED7D7",
       description:
-        "You have expressed high concern about falling during daily activities. We strongly recommend discussing these concerns with your healthcare provider as soon as possible.",
-      recommendations: [
-        "Schedule an appointment with your doctor promptly",
-        "Ask about a referral to a physical therapist",
-        "Have a thorough home safety evaluation",
-        "Consider using assistive devices if recommended",
-        "Review all medications with your healthcare provider",
-      ],
+        t("questionnaire.highDescription"),
+      recommendations: t("questionnaire.highRecs", { returnObjects: true }) as string[],
     };
   };
 
@@ -152,14 +136,14 @@ export default function Questionnaire() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="clipboard-outline" size={20} color={colors.accent} />
               <View>
-                <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
-                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-                  Fall Risk Questionnaire
-                </Text>
+                    <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
+                    <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
+                      {t("questionnaire.subtitle")}
+                    </Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={[styles.backText, { fontSize: scaled.h1 / 2 }]}>Quit</Text>
+              <Text style={[styles.backText, { fontSize: scaled.h1/2}]}>{t("questionnaire.quit")}</Text>
             </TouchableOpacity>
           </View>
 
@@ -173,25 +157,17 @@ export default function Questionnaire() {
               }}
             >
               <Ionicons name="clipboard-outline" size={24} color={warmRed} />
-              <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>Instructions</Text>
+              <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>{t("questionnaire.instructionsTitle")}</Text>
             </View>
 
             <View style={styles.infoBox}>
-              <Text style={[styles.infoText, { fontSize: scaled.base }]}>
-                - 7 quick questions
-              </Text>
-              <Text style={[styles.infoText, { fontSize: scaled.base }]}>
-                - Rate how concerned you would be about falling during each activity
-              </Text>
-              <Text style={[styles.infoText, { fontSize: scaled.base }]}>
-                - If you do not do an activity, answer how concerned you would be if you did
-              </Text>
+              <Text style={[styles.infoText, { fontSize: scaled.base }]}>- {t("questionnaire.info1")}</Text>
+              <Text style={[styles.infoText, { fontSize: scaled.base }]}>- {t("questionnaire.info2")}</Text>
+              <Text style={[styles.infoText, { fontSize: scaled.base }]}>- {t("questionnaire.info3")}</Text>
             </View>
 
             <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
-              <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>
-                Begin Assessment
-              </Text>
+              <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>{t("questionnaire.beginAssessment")}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -211,13 +187,11 @@ export default function Questionnaire() {
               <Ionicons name="clipboard-outline" size={20} color={colors.accent} />
               <View>
                 <Text style={[styles.brand, { fontSize: scaled.h2 }]}>AI PEER</Text>
-                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-                  Fall Risk Questionnaire
-                </Text>
+                <Text style={[styles.subtitle, { fontSize: scaled.small }]}>{t("questionnaire.subtitle")}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={[styles.backText, { fontSize: scaled.h1 / 2 }]}>Quit</Text>
+              <Text style={[styles.backText, { fontSize: scaled.h1/2}]}>{t("questionnaire.quit")}</Text>
             </TouchableOpacity>
           </View>
 
@@ -225,16 +199,14 @@ export default function Questionnaire() {
             <View style={{ marginBottom: 16 }}>
               <View style={styles.badge}>
                 <Text style={[styles.badgeText, { fontSize: scaled.small }]}>
-                  Question {currentQuestion + 1} of {questions.length}
+                  {t("questionnaire.questionOf", { current: currentQuestion + 1, total: questions.length })}
                 </Text>
               </View>
               <ProgressBar progress={progress} />
             </View>
 
             <View style={styles.questionBox}>
-              <Text style={[styles.questionLabel, { fontSize: scaled.small }]}>
-                How concerned are you that you might fall:
-              </Text>
+              <Text style={[styles.questionLabel, { fontSize: scaled.small }]}>{t("questionnaire.howConcerned")}</Text>
               <Text style={[styles.questionText, { fontSize: scaled.h3 }]}>{currentQ.text}</Text>
             </View>
 
@@ -291,7 +263,7 @@ export default function Questionnaire() {
                     { fontSize: Math.round(scaled.h1 * 0.5) },
                   ]}
                 >
-                  Back
+                  {t("questionnaire.back")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
@@ -301,15 +273,11 @@ export default function Questionnaire() {
                     { fontSize: Math.round(scaled.h1 * 0.5) },
                   ]}
                 >
-                  {currentQuestion === questions.length - 1 ? "View Results" : "Next"}
+                  {currentQuestion === questions.length - 1 ? t("questionnaire.viewResults") : t("questionnaire.next")}
                 </Text>
                 <Ionicons name="arrow-forward" size={16} color="#FFF" />
               </TouchableOpacity>
             </View>
-
-            <Text style={[styles.progressText, { fontSize: scaled.small }]}>
-              {Object.keys(answers).length} of {questions.length} questions answered
-            </Text>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -328,7 +296,7 @@ export default function Questionnaire() {
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
               <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-                Fall Risk Questionnaire
+                {t("questionnaire.subtitle")}
               </Text>
             </View>
           </View>
@@ -344,26 +312,26 @@ export default function Questionnaire() {
             }}
           >
             <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
-            <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>Assessment Complete</Text>
+            <Text style={[styles.cardTitle, { fontSize: scaled.h3 }]}>{t("questionnaire.assessmentComplete")}</Text>
           </View>
 
           <Text style={[styles.thankYouText, { fontSize: scaled.h3 }]}>
-            Thank you for completing the assessment!
+            {t("questionnaire.thankYou")}
           </Text>
           <Text style={[styles.resultsText, { fontSize: scaled.base }]}>
-            Here are your results:
+            {t("questionnaire.hereAreResults")}
           </Text>
 
           <View style={[styles.scoreBox, { backgroundColor: interpretation.bgColor }]}>
             <Text style={[styles.scoreLabel, { fontSize: scaled.base }]}>
-              Your Fear of Falling Score
+              {t("questionnaire.yourScoreLabel")}
             </Text>
             <Text
               style={[styles.scoreValue, { color: interpretation.color, fontSize: scaled.h1 }]}
             >
               {score}
             </Text>
-            <Text style={[styles.scoreOutOf, { fontSize: scaled.small }]}>out of 28</Text>
+            <Text style={[styles.scoreOutOf, { fontSize: scaled.small }]}>{t("questionnaire.outOf")}</Text>
             <View style={[styles.levelBadge, { backgroundColor: interpretation.color }]}>
               <Text style={[styles.levelText, { fontSize: scaled.base }]}>
                 {interpretation.level}
@@ -372,14 +340,14 @@ export default function Questionnaire() {
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>What This Means:</Text>
+            <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>{t("questionnaire.whatThisMeans")}</Text>
             <Text style={[styles.sectionText, { fontSize: scaled.base }]}>
               {interpretation.description}
             </Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>Recommendations:</Text>
+            <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>{t("questionnaire.recommendations")}</Text>
             {interpretation.recommendations.map((rec) => (
               <View key={rec} style={styles.recItem}>
                 <Ionicons name="checkmark-circle-outline" size={16} color={warmRed} />
@@ -389,13 +357,13 @@ export default function Questionnaire() {
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>Your Responses:</Text>
+            <Text style={[styles.sectionTitle, { fontSize: scaled.base }]}>{t("questionnaire.yourResponses")}</Text>
             {questions.map((q) => (
               <View key={q.id} style={styles.responseItem}>
                 <Text style={[styles.responseText, { fontSize: scaled.base }]}>{q.text}</Text>
                 <View style={styles.responseBadge}>
                   <Text style={[styles.responseBadgeText, { fontSize: scaled.small }]}>
-                    Score: {answers[q.id]}
+                    {t("questionnaire.score")}: {answers[q.id]}
                   </Text>
                 </View>
               </View>
@@ -412,9 +380,7 @@ export default function Questionnaire() {
             }}
           >
             <TouchableOpacity style={styles.secondaryButton} onPress={handleRestart}>
-              <Text style={[styles.secondaryButtonText, { fontSize: scaled.h1 / 2 }]}>
-                Take Again
-              </Text>
+              <Text style={[styles.secondaryButtonText, { fontSize: scaled.h1/2}]}>{t("questionnaire.takeAgain")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
@@ -425,16 +391,14 @@ export default function Questionnaire() {
                     answers,
                     completedAt: new Date().toISOString(),
                   });
-                  Alert.alert("Success", "Results saved to your profile");
+                  Alert.alert(t("questionnaire.savedTitle"), t("questionnaire.savedMessage"));
                   router.back();
                 } catch {
-                  Alert.alert("Error", "Unable to save results. Please try again.");
+                  Alert.alert(t("questionnaire.errorTitle"), t("questionnaire.unableToSaveResults"));
                 }
               }}
             >
-              <Text style={[styles.primaryButtonText, { fontSize: scaled.h1 / 2 }]}>
-                Save Results
-              </Text>
+              <Text style={[styles.primaryButtonText, { fontSize: scaled.h1/2 }]}>{t("questionnaire.saveResults")}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { scaleFontSizes, type ContrastPalette } from "../../src/theme";
 import { usePrefs } from "../../src/prefs-context";
@@ -69,9 +70,14 @@ export default function ContactsScreen() {
   const [editing, setEditing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const { scaled, colors } = usePrefs();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, token: authToken } = useAuth();
 
+  const FAMILY_ROLES = t("contacts.familyRoles", { returnObjects: true }) as string[];
+  const MEDICAL_SPECIALTIES = t("contacts.medicalSpecialties", { returnObjects: true }) as string[];
+
+  // Form state for add/edit modal
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -127,13 +133,15 @@ export default function ContactsScreen() {
     setShowAdd(true);
   };
 
+  // Add or update a contact
+  const labelKey = tab === "family" ? "role" : "specialty";
   const handleSave = async () => {
     if (!newName.trim() || !newPhone.trim()) {
-      Alert.alert("Missing Info", "Please enter a name and phone number.");
+      Alert.alert(t("contacts.missingInfo"), t("contacts.missingInfoDescription"));
       return;
     }
     if (tab !== "emergency" && !newLabel) {
-      Alert.alert("Missing Info", `Please select a ${tab === "family" ? "role" : "specialty"}.`);
+      Alert.alert(t("contacts.missingInfo"), t("contacts.selectLabel", { label: t(`contacts.${labelKey}`) }));
       return;
     }
 
@@ -165,10 +173,10 @@ export default function ContactsScreen() {
   };
 
   const handleDelete = (contactId: string) => {
-    Alert.alert("Delete Contact", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("contacts.deleteContact"), t("contacts.deleteContactDescription"), [
+      { text: t("contacts.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("contacts.delete"),
         style: "destructive",
         onPress: async () => {
           const updated = { ...contacts };
@@ -195,7 +203,9 @@ export default function ContactsScreen() {
   };
 
   const currentList = tab === "emergency" ? contacts.emergency : tab === "family" ? contacts.family : contacts.medical;
-  const title = tab === "emergency" ? "Emergency Contacts" : tab === "family" ? "Family Members" : "Medical Contacts";
+
+  const title = tab === "emergency" ? t("contacts.emergencyContacts") : tab === "family" ? t("contacts.familyMembers") : t("contacts.medicalContacts");
+
   const titleIconName: keyof typeof Ionicons.glyphMap =
     tab === "emergency" ? "warning-outline" : tab === "family" ? "people-outline" : "medkit-outline";
 
@@ -206,7 +216,7 @@ export default function ContactsScreen() {
   };
 
   const labelOptions = tab === "family" ? FAMILY_ROLES : MEDICAL_SPECIALTIES;
-  const labelPlaceholder = tab === "family" ? "Select role" : "Select specialty";
+  const labelPlaceholder = tab === "family" ? t("contacts.selectRole") : t("contacts.selectSpecialty");
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -216,7 +226,7 @@ export default function ContactsScreen() {
             <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2 / 2 }]}>Contact Lists</Text>
+              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2 / 2, color: colors.muted }]}>{t("contacts.contactLists")}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -227,7 +237,7 @@ export default function ContactsScreen() {
 
         <View style={styles.segmentOuter}>
           <SegmentButton
-            label="Urgent"
+            label={t("contacts.urgent")}
             icon="warning-outline"
             active={tab === "emergency"}
             onPress={() => {
@@ -239,7 +249,7 @@ export default function ContactsScreen() {
             colors={colors}
           />
           <SegmentButton
-            label="Family"
+            label={t("contacts.family")}
             icon="people-outline"
             active={tab === "family"}
             onPress={() => {
@@ -251,7 +261,7 @@ export default function ContactsScreen() {
             colors={colors}
           />
           <SegmentButton
-            label="Medical"
+            label={t("contacts.medical")}
             icon="medkit-outline"
             active={tab === "medical"}
             onPress={() => {
@@ -291,7 +301,7 @@ export default function ContactsScreen() {
               <ActivityIndicator color={colors.accent} />
             </View>
           ) : currentList.length === 0 ? (
-            <Text style={[styles.emptyText, { fontSize: scaled.small }]}>No contacts yet. Tap + to add one.</Text>
+            <Text style={[styles.emptyText, { fontSize: scaled.small }]}>{t("contacts.noContacts")}</Text>
           ) : (
             currentList.map((c, index) => (
               <View
@@ -309,7 +319,7 @@ export default function ContactsScreen() {
                     <Ionicons name="person-outline" size={18} color={colors.accent} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.contactName, { fontSize: scaled.h1 / 2 }]}>{c.name}</Text>
+                    <Text style={[styles.contactName, { fontSize: scaled.h1/2}]}>{c.name}</Text>
                     <Text style={[styles.contactSubtitle, { fontSize: scaled.small }]}>{getSubtitle(c)}</Text>
                   </View>
                 </View>
@@ -344,19 +354,19 @@ export default function ContactsScreen() {
             <View style={styles.modalOverlay}>
               <View style={styles.modalContent}>
                 <Text style={[styles.modalTitle, { fontSize: scaled.h2 }]}>
-                  {editingContactId ? "Edit" : "Add"} {tab === "emergency" ? "Urgent" : tab === "family" ? "Family" : "Medical"} Contact
+                  {editingContactId ? t("contacts.edit") : t("contacts.add")} {tab === "emergency" ? t("contacts.urgent") : tab === "family" ? t("contacts.family") : t("contacts.medical")} {t("contacts.contact")}
                 </Text>
 
-                <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>Name</Text>
+                <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>{t("contacts.name")}</Text>
                 <TextInput
                   style={[styles.input, { fontSize: scaled.base }]}
                   value={newName}
                   onChangeText={setNewName}
-                  placeholder="Contact name"
+                  placeholder={t("contacts.contactNamePlaceholder")}
                   placeholderTextColor={colors.muted}
                 />
 
-                <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>Phone Number</Text>
+                <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>{t("contacts.phoneNumber")}</Text>
                 <TextInput
                   style={[styles.input, { fontSize: scaled.base }]}
                   value={newPhone}
@@ -368,7 +378,9 @@ export default function ContactsScreen() {
 
                 {tab !== "emergency" && (
                   <>
-                    <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>{tab === "family" ? "Role" : "Specialty"}</Text>
+                    <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>
+                      {tab === "family" ? t("contacts.role") : t("contacts.specialty")}
+                    </Text>
                     <TouchableOpacity style={[styles.input, { justifyContent: "center" }]} onPress={() => setShowLabelPicker(!showLabelPicker)}>
                       <Text style={{ fontSize: scaled.base, color: newLabel ? colors.text : colors.muted }}>
                         {newLabel || labelPlaceholder}
@@ -402,13 +414,13 @@ export default function ContactsScreen() {
                       setShowAdd(false);
                     }}
                   >
-                    <Text style={[styles.cancelBtnText, { fontSize: scaled.base }]}>Cancel</Text>
+                    <Text style={[styles.cancelBtnText, { fontSize: scaled.base }]}>{t("contacts.cancel")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
                     {saving ? (
                       <ActivityIndicator color="#FFF" size="small" />
                     ) : (
-                      <Text style={[styles.saveBtnText, { fontSize: scaled.base }]}>Save</Text>
+                      <Text style={[styles.saveBtnText, { fontSize: scaled.base }]}>{t("contacts.save")}</Text>
                     )}
                   </TouchableOpacity>
                 </View>

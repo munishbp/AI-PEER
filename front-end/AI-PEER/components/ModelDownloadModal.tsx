@@ -78,7 +78,7 @@ export default function ModelDownloadModal({
             <Ionicons name="information-circle-outline" size={20} color={subtleText} />
             <Text style={styles.sizeText}>
               Download size: ~{modelSizeMB}MB{'\n'}
-              Requires Wi-Fi recommended
+              Requires Wi-Fi
             </Text>
           </View>
 

@@ -14,18 +14,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Video, ResizeMode } from "expo-av";
 import { fetchVideoUrl, VideoResponse } from "@/src/video";
 import { useAuth } from "@/src/auth/AuthContext";
+import { useTranslation } from "react-i18next";
 import { usePrefs } from "../../src/prefs-context";
 import { type ContrastPalette } from "../../src/theme";
 
 type CatKey = "warmup" | "strength" | "balance" | "assessment";
-
-function prettyCat(cat?: string) {
-  if (cat === "warmup") return "Warm-Up";
-  if (cat === "strength") return "Strength";
-  if (cat === "balance") return "Balance";
-  if (cat === "assessment") return "Assessment";
-  return "Exercise";
-}
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -39,6 +32,7 @@ export default function VideoConfirmPage() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const warmRed = colors.accent;
   const { token } = useAuth();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     cat?: CatKey;
     video?: string;
@@ -48,8 +42,16 @@ export default function VideoConfirmPage() {
   }>();
   const backRoute = (params.backRoute ?? "/(tabs)/exercise") as any;
 
+  const prettyCat = (cat?: string) => {
+    if (cat === "warmup") return t("exercise.warmupTitle");
+    if (cat === "strength") return t("exercise.strengthTitle");
+    if (cat === "balance") return t("exercise.balanceTitle");
+    if (cat === "assessment") return "Assessment";
+    return t("exercise.exercise");
+  }
+
   const catTitle = useMemo(() => prettyCat(params.cat), [params.cat]);
-  const exerciseLabel = params.label ?? "Exercise";
+  const exerciseLabel = params.label ?? t("exercise.exercise");
 
   const [videoData, setVideoData] = useState<VideoResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,12 +61,12 @@ export default function VideoConfirmPage() {
   useEffect(() => {
     if (!params.video) {
       setLoading(false);
-      setError("No exercise selected");
+      setError(t("video-confirm.noExerciseSelected"));
       return;
     }
     if (!token) {
       setLoading(false);
-      setError("Not signed in");
+      setError(t("video-confirm.notSignedIn"));
       return;
     }
 
@@ -81,7 +83,7 @@ export default function VideoConfirmPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err.message || "Failed to load video");
+          setError(err.message || t("video-confirm.failedLoadVideo"));
           setLoading(false);
         }
       });
@@ -100,7 +102,7 @@ export default function VideoConfirmPage() {
     : "\u2014";
 
   const onConfirm = () => {
-    router.push({
+    router.replace({
       pathname: (params.nextRoute ?? "/(tabs)/exercise-session") as any,
       params: {
         cat: params.cat,
@@ -122,28 +124,25 @@ export default function VideoConfirmPage() {
             activeOpacity={0.85}
           >
             <Ionicons name="chevron-back" size={18} color={colors.text} />
-            <Text style={styles.backText}>Back</Text>
+            <Text style={styles.backText}>{t("video-confirm.back")}</Text>
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
           <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
-        <Text style={styles.pageTitle}>Confirm Video</Text>
-        <Text style={styles.pageSub}>
-          This confirmation step ensures the Vision model knows exactly which
-          exercise you are performing.
-        </Text>
+        <Text style={styles.pageTitle}>{t("video-confirm.pageTitle")}</Text>
+        <Text style={styles.pageSub}>{t("video-confirm.pageSub")}</Text>
 
         {/* Video preview */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Selected Exercise</Text>
+          <Text style={styles.cardTitle}>{t("video-confirm.selectedExercise")}</Text>
 
           <View style={styles.videoBox}>
             {loading ? (
               <View style={styles.videoPlaceholder}>
                 <ActivityIndicator size="large" color={warmRed} />
-                <Text style={styles.placeholderText}>Loading video...</Text>
+                <Text style={styles.placeholderText}>{t("video-confirm.loadingVideo")}</Text>
               </View>
             ) : error ? (
               <View style={styles.videoPlaceholder}>
@@ -158,7 +157,7 @@ export default function VideoConfirmPage() {
                   onPress={handleRetry}
                 >
                   <Ionicons name="refresh-outline" size={16} color="#FFF" />
-                  <Text style={styles.retryText}>Retry</Text>
+                  <Text style={styles.retryText}>{t("video-confirm.retry")}</Text>
                 </TouchableOpacity>
               </View>
             ) : videoData ? (
@@ -172,8 +171,8 @@ export default function VideoConfirmPage() {
           </View>
 
           <View style={styles.infoRow}>
-            <InfoPill label="Category" value={catTitle} styles={styles} />
-            <InfoPill label="Duration" value={duration} styles={styles} />
+            <InfoPill label={t("video-confirm.category")} value={catTitle} styles={styles} />
+            <InfoPill label={t("video-confirm.duration")} value={duration} styles={styles} />
           </View>
         </View>
 
@@ -185,7 +184,7 @@ export default function VideoConfirmPage() {
             onPress={() => router.replace(backRoute)}
           >
             <Ionicons name="refresh-outline" size={16} color={colors.text} />
-            <Text style={styles.secondaryText}>Choose Different</Text>
+            <Text style={styles.secondaryText}>{t("video-confirm.chooseDifferent")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -194,7 +193,7 @@ export default function VideoConfirmPage() {
             onPress={onConfirm}
           >
             <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" />
-            <Text style={styles.primaryText}>Start Monitoring</Text>
+            <Text style={styles.primaryText}>{t("video-confirm.startMonitoring")}</Text>
           </TouchableOpacity>
         </View>
 

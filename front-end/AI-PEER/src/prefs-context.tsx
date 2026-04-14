@@ -2,12 +2,13 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colorsByContrast, scaleFontSizes } from "./theme";
+import i18n from "./i18n";
 
 // Shared simple preferences type
 export type Prefs = {
   fontScale: number;
   contrast: "light" | "dark" | "high";
-  language: "en" | "es" | "fr";
+  language: "en" | "es" | "ht";
   soundAlerts: boolean;
 };
 
@@ -65,6 +66,12 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, [prefs, isLoaded]);
+
+  // Get translation when language changes
+  useEffect(() => {
+    i18n.changeLanguage(prefs.language);
+    //console.log("changed language to", prefs.language, "resolved:", i18n.language);
+  }, [prefs.language]);
 
   const updatePrefs = <K extends keyof Prefs>(key: K, value: Prefs[K]) => {
     setPrefs((prev) => ({ ...prev, [key]: value }));

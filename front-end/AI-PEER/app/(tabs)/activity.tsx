@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect } from "expo-router";
@@ -15,12 +16,6 @@ import { api } from "../../src/api";
 import { type ContrastPalette } from "../../src/theme";
 const PROGRESS_SCALE = 5;
 
-const CATEGORY_META = [
-  { key: "warmup", label: "Warm Up", icon: "sunny-outline" as const },
-  { key: "strength", label: "Strength", icon: "barbell-outline" as const },
-  { key: "balance", label: "Balance", icon: "accessibility-outline" as const },
-];
-
 function toLocalDateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -31,6 +26,7 @@ function toLocalDateKey(date: Date): string {
 
 export default function ActivityScreen() {
   const { scaled, colors } = usePrefs();
+  const { t, i18n } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const warmRed = colors.accent;
   const { user, token } = useAuth();
@@ -40,6 +36,13 @@ export default function ActivityScreen() {
   const [records, setRecords] = useState<ExerciseCompletionRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const CATEGORY_META = [
+    { key: "warmup", label: t("activity.warmup"), icon: "sunny-outline" as const },
+    { key: "strength", label: t("activity.strength"), icon: "barbell-outline" as const },
+    { key: "balance", label: t("activity.balance"), icon: "accessibility-outline" as const },
+  ];
+
+  
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
@@ -99,7 +102,7 @@ export default function ActivityScreen() {
       date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() - offset);
       const key = toLocalDateKey(date);
-      const label = offset === 0 ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" });
+      const label = offset === 0 ? "Today" : date.toLocaleDateString(i18n.language, { weekday: "short" });
 
       result.push({
         key,
@@ -188,7 +191,7 @@ export default function ActivityScreen() {
     const month = now.getMonth();
     const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const monthLabel = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const monthLabel = now.toLocaleDateString(i18n.language, { month: "long", year: "numeric" });
 
     const days: { day: number; key: string; active: boolean }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
@@ -216,6 +219,14 @@ export default function ActivityScreen() {
     });
   }, [user?.uid, token, loading, complianceStats]);
 
+  const weekdays = useMemo(() => {
+    // Generate weekday labels starting from Sunday (S)
+    return [...Array(7).keys()].map((i) => {
+      const date = new Date(2024, 0, i + 7);
+      return date.toLocaleDateString(i18n.language, { weekday: "narrow" });
+    });
+  }, [i18n.language]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -230,10 +241,8 @@ export default function ActivityScreen() {
           <View style={styles.headerLeft}>
             <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
             <View>
-              <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
-              <Text style={[styles.headerSubtitle, { fontSize: scaled.h2 / 2 }]}>
-                Exercise tracking and progress summary
-              </Text>
+                  <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+                  <Text style={[styles.headerSubtitle, { fontSize: scaled.h2/2, color: colors.muted }]}>{t("activity.subtitle")}</Text>
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -246,13 +255,13 @@ export default function ActivityScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Ionicons name="checkmark-done-outline" size={16} color={warmRed} />
-            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Today&apos;s Progress</Text>
+            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("activity.todayProgress")}</Text>
           </View>
 
           {loading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator size="small" color={warmRed} />
-              <Text style={[styles.loadingText, { fontSize: scaled.small }]}>Loading activity...</Text>
+              <Text style={[styles.loadingText, { fontSize: scaled.small }]}>{t("activity.loadingActivity")}</Text>
             </View>
           ) : (
             <>
@@ -262,7 +271,7 @@ export default function ActivityScreen() {
                     {todayCompleted}
                   </Text>
                   <Text style={[styles.progressLabel, { fontSize: scaled.small }]}>
-                    Exercises Completed
+                    {t("activity.exercisesCompleted")}
                   </Text>
                 </View>
               </View>
@@ -270,10 +279,10 @@ export default function ActivityScreen() {
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${progressRatio * 100}%` }]} />
               </View>
-              <Text style={[styles.progressHelper, { fontSize: scaled.h2 / 2 }]}>
+              <Text style={[styles.progressHelper, { fontSize: scaled.h2/2}]}>
                 {todayCompleted === 0
-                  ? "No exercises completed yet today"
-                  : `${todayCompleted} completed today`}
+                  ? t("activity.noExercisesCompleted")
+                  : t("activity.completedToday", { count: todayCompleted })}
               </Text>
             </>
           )}
@@ -283,10 +292,10 @@ export default function ActivityScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Ionicons name="grid-outline" size={16} color={warmRed} />
-            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Exercise Breakdown</Text>
+            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("activity.exerciseBreakdown")}</Text>
           </View>
-          <Text style={[styles.sectionHint, { fontSize: scaled.h2 / 2 }]}>
-            Last 7 days
+          <Text style={[styles.sectionHint, { fontSize: scaled.h2/2}]}>
+            {t("activity.last7Days")}
           </Text>
 
           {categoryTotals.map((item) => (
@@ -318,7 +327,7 @@ export default function ActivityScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Ionicons name="calendar-outline" size={16} color={warmRed} />
-            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>Monthly Activity</Text>
+            <Text style={[styles.cardTitle, { fontSize: scaled.base }]}>{t("activity.monthlyActivity")}</Text>
           </View>
 
           {/* streak stats */}
@@ -327,24 +336,24 @@ export default function ActivityScreen() {
               <Text style={[styles.complianceValue, { fontSize: scaled.h2 }]}>
                 {complianceStats.daysActive}
               </Text>
-              <Text style={[styles.complianceLabel, { fontSize: scaled.h2 / 2 }]}>
-                of 30 days
+              <Text style={[styles.complianceLabel, { fontSize: scaled.h2/2}]}>
+                {t("activity.of30Days")}
               </Text>
             </View>
             <View style={styles.complianceStat}>
               <Text style={[styles.complianceValue, { fontSize: scaled.h2, color: complianceStats.rate >= 70 ? "#1E7A3A" : complianceStats.rate >= 40 ? "#B8860B" : warmRed }]}>
                 {complianceStats.rate}%
               </Text>
-              <Text style={[styles.complianceLabel, { fontSize: scaled.h2 / 2 }]}>
-                active rate
+              <Text style={[styles.complianceLabel, { fontSize: scaled.h2/2}]}>
+                {t("activity.activeRate")}
               </Text>
             </View>
             <View style={styles.complianceStat}>
               <Text style={[styles.complianceValue, { fontSize: scaled.h2 }]}>
                 {complianceStats.streak}
               </Text>
-              <Text style={[styles.complianceLabel, { fontSize: scaled.h2 / 2 }]}>
-                day streak
+              <Text style={[styles.complianceLabel, { fontSize: scaled.h2/2}]}>
+                {t("activity.dayStreak")}
               </Text>
             </View>
           </View>
@@ -354,7 +363,7 @@ export default function ActivityScreen() {
             {calendarData.monthLabel}
           </Text>
           <View style={styles.calendarDayHeaders}>
-            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+            {weekdays.map((d, i) => (
               <Text key={i} style={styles.calendarDayHeader}>{d}</Text>
             ))}
           </View>

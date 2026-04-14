@@ -3,7 +3,8 @@ import {
     View, Text, TouchableOpacity, StyleSheet, Platform, Switch, Vibration,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { type ContrastPalette, spacing, radii, fontSizes } from "../src/theme";
+import { useTranslation } from "react-i18next";
+import { type ContrastPalette, colors, spacing, radii, fontSizes } from "../src/theme";
 import type { Prefs } from "../src/prefs-context";
 import { usePrefs } from "../src/prefs-context";
 
@@ -17,18 +18,10 @@ export default function Welcome({ onComplete }: WelcomeProps) {
     const router = useRouter();
     const [step, setStep] = useState<number>(0); // 0 = intro, 1..4 steps
     const { scaled, colors, prefs, updatePrefs } = usePrefs();
+    const { t } = useTranslation();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    const previewText = useMemo(() => {
-        switch (prefs.language) {
-            case "es":
-                return "¡Bienvenido a AI PEER! Este es un texto de vista previa.";
-            case "fr":
-                return "Bienvenue sur AI PEER ! Ceci est un exemple de texte.";
-            default:
-                return "Welcome to AI PEER! This is a preview of your settings.";
-        }
-    }, [prefs.language]);
+    const previewText = t("welcome.previewText");
 
 
     function goNext() {
@@ -87,14 +80,14 @@ export default function Welcome({ onComplete }: WelcomeProps) {
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {step === 0 ? (
                 <View style={styles.card}>
-                    <Text style={[styles.mainTitle, { color: colors.text, fontSize: scaled.h1 }]}>Let&apos;s Get You Set Up!</Text>
-                    <Text style={[styles.lead, { color: colors.muted, fontSize: scaled.h1/2 }]}>Welcome to AI PEER. We&apos;ll help you personalize your experience in just a few simple steps.</Text>
+                    <Text style={[styles.mainTitle, { color: colors.text, fontSize: scaled.h1 }]}>{t("welcome.setupTitle")}</Text>
+                    <Text style={[styles.lead, { color: colors.muted, fontSize: scaled.h1/2 }]}>{t("welcome.lead")}</Text>
                     <TouchableOpacity
-                        accessibilityLabel="Let&apos;s Begin"
+                        accessibilityLabel="Let's Begin"
                         style={[styles.primaryButton, { backgroundColor: colors.accent }]}
                         onPress={() => setStep(1)}
                     >
-                        <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>Let&apos;s Begin</Text>
+                        <Text style={[styles.primaryButtonText, { fontSize: scaled.base }]}>{t("welcome.letsBegin")}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
@@ -102,7 +95,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                     {/* Step content */}
                     {step === 1 && (
                         <View>
-                            <StepHeader title="Choose Your Text Size" subtitle="Select a comfortable reading size that works best for you" />
+                            <StepHeader title={t("welcome.chooseTextSize")} subtitle={t("welcome.chooseTextSizeSub")} />
                             <View style={{ marginVertical: 8 }}>
                                 <View style={styles.row}>
                                     <TouchableOpacity
@@ -110,70 +103,70 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                                         onPress={() => updatePrefs("fontScale", 0.9)}
                                     >
                                         <Text style={[styles.previewLabel, { fontSize: fontSizes.small,  color: "#fff" }]}>A</Text>
-                                        <Text style={{ color: "#fff" }}>Small</Text>
+                                        <Text style={{ color: "#fff" }}>{t("welcome.small")}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.sizeOption, prefs.fontScale === 1 && styles.optionSelected]}
                                         onPress={() => updatePrefs("fontScale", 1)}
                                     >
                                         <Text style={[styles.previewLabel, { fontSize: fontSizes.h3-0.5,  color: "#fff"  }]}>A</Text>
-                                        <Text style={{  color: "#fff"  }}>Default</Text>
+                                        <Text style={{  color: "#fff"  }}>{t("welcome.default")}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.sizeOption, prefs.fontScale === 1.1 && styles.optionSelected]}
                                         onPress={() => updatePrefs("fontScale", 1.1)}
                                     >
                                         <Text style={[styles.previewLabel, { fontSize: fontSizes.h2,  color: "#fff"  }]}>A</Text>
-                                        <Text style={{ color: "#fff" }}>Large</Text>
+                                        <Text style={{ color: "#fff" }}>{t("welcome.large")}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
 
                             <View style={styles.previewBox}>
-                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
-                                <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>*Preview adjusts as you change text size.</Text>
+                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
+                                <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>{t("welcome.previewNote")}</Text>
                             </View>
                         </View>
                     )}
 
                     {step === 2 && (
                         <View>
-                            <StepHeader title="Adjust Display Settings" subtitle="Pick colors and contrast that are easy on your eyes" />
+                            <StepHeader title={t("welcome.adjustDisplaySettings")} subtitle={t("welcome.adjustDisplaySubtitle")} />
                             <View style={{ marginVertical: 8 }}>
                                 <View style={styles.row}>
                                     <TouchableOpacity
                                         style={[styles.contrastOption, prefs.contrast === "light" && styles.optionSelected]}
                                         onPress={() => updatePrefs("contrast", "light")}
                                     >
-                                        <Text style={{ color: "#fff", fontSize: fontSizes.small }}>Light</Text>
+                                        <Text style={{ color: "#fff", fontSize: fontSizes.small }}>{t("welcome.light")}</Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
                                         style={[styles.contrastOption, prefs.contrast === "dark" && styles.optionSelected]}
                                         onPress={() => updatePrefs("contrast", "dark")}
                                     >
-                                        <Text style={{ color: "#fff", fontSize: fontSizes.small }}>Dark</Text>
+                                        <Text style={{ color: "#fff", fontSize: fontSizes.small }}>{t("welcome.dark")}</Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
                                         style={[styles.contrastOption, prefs.contrast === "high" && styles.optionSelected]}
                                         onPress={() => updatePrefs("contrast", "high")}
                                     >
-                                        <Text style={{ color: "#fff", fontSize: (fontSizes.small-0.3), textAlign: "center" }}>High Contrast</Text>
+                                        <Text style={{ color: "#fff", fontSize: (fontSizes.small-0.3), textAlign: "center" }}>{t("welcome.highContrast")}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
 
                             <View style={[styles.previewBox, { backgroundColor: colors.background }]}>
-                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
-                                <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>*Preview shows your chosen contrast and colors.</Text>
+                                <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
+                                <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>{t("welcome.previewContrastNote")}</Text>
                             </View>
                         </View>
                     )}
 
                     {step === 3 && (
                         <View>
-                            <StepHeader title="Set Your Language" subtitle="Choose your language for the app" />
+                            <StepHeader title={t("welcome.setLanguage")} subtitle={t("welcome.setLanguageSubtitle")} />
                             <View style={{ marginVertical: 8 }}>
                                 <View style={styles.row}>
                                     <TouchableOpacity
@@ -189,25 +182,25 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                                         <Text style={{ color: "#fff", fontSize: (fontSizes.small+0.5) }}>Español</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={[styles.langOption, prefs.language === "fr" && styles.optionSelected]}
-                                        onPress={() => updatePrefs("language", "fr")}
+                                        style={[styles.langOption, prefs.language === "ht" && styles.optionSelected]}
+                                        onPress={() => updatePrefs("language", "ht")}
                                     >
-                                        <Text style={{ color: "#fff", fontSize: fontSizes.small }}>Français</Text>
+                                        <Text style={{ color: "#fff", fontSize: fontSizes.small }}>Kreyòl Ayisyen</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
 
                             <View style={styles.previewBox}>
-                                  <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
+                                  <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
                             </View>
                         </View>
                     )}
 
                     {step === 4 && (
                         <View>
-                            <StepHeader title="Sound Alerts" subtitle="Enable or disable alert sounds for notifications" />
+                            <StepHeader title={t("welcome.soundAlerts")} subtitle={t("welcome.soundAlertsSubtitle")} />
                             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 12 }}>
-                                <Text style={{ color: colors.text }}>Sound Alerts</Text>
+                                <Text style={{ color: colors.text }}>{t("welcome.soundAlerts")}</Text>
                                 <Switch
                                     value={prefs.soundAlerts}
                                     onValueChange={(v) => updatePrefs("soundAlerts", v)}
@@ -220,13 +213,13 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                                 onPress={playAlertPreview}
                                 accessibilityLabel="Play alert preview"
                             >
-                                <Text style={{ color: colors.accent }}>Play Alert Preview</Text>
+                                <Text style={{ color: colors.accent }}>{t("welcome.playAlertPreview")}</Text>
                             </TouchableOpacity>
 
                             <View style={styles.previewBox}>
-                                    <Text style={{ color: colors.text, fontSize: scaled.base }}>{previewText}</Text>
+                                    <Text style={{ color: colors.text, fontSize: scaled.base }}>{t("welcome.previewText")}</Text>
                                     <Text style={{ color: colors.text, marginTop: 8, fontSize: scaled.small }}>
-                                    *Toggle sound alerts and play a short preview (uses vibration on device or beep on web).
+                                    {t("welcome.toggleSoundNote")}
                                 </Text>
                             </View>
                         </View>
@@ -235,7 +228,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                     {/* Navigation */}
                     <View style={styles.bottomRow}>
                         <TouchableOpacity onPress={goBack} disabled={step === 0} style={[styles.navButton, { opacity: step === 0 ? 0.5 : 1 }]}>
-                            <Text style={{ color: colors.text }}>Back</Text>
+                            <Text style={{ color: colors.text }}>{t("welcome.back")}</Text>
                         </TouchableOpacity>
 
                         <View style={styles.progressDots}>
@@ -250,7 +243,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
                             style={[styles.navButtonPrimary, { backgroundColor: colors.accent }]}
                             accessibilityLabel={step === StepCount ? "Finish setup" : "Next"}
                         >
-                            <Text style={{ color: "#fff" }}>{step === StepCount ? "Finish" : "Next"}</Text>
+                            <Text style={{ color: "#fff" }}>{step === StepCount ? t("welcome.finish") : t("welcome.next")}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

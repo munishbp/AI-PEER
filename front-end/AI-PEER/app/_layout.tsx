@@ -4,6 +4,17 @@ import { LLMProvider } from "@/src/llm";
 import { AuthProvider } from "@/src/auth";
 import { PrefsProvider, usePrefs } from "../src/prefs-context";
 import { VisionProvider } from "@/src/vision";
+import * as Notifications from "expo-notifications";
+import "../src/i18n";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 function RootStack() {
   const { colors } = usePrefs();
