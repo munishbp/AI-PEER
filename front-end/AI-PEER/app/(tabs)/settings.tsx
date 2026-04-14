@@ -512,6 +512,7 @@ function NotificationsTab({
                     value={hour}
                     onChangeText={(t) => setHour(t.replace(/\D/g, "").slice(0, 2))}
                     keyboardType="number-pad"
+                    placeholderTextColor="#999"
                     placeholder="HH"
                   />
 
@@ -521,6 +522,7 @@ function NotificationsTab({
                     value={minute}
                     onChangeText={(t) => setMinute(t.replace(/\D/g, "").slice(0, 2))}
                     keyboardType="number-pad"
+                    placeholderTextColor="#999"
                     placeholder="MM"
                   />
 
@@ -730,11 +732,13 @@ const createStyles = (colors: ContrastPalette) =>
       marginTop: 12,
     },
     input: {
-      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.background,
       backgroundColor: colors.background,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      borderRadius: 8,
+      borderRadius: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      fontSize: 16,
       color: colors.text,
     },
 

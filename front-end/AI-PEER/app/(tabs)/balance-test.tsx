@@ -88,14 +88,6 @@ export default function BalanceTestPage() {
               <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("balance-test.subtitle")}</Text>
             </View>
           </View>
-          <View style={{ flex: 1 }} />
-          <Ionicons name="moon-outline" size={18} color={colors.muted} />
-          <Ionicons
-            name="notifications-outline"
-            size={18}
-            color={colors.muted}
-            style={{ marginLeft: 12 }}
-          />
         </View>
 
         {/* Segmented control */}
