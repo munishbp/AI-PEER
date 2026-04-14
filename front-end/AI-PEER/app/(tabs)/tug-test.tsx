@@ -26,6 +26,8 @@ import { GestureCountdownOverlay } from "@/components/GestureCountdownOverlay";
 import { getExerciseRules } from "@/src/vision/exercises";
 import { calculateAngle3D, isConfident } from "@/src/vision/exercises/utils";
 import { submitCompletedActivity } from "@/src/exercise-activity-storage";
+import { usePrefs } from "../../src/prefs-context";
+import { type ContrastPalette } from "../../src/theme";
 
 const EXERCISE_ID = "assessment-3";
 const EXERCISE_NAME = "Timed Up and Go";
@@ -46,9 +48,9 @@ type TugState =
   | "waiting_for_final_sit"
   | "done";
 
-function tugFallRiskBand(seconds: number): { label: string; color: string } {
+function tugFallRiskBand(seconds: number, accent: string): { label: string; color: string } {
   if (seconds < 12) return { label: "Normal", color: "#1E7A3A" };
-  return { label: "Increased Fall Risk", color: warmRed };
+  return { label: "Increased Fall Risk", color: accent };
 }
 
 function stateLabel(state: TugState): string {
@@ -68,6 +70,9 @@ function stateLabel(state: TugState): string {
 
 export default function TugTestPage() {
   const router = useRouter();
+  const { colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const warmRed = colors.accent;
 
   const exerciseRule = useMemo(() => getExerciseRules(EXERCISE_ID), []);
 
@@ -242,7 +247,7 @@ export default function TugTestPage() {
         console.error("[TugTest] Failed to save activity record:", error);
       });
 
-      const band = tugFallRiskBand(elapsedSeconds);
+      const band = tugFallRiskBand(elapsedSeconds, warmRed);
       Speech.stop();
       Speech.speak(
         `Test complete. ${elapsedSeconds} seconds. ${band.label}.`
@@ -296,7 +301,7 @@ export default function TugTestPage() {
   // camera renders during gesture wait + countdown + tracking
   const cameraActive =
     trackingMode !== "idle" && hasPermission && !!device;
-  const band = tugFallRiskBand(finalElapsed);
+  const band = tugFallRiskBand(finalElapsed, warmRed);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -319,7 +324,7 @@ export default function TugTestPage() {
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
-          <Ionicons name="shield-checkmark-outline" size={18} color="#2E5AAC" />
+          <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
         <Text style={styles.pageTitle}>Timed Up and Go</Text>
@@ -512,11 +517,12 @@ export default function TugTestPage() {
   );
 }
 
-const beige = "#F7EDE4";
-const beigeStrip = "#F3E7D9";
-const warmRed = "#D84535";
+const createStyles = (colors: ContrastPalette) => {
+  const beige = colors.background;
+  const beigeStrip = colors.bgTile;
+  const warmRed = colors.accent;
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   container: { flex: 1, paddingHorizontal: 16 },
   containerContent: { paddingBottom: 24 },
@@ -529,10 +535,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 6,
   },
-  backText: { fontWeight: "900", color: "#3D2F27" },
+  backText: { fontWeight: "900", color: colors.text },
 
-  pageTitle: { fontSize: 18, fontWeight: "900", color: "#222", marginTop: 4 },
-  pageSub: { color: "#6B5E55", fontWeight: "600", marginBottom: 10 },
+  pageTitle: { fontSize: 18, fontWeight: "900", color: colors.text, marginTop: 4 },
+  pageSub: { color: colors.muted, fontWeight: "600", marginBottom: 10 },
 
   cameraContainer: {
     height: 500,
@@ -553,7 +559,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 16,
   },
-  cameraHint: { color: "#6B5E55", fontWeight: "800", fontSize: 20 },
+  cameraHint: { color: colors.muted, fontWeight: "800", fontSize: 20 },
   cameraSmall: {
     color: "#5B4636",
     fontWeight: "700",
@@ -606,8 +612,8 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
-  timerText: { fontSize: 28, fontWeight: "900", color: "#222" },
-  timerLabel: { fontSize: 10, fontWeight: "800", color: "#6B5E55", marginTop: 2 },
+  timerText: { fontSize: 28, fontWeight: "900", color: colors.text },
+  timerLabel: { fontSize: 10, fontWeight: "800", color: colors.muted, marginTop: 2 },
 
   angleOverlay: {
     position: "absolute",
@@ -631,7 +637,7 @@ const styles = StyleSheet.create({
   errorText: { color: warmRed, fontWeight: "700" },
 
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     marginTop: 10,
@@ -645,7 +651,7 @@ const styles = StyleSheet.create({
       android: { elevation: 1.5 },
     }),
   },
-  cardTitle: { fontWeight: "900", color: "#222", marginBottom: 4, fontSize: 16 },
+  cardTitle: { fontWeight: "900", color: colors.text, marginBottom: 4, fontSize: 16 },
   cardFootnote: {
     marginTop: 10,
     color: "#8C7A6C",
@@ -660,8 +666,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  scoreNumber: { fontSize: 48, fontWeight: "900", color: "#222" },
-  scoreUnit: { fontSize: 14, fontWeight: "700", color: "#6B5E55" },
+  scoreNumber: { fontSize: 48, fontWeight: "900", color: colors.text },
+  scoreUnit: { fontSize: 14, fontWeight: "700", color: colors.muted },
 
   bandBox: {
     marginTop: 12,
@@ -715,4 +721,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryText: { fontWeight: "900", color: "#FFF" },
-});
+  });
+};

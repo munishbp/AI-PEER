@@ -18,7 +18,7 @@ type Props = {
 function computeFRA(btrackScore: number, fesI: number) {
   // BTrackS: > 30cm = high physiological risk, <= 30cm = low
   const physical: PhysicalRisk = btrackScore > 30 ? "High" : "Low";
-  // FES-I: 16–23 low perceived, 24–64 high perceived
+  // FES-I: 16-23 low perceived, 24-64 high perceived
   const perceived: PerceivedRisk = fesI > 23 ? "High" : "Low";
 
   let quadrant: Quadrant;
@@ -64,7 +64,7 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
         { text: t("contacts.cancel"), style: "cancel" },
         {
           text: t("contacts.save"),
-          onPress: (value: string | undefined) => {
+          onPress: (value?: string) => {
             const num = parseFloat(value ?? "");
             if (!isNaN(num) && num >= 0) {
               onBtrackUpdate?.(num);
@@ -98,9 +98,9 @@ export default function FRAMatrixCard({ inputs, onBtrackUpdate }: Props) {
 
       {/* Readouts */}
       <View style={styles.readoutRow}>
-        <Readout label="BTrackS" value={btrackScore !== null ? `${btrackScore} cm` : "—"} />
-        <Readout label="FES-I" value={fesI !== null ? `${fesI}` : "—"} />
-        <Readout label="Quadrant" value={hasBothScores ? fra.quadrant : "—"} />
+        <Readout label="BTrackS" value={btrackScore !== null ? `${btrackScore} cm` : "-"} />
+        <Readout label="FES-I" value={fesI !== null ? `${fesI}` : "-"} />
+        <Readout label="Quadrant" value={hasBothScores ? fra.quadrant : "-"} />
       </View>
 
       {/* Matrix */}

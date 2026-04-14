@@ -2,7 +2,20 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+import java.io.FileInputStream
+import java.util.Properties
+
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def hasReleaseSigning = false
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    hasReleaseSigning = ["storeFile", "storePassword", "keyAlias", "keyPassword"].every { key ->
+        keystoreProperties[key] != null && !keystoreProperties[key].toString().trim().isEmpty()
+    }
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -104,15 +117,29 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasReleaseSigning) {
+            release {
+                storeFile rootProject.file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            } else {
+                // Fallback preserves local builds when keystore.properties is not
+                // configured yet. Production builds should always provide release
+                // signing credentials.
+                signingConfig signingConfigs.debug
+                println("WARNING: keystore.properties missing/incomplete; release is using debug signing.")
+            }
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

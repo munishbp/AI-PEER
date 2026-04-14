@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { scaleFontSizes } from "../../src/theme";
+import { scaleFontSizes, type ContrastPalette } from "../../src/theme";
 import { usePrefs } from "../../src/prefs-context";
 import { useAuth } from "../../src/auth";
 import { api } from "../../src/api";
@@ -25,6 +25,7 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const { scaled, colors } = usePrefs();
   const { t } = useTranslation();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, token: authToken } = useAuth();
   const [fesI, setFesI] = useState<number | null>(null);
   const [btrackScore, setBtrackScore] = useState<number | null>(null);
@@ -86,7 +87,7 @@ export default function Home() {
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#2E5AAC" />
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
               <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("home.subtitle")}</Text>
@@ -99,8 +100,10 @@ export default function Home() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.75}
             >
-              <Ionicons name="help-circle-outline" size={20} color="#555" />
+              <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
             </TouchableOpacity>
+            <Ionicons name="moon-outline" size={18} color={colors.muted} />
+            <Ionicons name="notifications-outline" size={18} color={colors.muted} />
           </View>
         </View>
 
@@ -132,8 +135,8 @@ export default function Home() {
 
         {/* Action Row 1 */}
         <View style={styles.rowTwo}>
-          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {router.replace("/(tabs)/balance-test")}} scaled={scaled} />
-          <PillButton icon="clipboard-outline" label={t("home.questionnaire")} onPress={() => {router.push("/questionnaire")}} scaled={scaled} />
+          <PillButton icon="pulse-outline" label={t("home.balanceTest")} onPress={() => {router.replace("/(tabs)/balance-test")}} scaled={scaled} colors={colors} />
+          <PillButton icon="clipboard-outline" label={t("home.questionnaire")} onPress={() => {router.push("/questionnaire")}} scaled={scaled} colors={colors} />
         </View>
 
         {/* Let's Chat */}
@@ -144,6 +147,7 @@ export default function Home() {
             onPress={() => router.replace("/(tabs)/ai-chat")}
             full
             scaled={scaled}
+            colors={colors}
           />
         </View>
       </ScrollView>
@@ -157,39 +161,38 @@ function PillButton({
   onPress,
   full,
   scaled,
+  colors,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   full?: boolean;
   scaled: ReturnType<typeof scaleFontSizes>;
+  colors: ContrastPalette;
 }) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
       style={[styles.pill, full && { flex: 1 }]}
     >
-      <Ionicons name={icon} size={16} color="#5B4636" />
+      <Ionicons name={icon} size={16} color={colors.text} />
       <Text style={[styles.pillText, { fontSize: scaled.h1/2 }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-const beige = "#F7EDE4";
-const beigeDark = "#E6D4C6";
-const warmRed = "#D84535";
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: beige },
+const createStyles = (colors: ContrastPalette) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   container: { paddingHorizontal: 16, gap: 14 },
 
   header: { paddingTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 3, marginBottom: 6, color: "#6B5E55" },
+  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
+  subtitle: { marginTop: 3, marginBottom: 6, color: colors.muted },
 
   segmentOuter: {
-    backgroundColor: "#F4E3D6",
+    backgroundColor: colors.bgTile,
     borderRadius: 999,
     padding: 4,
     flexDirection: "row",
@@ -204,12 +207,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  segmentActive: { backgroundColor: warmRed },
-  segmentText: { fontWeight: "700", color: "#7A6659" },
+  segmentActive: { backgroundColor: colors.accent },
+  segmentText: { fontWeight: "700", color: colors.muted },
   segmentTextActive: { color: "#FFF" },
 
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     ...Platform.select({
@@ -226,7 +229,7 @@ const styles = StyleSheet.create({
 
   scoreCaption: {
     textAlign: "center",
-    color: "#2E7D32",
+    color: colors.accent,
     fontWeight: "700",
   },
 
@@ -235,7 +238,7 @@ const styles = StyleSheet.create({
 
   pill: {
     flex: 1,
-    backgroundColor: beigeDark,
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 12,
@@ -244,5 +247,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-  pillText: { fontWeight: "800", color: "#5B4636" },
+  pillText: { fontWeight: "800", color: colors.text },
 });

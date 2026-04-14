@@ -4,7 +4,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { colors, spacing, radii, fontSizes } from "../src/theme";
+import { type ContrastPalette, colors, spacing, radii, fontSizes } from "../src/theme";
 import type { Prefs } from "../src/prefs-context";
 import { usePrefs } from "../src/prefs-context";
 
@@ -19,6 +19,9 @@ export default function Welcome({ onComplete }: WelcomeProps) {
     const [step, setStep] = useState<number>(0); // 0 = intro, 1..4 steps
     const { scaled, colors, prefs, updatePrefs } = usePrefs();
     const { t } = useTranslation();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
+    const previewText = t("welcome.previewText");
 
 
     function goNext() {
@@ -249,7 +252,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ContrastPalette) => StyleSheet.create({
     container: {
         flex: 1,
         padding: spacing(5),
@@ -309,7 +312,7 @@ const styles = StyleSheet.create({
         padding: spacing(3),
         marginHorizontal: spacing(1.5),
         borderRadius: radii.md,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.accent,
     },
     optionSelected: {
         backgroundColor: "#575757ff",
@@ -322,7 +325,7 @@ const styles = StyleSheet.create({
         padding: spacing(3),
         marginHorizontal: spacing(1.5),
         borderRadius: radii.md,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.accent,
     },
     langOption: {
         flex: 1,
@@ -330,7 +333,7 @@ const styles = StyleSheet.create({
         padding: spacing(3),
         marginHorizontal: spacing(1.5),
         borderRadius: radii.md,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.accent,
     },
     previewLabel: {
         fontWeight: "700",
@@ -341,7 +344,7 @@ const styles = StyleSheet.create({
         borderRadius: radii.md,
         backgroundColor: "transparent",
         borderWidth: 1,
-        borderColor: colors.gray,
+        borderColor: colors.muted,
     },
     bottomRow: {
         marginTop: spacing(4),

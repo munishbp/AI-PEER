@@ -1,4 +1,5 @@
 import React from "react";
+import { useMemo } from "react";
 import {
   View,
   Text,
@@ -12,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { usePrefs } from "@/src/prefs-context";
+import { type ContrastPalette } from "../../src/theme";
 
 type Test = {
   id: string; // assessment-1/-2/-3 — used as the video ID
@@ -55,6 +57,7 @@ export default function BalanceTestPage() {
   const router = useRouter();
   const { scaled, colors } = usePrefs();
   const { t } = useTranslation();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const startTest = (test: Test) => {
     router.replace({
@@ -78,14 +81,21 @@ export default function BalanceTestPage() {
             <Ionicons
               name="shield-checkmark-outline"
               size={20}
-              color="#2E5AAC"
+              color={colors.accent}
             />
             <View>
               <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
               <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("balance-test.subtitle")}</Text>
             </View>
           </View>
-          
+          <View style={{ flex: 1 }} />
+          <Ionicons name="moon-outline" size={18} color={colors.muted} />
+          <Ionicons
+            name="notifications-outline"
+            size={18}
+            color={colors.muted}
+            style={{ marginLeft: 12 }}
+          />
         </View>
 
         {/* Segmented control */}
@@ -142,7 +152,7 @@ export default function BalanceTestPage() {
                 <Ionicons
                   name="information-circle-outline"
                   size={14}
-                  color="#3D2F27"
+                  color={colors.text}
                 />
                 <Text style={styles.purposeText}>{test.purpose}</Text>
               </View>
@@ -165,18 +175,19 @@ export default function BalanceTestPage() {
   );
 }
 
-const beige = "#F7EDE4";
-const beigeTrack = "#F4E3D6";
-const beigeStrip = "#F3E7D9";
-const warmRed = "#D84535";
+const createStyles = (colors: ContrastPalette) => {
+  const beige = colors.background;
+  const beigeTrack = colors.bgTile;
+  const beigeStrip = colors.bgTile;
+  const warmRed = colors.accent;
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   container: { paddingHorizontal: 16, gap:14, paddingBottom: 12 },
 
   header: { paddingTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: "#222" },
-  subtitle: { marginTop: 3, marginBottom: 6, color: "#6B5E55" },
+  brand: { fontSize: 16, fontWeight: "800", letterSpacing: 0.3, color: colors.text },
+  subtitle: { marginTop: 3, marginBottom: 6, color: colors.muted },
 
   segmentOuter: {
     backgroundColor: beigeTrack,
@@ -196,20 +207,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   segmentActive: { backgroundColor: warmRed },
-  segmentText: { fontWeight: "800", color: "#7A6659" },
+  segmentText: { fontWeight: "800", color: colors.muted },
   segmentTextActive: { color: "#FFF" },
 
   centerHead: { alignItems: "center", marginBottom: 16 },
-  centerTitle: { fontSize: 18, fontWeight: "900", color: "#222" },
+  centerTitle: { fontSize: 18, fontWeight: "900", color: colors.text },
   centerSub: {
     marginTop: 4,
-    color: "#6B5E55",
+    color: colors.muted,
     fontWeight: "600",
     textAlign: "center",
   },
 
   testCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 14,
     padding: 16,
     ...Platform.select({
@@ -231,11 +242,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  testTitle: { fontSize: 17, fontWeight: "900", color: "#222" },
+  testTitle: { fontSize: 17, fontWeight: "900", color: colors.text },
 
   testDesc: {
     marginTop: 12,
-    color: "#3D2F27",
+    color: colors.text,
     fontWeight: "600",
     fontSize: 14,
     lineHeight: 20,
@@ -253,7 +264,7 @@ const styles = StyleSheet.create({
   },
   purposeText: {
     flex: 1,
-    color: "#3D2F27",
+    color: colors.text,
     fontWeight: "700",
     fontSize: 13,
     lineHeight: 18,
@@ -270,4 +281,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   startBtnText: { color: "#FFF", fontWeight: "900", fontSize: 15 },
-});
+  });
+};

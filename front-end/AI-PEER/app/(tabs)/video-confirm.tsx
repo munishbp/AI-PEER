@@ -15,6 +15,8 @@ import { Video, ResizeMode } from "expo-av";
 import { fetchVideoUrl, VideoResponse } from "@/src/video";
 import { useAuth } from "@/src/auth/AuthContext";
 import { useTranslation } from "react-i18next";
+import { usePrefs } from "../../src/prefs-context";
+import { type ContrastPalette } from "../../src/theme";
 
 type CatKey = "warmup" | "strength" | "balance" | "assessment";
 
@@ -26,6 +28,9 @@ function formatDuration(seconds: number): string {
 
 export default function VideoConfirmPage() {
   const router = useRouter();
+  const { colors } = usePrefs();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const warmRed = colors.accent;
   const { token } = useAuth();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
@@ -118,11 +123,12 @@ export default function VideoConfirmPage() {
             style={styles.backBtn}
             activeOpacity={0.85}
           >
-            <Ionicons name="chevron-back" size={18} color="#3D2F27" />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
             <Text style={styles.backText}>{t("video-confirm.back")}</Text>
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
+          <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
         <Text style={styles.pageTitle}>{t("video-confirm.pageTitle")}</Text>
@@ -165,8 +171,8 @@ export default function VideoConfirmPage() {
           </View>
 
           <View style={styles.infoRow}>
-            <InfoPill label={t("video-confirm.category")} value={catTitle} />
-            <InfoPill label={t("video-confirm.duration")} value={duration} />
+            <InfoPill label={t("video-confirm.category")} value={catTitle} styles={styles} />
+            <InfoPill label={t("video-confirm.duration")} value={duration} styles={styles} />
           </View>
         </View>
 
@@ -177,7 +183,7 @@ export default function VideoConfirmPage() {
             activeOpacity={0.9}
             onPress={() => router.replace(backRoute)}
           >
-            <Ionicons name="refresh-outline" size={16} color="#5B4636" />
+            <Ionicons name="refresh-outline" size={16} color={colors.text} />
             <Text style={styles.secondaryText}>{t("video-confirm.chooseDifferent")}</Text>
           </TouchableOpacity>
 
@@ -197,7 +203,15 @@ export default function VideoConfirmPage() {
   );
 }
 
-function InfoPill({ label, value }: { label: string; value: string }) {
+function InfoPill({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: ReturnType<typeof createStyles>;
+}) {
   return (
     <View style={styles.pill}>
       <Text style={styles.pillLabel}>{label}</Text>
@@ -206,11 +220,12 @@ function InfoPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-const beige = "#F7EDE4";
-const beigeStrip = "#F3E7D9";
-const warmRed = "#D84535";
+const createStyles = (colors: ContrastPalette) => {
+  const beige = colors.background;
+  const beigeStrip = colors.bgTile;
+  const warmRed = colors.accent;
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: beige },
   container: { paddingHorizontal: 16, paddingBottom: 12, gap: 14 },
 
@@ -222,13 +237,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 6,
   },
-  backText: { fontWeight: "900", color: "#3D2F27" },
+  backText: { fontWeight: "900", color: colors.text },
 
-  pageTitle: { fontSize: 18, fontWeight: "900", color: "#222", marginTop: 4 },
-  pageSub: { color: "#6B5E55", fontWeight: "600" },
+  pageTitle: { fontSize: 18, fontWeight: "900", color: colors.text, marginTop: 4 },
+  pageSub: { color: colors.muted, fontWeight: "600" },
 
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.bgTile,
     borderRadius: 12,
     padding: 14,
     ...Platform.select({
@@ -241,7 +256,7 @@ const styles = StyleSheet.create({
       android: { elevation: 1.5 },
     }),
   },
-  cardTitle: { fontWeight: "900", color: "#222" },
+  cardTitle: { fontWeight: "900", color: colors.text },
 
   videoBox: {
     marginTop: 10,
@@ -262,9 +277,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 8,
   },
-  placeholderTitle: { fontWeight: "900", fontSize: 16, color: "#222" },
+  placeholderTitle: { fontWeight: "900", fontSize: 16, color: colors.text },
   placeholderText: {
-    color: "#8C7A6C",
+    color: colors.muted,
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 18,
@@ -289,8 +304,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
   },
-  pillLabel: { fontSize: 11, fontWeight: "900", color: "#3D2F27" },
-  pillValue: { marginTop: 4, fontWeight: "900", color: "#222" },
+  pillLabel: { fontSize: 11, fontWeight: "900", color: colors.text },
+  pillValue: { marginTop: 4, fontWeight: "900", color: colors.text },
 
   controlsRow: { flexDirection: "row", gap: 10 },
   secondaryBtn: {
@@ -303,7 +318,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-  secondaryText: { fontWeight: "900", color: "#5B4636" },
+  secondaryText: { fontWeight: "900", color: colors.text },
 
   primaryBtn: {
     flex: 1.2,
@@ -316,4 +331,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryText: { fontWeight: "900", color: "#FFF" },
-});
+  });
+};
