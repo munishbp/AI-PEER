@@ -87,7 +87,7 @@ const VIOLATION_SMOOTHING_MS = 300;
 // confirmed. prevents stray frames from prematurely triggering the countdown.
 // bumped from 500 to 1000 after device testing — 500 was too quick to reject
 // transient hand sightings.
-const GESTURE_HOLD_MS = 1000;
+const DEFAULT_GESTURE_HOLD_MS = 1000;
 
 // length of the spoken countdown that runs after a gesture is confirmed.
 const COUNTDOWN_SECONDS = 5;
@@ -286,12 +286,12 @@ export function VisionProvider({ children }: { children: ReactNode }) {
 
       if (mode === 'waiting_for_gesture') {
         // sustained-detection: only fire when at least one detected hand has
-        // been showing an open palm for ≥ GESTURE_HOLD_MS. resets if any
+        // been showing an open palm for ≥ the active holdMs threshold. resets if any
         // frame fails (no hands, or no hand currently open).
         if (detectStartGesture(hands)) {
           if (gestureFirstSeenAtRef.current === null) {
             gestureFirstSeenAtRef.current = Date.now();
-          } else if (Date.now() - gestureFirstSeenAtRef.current >= GESTURE_HOLD_MS) {
+          } else if (Date.now() - gestureFirstSeenAtRef.current >= activePalmThresholds.holdMs) {
             gestureFirstSeenAtRef.current = null;
             beginCountdown();
           }
@@ -397,22 +397,51 @@ const FINGER_INDICES: ReadonlyArray<readonly [number, number, number, number]> =
   [17, 18, 19, 20], // pinky
 ];
 
-// minimum 3D extension ratio (straight-line MCP→TIP distance / sum of segment
-// lengths MCP→PIP→DIP→TIP) for a finger to count as "extended". 1.0 = perfectly
-// straight, ~0.5 = curled into a fist. 0.92 is strict — only nearly-straight
-// fingers pass. tunable down to 0.88 if device testing surfaces false negatives
-// for users with arthritic / partially-curled hands.
-const FINGER_EXTENSION_THRESHOLD = 0.92;
+// Palm-open classifier thresholds.
+//
+// These defaults are calibrated for an ~6ft training distance (exercise-
+// session, chair-rise, balance — where the framing is relatively close).
+// Screens that need looser thresholds at greater distance — TUG test in
+// particular runs at ~10ft — can call setPalmThresholds({...}) on mount and
+// resetPalmThresholds() on unmount. The module-level `activePalmThresholds`
+// is read on every frame inside detectOpenPalm.
+//
+// fingerExtension: minimum 3D extension ratio (straight-line MCP→TIP distance
+// / sum of segment lengths MCP→PIP→DIP→TIP). 1.0 = perfectly straight,
+// ~0.5 = fist. 0.92 is strict.
+//
+// minExtendedFingers: how many of the four non-thumb fingers must be extended.
+// 4 eliminates the "fist with one finger sticking out" false positive.
+//
+// thumbReachRatio: minimum thumb-tip-to-wrist distance as a fraction of hand
+// size (wrist → middle-finger MCP). Tucked thumb sits close to the wrist;
+// extended thumb reaches past the middle MCP.
+//
+// holdMs: how long the open palm must be sustained before the countdown fires.
+// Screens can lower this when distance makes consistent passes rarer.
+export type PalmThresholds = {
+  fingerExtension: number;
+  minExtendedFingers: number;
+  thumbReachRatio: number;
+  holdMs: number;
+};
 
-// require ALL four non-thumb fingers extended (not 3 of 4) — eliminates the
-// "fist with one finger sticking out" false positive.
-const MIN_EXTENDED_FINGERS = 4;
+const DEFAULT_PALM_THRESHOLDS: PalmThresholds = {
+  fingerExtension: 0.92,
+  minExtendedFingers: 4,
+  thumbReachRatio: 1.2,
+  holdMs: DEFAULT_GESTURE_HOLD_MS,
+};
 
-// minimum thumb-tip-to-wrist distance as a fraction of hand size (wrist→middle
-// finger MCP). a tucked-into-fist thumb sits very close to the wrist; an
-// extended thumb on an open palm reaches well past the middle MCP. 1.2 is the
-// starting point — tunable down to 1.0 if needed.
-const THUMB_REACH_RATIO = 1.2;
+let activePalmThresholds: PalmThresholds = { ...DEFAULT_PALM_THRESHOLDS };
+
+export function setPalmThresholds(overrides: Partial<PalmThresholds>): void {
+  activePalmThresholds = { ...DEFAULT_PALM_THRESHOLDS, ...overrides };
+}
+
+export function resetPalmThresholds(): void {
+  activePalmThresholds = { ...DEFAULT_PALM_THRESHOLDS };
+}
 
 // Empirically determined sign for the palm-normal cross product on a Right
 // hand with palm facing the camera in our portrait coordinate system.
@@ -476,10 +505,10 @@ function detectOpenPalm(hand: Hand): boolean {
       dist3D(lm[mcp], lm[pip]) +
       dist3D(lm[pip], lm[dip]) +
       dist3D(lm[dip], lm[tip]);
-    if (path === 0 || direct / path < FINGER_EXTENSION_THRESHOLD) return false;
+    if (path === 0 || direct / path < activePalmThresholds.fingerExtension) return false;
     extendedCount++;
   }
-  if (extendedCount < MIN_EXTENDED_FINGERS) return false;
+  if (extendedCount < activePalmThresholds.minExtendedFingers) return false;
 
   // (2) fingertips above the wrist (smaller y = higher on screen in
   // normalized image coords). natural "showing my palm" pose only.
@@ -493,7 +522,7 @@ function detectOpenPalm(hand: Hand): boolean {
   const handSize = dist3D(wrist, lm[9]); // wrist → middle finger MCP
   if (handSize === 0) return false;
   const thumbReach = dist3D(wrist, lm[4]); // wrist → thumb tip
-  if (thumbReach < handSize * THUMB_REACH_RATIO) return false;
+  if (thumbReach < handSize * activePalmThresholds.thumbReachRatio) return false;
 
   // (4) palm normal points toward the camera (palm-vs-back disambiguation).
   // skipped if handedness isn't available (e.g., the native plugin hasn't

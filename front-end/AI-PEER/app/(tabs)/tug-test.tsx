@@ -19,6 +19,7 @@ import {
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import { useVision } from "@/src/vision";
+import { setPalmThresholds, resetPalmThresholds } from "@/src/vision/VisionContext";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
 import { GuideOverlay } from "@/src/vision/components/GuideOverlay";
@@ -36,10 +37,28 @@ const EXERCISE_NAME = "Timed Up and Go";
 // gone — the gesture-confirm flow in VisionContext (arms overhead → 5s
 // countdown) now handles the pre-test phase before tugState advances out of
 // 'idle'.
-const STAND_THRESHOLD = 145; // 3D knee angle ≥ this means standing
-const SIT_THRESHOLD = 125;   // 3D knee angle ≤ this means seated
-const FRAMES_REQUIRED = 2;   // require N consecutive frames in zone (noise rejection)
-const LOCKOUT_MS = 5000;     // ignore knee angle for 5s after the initial stand
+// TUG runs farther from the phone (~10 ft) than the other exercises, so
+// everything here is tuned for that distance.
+const STAND_THRESHOLD = 135;    // 3D knee angle ≥ this means standing. 135
+                                // catches partial lockout; full 145 required
+                                // near-perfect extension which was unreliable
+                                // at distance.
+const SIT_THRESHOLD = 125;      // 3D knee angle ≤ this means seated.
+const FRAMES_REQUIRED = 2;      // require N consecutive frames in zone.
+const LOCKOUT_MS = 5000;        // ignore knee angle for 5s after initial stand.
+const KEYPOINT_MIN_CONFIDENCE = 0.25; // per-landmark gate for knee/hip/ankle.
+                                      // default is 0.4, but at 10 ft those
+                                      // landmarks frequently sit 0.3–0.5 —
+                                      // 0.4 rejected real standing frames.
+
+// Secondary sit→stand signal. At distance the knee angle is often missed
+// because one or both legs have low-confidence landmarks. Shoulders are
+// large and reliably tracked — when a seated person rises, both shoulders
+// translate up in image-Y by a significant fraction of frame height. If
+// the current shoulder Y has risen by ≥ this fraction vs the sitting
+// baseline captured when we enter `waiting_for_stand`, count it as
+// standing regardless of knee angle.
+const SHOULDER_RISE_THRESHOLD = 0.08;
 
 type TugState =
   | "idle"
@@ -75,6 +94,28 @@ export default function TugTestPage() {
   const warmRed = colors.accent;
 
   const exerciseRule = useMemo(() => getExerciseRules(EXERCISE_ID), []);
+
+  // Relax the open-palm trigger while this screen is mounted. The phone sits
+  // ~10 ft from the user for TUG, which shrinks the hand to a handful of
+  // pixels; the default geometry thresholds (calibrated for ~6 ft exercise
+  // sessions) reject most frames. Reset on unmount so exercise-session,
+  // chair-rise, balance continue to see the strict defaults.
+  useEffect(() => {
+    // Aggressive relaxation for ~10ft distance. First round (0.85 / 3 / 1.0
+    // / 700) was still inconsistent per device testing, so dropping each knob
+    // another notch. The open-palm-normal-vs-camera check (check 4 inside
+    // detectOpenPalm) still fires, so we won't false-positive on a fist or a
+    // back-of-hand — we're only relaxing the geometric strictness.
+    setPalmThresholds({
+      fingerExtension: 0.75,
+      minExtendedFingers: 2,
+      thumbReachRatio: 0.8,
+      holdMs: 500,
+    });
+    return () => {
+      resetPalmThresholds();
+    };
+  }, []);
 
   const modelReady = true;
 
@@ -114,6 +155,9 @@ export default function TugTestPage() {
   const lockoutEndsAtRef = useRef<number>(0);
   const framesInTargetRef = useRef<number>(0);
   const lastKneeAngleRef = useRef<number | null>(null);
+  // Shoulder Y captured when entering `waiting_for_stand`. Used as a
+  // backstop if knee keypoints are unreliable at distance.
+  const sittingShoulderYRef = useRef<number | null>(null);
 
   // frame processor wiring — receives pose AND hands per frame
   const handleFrameResult = useCallback(
@@ -127,16 +171,51 @@ export default function TugTestPage() {
   );
   const frameProcessor = useVisionFrameProcessor(modelReady, handleFrameResult);
 
-  // compute the 3D knee angle from the latest pose
+  // Compute the 3D knee angle from whichever leg has confident landmarks.
+  // If both legs pass confidence, return the MAX of the two angles. That
+  // choice works for both thresholds:
+  //   - STAND (angle ≥ 135): max ≥ 135 means at least one leg is straight,
+  //     which is sufficient to call the user "standing".
+  //   - SIT (angle ≤ 125): max ≤ 125 means even the straightest leg is
+  //     bent, which is exactly the "fully seated" condition we want.
+  // Returns null only if BOTH legs fail the confidence gate.
   const computeKneeAngle = useCallback((): number | null => {
     if (!currentPose) return null;
-    const hip = currentPose.keypoints.find((k) => k.name === "left_hip");
-    const knee = currentPose.keypoints.find((k) => k.name === "left_knee");
-    const ankle = currentPose.keypoints.find((k) => k.name === "left_ankle");
-    if (!hip || !knee || !ankle) return null;
-    if (!isConfident(hip) || !isConfident(knee) || !isConfident(ankle))
-      return null;
-    return calculateAngle3D(hip, knee, ankle);
+    const kpByName = new Map(
+      currentPose.keypoints.map((k) => [k.name, k])
+    );
+    const legAngle = (side: "left" | "right"): number | null => {
+      const hip = kpByName.get(`${side}_hip`);
+      const knee = kpByName.get(`${side}_knee`);
+      const ankle = kpByName.get(`${side}_ankle`);
+      if (!hip || !knee || !ankle) return null;
+      if (
+        !isConfident(hip, KEYPOINT_MIN_CONFIDENCE) ||
+        !isConfident(knee, KEYPOINT_MIN_CONFIDENCE) ||
+        !isConfident(ankle, KEYPOINT_MIN_CONFIDENCE)
+      )
+        return null;
+      return calculateAngle3D(hip, knee, ankle);
+    };
+    const left = legAngle("left");
+    const right = legAngle("right");
+    if (left === null && right === null) return null;
+    if (left === null) return right;
+    if (right === null) return left;
+    return Math.max(left, right);
+  }, [currentPose]);
+
+  // Average shoulder Y across confident left/right shoulder landmarks.
+  // Returns null if neither shoulder passes the confidence gate.
+  const computeShoulderY = useCallback((): number | null => {
+    if (!currentPose) return null;
+    const ls = currentPose.keypoints.find((k) => k.name === "left_shoulder");
+    const rs = currentPose.keypoints.find((k) => k.name === "right_shoulder");
+    const lOk = ls && isConfident(ls, KEYPOINT_MIN_CONFIDENCE);
+    const rOk = rs && isConfident(rs, KEYPOINT_MIN_CONFIDENCE);
+    if (!lOk && !rOk) return null;
+    if (lOk && rOk) return (ls!.y + rs!.y) / 2;
+    return (lOk ? ls! : rs!).y;
   }, [currentPose]);
 
   // pose-watching effect — runs the state machine transitions that depend on knee angle
@@ -149,11 +228,26 @@ export default function TugTestPage() {
       return;
 
     const angle = computeKneeAngle();
-    if (angle === null) return;
-    lastKneeAngleRef.current = angle;
+    if (angle !== null) lastKneeAngleRef.current = angle;
 
     if (tugState === "waiting_for_stand") {
-      if (angle >= STAND_THRESHOLD) {
+      // Capture the sitting shoulder baseline on the first confident
+      // shoulder reading after this state begins.
+      const shoulderY = computeShoulderY();
+      if (
+        sittingShoulderYRef.current === null &&
+        shoulderY !== null
+      ) {
+        sittingShoulderYRef.current = shoulderY;
+      }
+
+      const kneeStanding = angle !== null && angle >= STAND_THRESHOLD;
+      const shoulderStanding =
+        shoulderY !== null &&
+        sittingShoulderYRef.current !== null &&
+        sittingShoulderYRef.current - shoulderY >= SHOULDER_RISE_THRESHOLD;
+
+      if (kneeStanding || shoulderStanding) {
         framesInTargetRef.current += 1;
         if (framesInTargetRef.current >= FRAMES_REQUIRED) {
           framesInTargetRef.current = 0;
@@ -168,6 +262,7 @@ export default function TugTestPage() {
         framesInTargetRef.current = 0;
       }
     } else if (tugState === "waiting_for_final_sit") {
+      if (angle === null) return;
       if (angle <= SIT_THRESHOLD) {
         framesInTargetRef.current += 1;
         if (framesInTargetRef.current >= FRAMES_REQUIRED) {
@@ -214,6 +309,8 @@ export default function TugTestPage() {
     if (trackingMode !== "tracking") return;
     if (tugState !== "idle") return;
     framesInTargetRef.current = 0;
+    sittingShoulderYRef.current = null; // will be captured from the first
+                                        // confident shoulder reading below
     Speech.stop();
     Speech.speak(
       "Stand up, walk to the marker, turn around, and come back to sit."
