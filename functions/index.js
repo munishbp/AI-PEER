@@ -63,17 +63,12 @@ exports.redcapSync = onSchedule(
 
                 const userRef = snapshot.docs[0].ref;
                 const userData = snapshot.docs[0].data();
-
-                // Only update if Firestore still has null (don't overwrite
-                // a score the user submitted in-app with a stale REDCap value)
-                if (userData.fear_falling_score === null) {
-                    batch.update(userRef, {
-                        [REDCAP_TO_FIRESTORE.b_track_score]: record.btrack_score ?? userData.btrack_score,
-                        [REDCAP_TO_FIRESTORE.ff_score]: record.fear_falling_score ?? userData.fear_falling_score,
-                        updatedAt: new Date().toISOString()
-                    });
-                    redcapUpdateCount++;
-                }
+                batch.update(userRef, {
+                    [REDCAP_TO_FIRESTORE.b_track_score]: record.btrack_score ?? userData.btrack_score,
+                    [REDCAP_TO_FIRESTORE.ff_score]: userData.fear_falling_score === null ? record.fear_falling_score:userData.fear_falling_score,
+                    updatedAt: new Date().toISOString()
+                });
+                redcapUpdateCount++;
             }
 
             await batch.commit();
