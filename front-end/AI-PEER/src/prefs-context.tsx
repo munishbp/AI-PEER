@@ -7,7 +7,7 @@ import { colorsByContrast, scaleFontSizes } from "./theme";
 export type Prefs = {
   fontScale: number;
   contrast: "light" | "dark" | "high";
-  language: "en" | "es" | "fr";
+  language: "en" | "es" | "ht";
   soundAlerts: boolean;
 };
 
@@ -43,8 +43,12 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
       try {
         const stored = await AsyncStorage.getItem(PREFS_KEY);
         if (stored) {
-          const parsed = JSON.parse(stored) as Prefs;
-          setPrefs((p) => ({ ...p, ...parsed }));
+          const parsed = JSON.parse(stored) as Omit<Prefs, "language"> & {
+            language?: "en" | "es" | "fr" | "ht";
+          };
+          const migratedLanguage =
+            parsed.language === "fr" ? "ht" : parsed.language ?? "en";
+          setPrefs((p) => ({ ...p, ...parsed, language: migratedLanguage }));
         }
       } catch {
         // no-op

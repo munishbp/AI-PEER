@@ -1,6 +1,16 @@
 // app/verify.tsx
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, TextInput, Keyboard, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Keyboard,
+  TouchableWithoutFeedback,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { signInWithCustomToken } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,11 +18,13 @@ import { auth } from "../src/firebaseClient";
 import { api } from "../src/api";
 import { usePrefs } from "../src/prefs-context";
 import { type ContrastPalette, scaleFontSizes, spacing, radii } from "../src/theme";
+import { useI18n } from "../src/i18n";
 
 export default function Verify() {
   const router = useRouter();
   const { phone, mode } = useLocalSearchParams();
   const { colors, scaled } = usePrefs();
+  const { t } = useI18n();
   const s = useMemo(() => createStyles(colors, scaled), [colors, scaled]);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,27 +39,24 @@ export default function Verify() {
   }, [cooldown]);
 
   const onVerify = async () => {
-    if (code.length !== 6) return setErr("Enter a 6-digit code.");
+    if (code.length !== 6) return setErr(t("verify.invalid_code_length"));
     setErr(null);
 
     try {
       setLoading(true);
       const res = await api.verify(phone as string, code);
 
-      // Sign in with the custom token from the backend
       await signInWithCustomToken(auth, res.customToken);
-      // Store refresh token for persistent login (30-day session)
       await AsyncStorage.setItem("refreshToken", res.refreshToken);
-      console.log('[Auth] Refresh token stored after 2FA verification');
+      console.log("[Auth] Refresh token stored after 2FA verification");
 
-      // Navigate based on mode
-      if (res.isNewUser || mode === 'create') {
+      if (res.isNewUser || mode === "create") {
         router.replace("/tutorial?next=welcome");
       } else {
         router.replace("/tutorial?next=tabs");
       }
     } catch (e: any) {
-      setErr(e.message || "Invalid code. Please try again.");
+      setErr(e.message || t("verify.invalid_code"));
     } finally {
       setLoading(false);
     }
@@ -55,13 +64,12 @@ export default function Verify() {
 
   const onResend = async () => {
     if (cooldown > 0) return;
-    // Resend requires re-entering credentials, navigate back
     Alert.alert(
-      "Request New Code",
-      "To request a new code, please go back and enter your credentials again.",
+      t("verify.request_new_code_title"),
+      t("verify.request_new_code_body"),
       [
-        { text: "Go Back", onPress: () => router.replace("/") },
-        { text: "Cancel", style: "cancel" }
+        { text: t("verify.go_back"), onPress: () => router.replace("/") },
+        { text: t("common.cancel"), style: "cancel" },
       ]
     );
   };
@@ -72,41 +80,41 @@ export default function Verify() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={s.wrap}>
-            <TouchableOpacity onPress={onBack} style={s.backBtn}>
-                <Text style={s.backText}>← Back</Text>
-            </TouchableOpacity>
+      <View style={s.wrap}>
+        <TouchableOpacity onPress={onBack} style={s.backBtn}>
+          <Text style={s.backText}>{t("common.back")}</Text>
+        </TouchableOpacity>
 
-            <Text style={s.brand}>AI PEER</Text>
-            <Text style={s.subtitle}>Enter the 6-digit code sent to your phone</Text>
+        <Text style={s.brand}>{t("common.app_name")}</Text>
+        <Text style={s.subtitle}>{t("verify.subtitle")}</Text>
 
-            <View style={s.form}>
-                <Text style={s.label}>Verification Code</Text>
-                <TextInput
-                value={code}
-                onChangeText={(text) => setCode(text.replace(/\D/g, "").slice(0, 6))}
-                keyboardType="numeric"
-                placeholder="123456"
-                placeholderTextColor={colors.muted}
-                style={s.input}
-                maxLength={6}
-                autoCapitalize="none"
-                autoCorrect={false}
-                />
+        <View style={s.form}>
+          <Text style={s.label}>{t("verify.code_label")}</Text>
+          <TextInput
+            value={code}
+            onChangeText={(text) => setCode(text.replace(/\D/g, "").slice(0, 6))}
+            keyboardType="numeric"
+            placeholder="123456"
+            placeholderTextColor={colors.muted}
+            style={s.input}
+            maxLength={6}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-                {err ? <Text style={s.error}>{err}</Text> : null}
+          {err ? <Text style={s.error}>{err}</Text> : null}
 
-                <TouchableOpacity style={s.verifyBtn} onPress={onVerify} disabled={loading || code.length !== 6}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.verifyTxt}>Verify</Text>}
-                </TouchableOpacity>
+          <TouchableOpacity style={s.verifyBtn} onPress={onVerify} disabled={loading || code.length !== 6}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.verifyTxt}>{t("verify.verify")}</Text>}
+          </TouchableOpacity>
 
-                <TouchableOpacity onPress={onResend} disabled={cooldown > 0} style={s.resendWrap}>
-                <Text style={[s.resendText, cooldown > 0 && { color: colors.muted }]}>
-                    {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend Code"}
-                </Text>
-                </TouchableOpacity>
-            </View>
+          <TouchableOpacity onPress={onResend} disabled={cooldown > 0} style={s.resendWrap}>
+            <Text style={[s.resendText, cooldown > 0 && { color: colors.muted }]}> 
+              {cooldown > 0 ? t("verify.resend_in", { count: cooldown }) : t("verify.resend_code")}
+            </Text>
+          </TouchableOpacity>
         </View>
+      </View>
     </TouchableWithoutFeedback>
   );
 }

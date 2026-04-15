@@ -6,6 +6,7 @@ import { api } from "../src/api";
 import { useAuth } from "../src/auth";
 import { usePrefs } from "../src/prefs-context";
 import { type ContrastPalette, scaleFontSizes, radii, spacing } from "../src/theme";
+import { useI18n } from "../src/i18n";
 
 function normalizePhone(input: string) {
   // keep digits only; backend can decide final validation
@@ -16,6 +17,7 @@ export default function Login() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { colors, scaled } = usePrefs();
+  const { t } = useI18n();
   const s = useMemo(() => createStyles(colors, scaled), [colors, scaled]);
 
   useEffect(() => {
@@ -56,8 +58,8 @@ export default function Login() {
 const onLogin = async () => {
   setErr(null);
   const p = normalizePhone(phone);
-  if (p.length < 10) return setErr("Enter a valid phone number (10+ digits).");
-  if (password.length < 6) return setErr("Password must be at least 6 characters.");
+  if (p.length < 10) return setErr(t("auth.invalid_phone"));
+  if (password.length < 6) return setErr(t("auth.invalid_password"));
 
   try {
     setLoading(true);
@@ -65,7 +67,7 @@ const onLogin = async () => {
     router.push(`/verify?phone=${p}&mode=login`);
     //router.replace("/(tabs)");
   } catch (e: any) {
-    setErr(e.message || "Invalid phone or password");
+    setErr(e.message || t("auth.invalid_credentials"));
   } finally {
     setLoading(false);
   }
@@ -74,9 +76,9 @@ const onLogin = async () => {
 const onCreate = async () => {
   setErr(null);
   const p = normalizePhone(phone);
-  if (p.length < 10) return setErr("Enter a valid phone number (10+ digits).");
-  if (password.length < 6) return setErr("Password must be at least 6 characters.");
-  if (password !== confirmPassword.trim()) return setErr("Passwords do not match.");
+  if (p.length < 10) return setErr(t("auth.invalid_phone"));
+  if (password.length < 6) return setErr(t("auth.invalid_password"));
+  if (password !== confirmPassword.trim()) return setErr(t("auth.passwords_mismatch"));
 
   try {
     setLoading(true);
@@ -84,7 +86,7 @@ const onCreate = async () => {
     await api.sendCode(p, password, "create", btrack);
     router.push(`/verify?phone=${p}&mode=create`);
   } catch (e: any) {
-    setErr(e.message || "Failed to create account");
+    setErr(e.message || t("auth.create_failed"));
   } finally {
     setLoading(false);
   }
@@ -111,63 +113,63 @@ const switch_clearPages = async () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={s.wrap}>
-        <Text style={s.brand}>AI PEER</Text>
-        <Text style={s.subtitle}>{isCreating ? "Create an account" : "Sign in to continue"}</Text>
+        <Text style={s.brand}>{t("common.app_name")}</Text>
+        <Text style={s.subtitle}>{isCreating ? t("auth.subtitle_create") : t("auth.subtitle_signin")}</Text>
 
         {isCreating ? (
           <View style={s.form}>
-            <Text style={s.label}>Phone number</Text>
+            <Text style={s.label}>{t("auth.phone_label")}</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              placeholder="(555) 123-4567"
+              placeholder={t("auth.phone_placeholder")}
               placeholderTextColor={colors.muted}
               style={s.input}
               autoCapitalize="none"
               autoCorrect={false}
             />
 
-            <Text style={[s.label, { marginTop: spacing(3) }]}>Password</Text>
+            <Text style={[s.label, { marginTop: spacing(3) }]}>{t("auth.password_label")}</Text>
             <View style={s.row}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPw}
-                placeholder="Create password"
+                placeholder={t("auth.create_password_placeholder")}
                 placeholderTextColor={colors.muted}
                 style={[s.input, { flex: 1 }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.toggle}>
-                <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
+                <Text style={s.toggleText}>{showPw ? t("auth.hide") : t("auth.show")}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={[s.label, { marginTop: spacing(3) }]}>Confirm Password</Text>
+            <Text style={[s.label, { marginTop: spacing(3) }]}>{t("auth.confirm_password_label")}</Text>
             <View style={s.row}>
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showPw}
-                placeholder="Reenter password"
+                placeholder={t("auth.reenter_password_placeholder")}
                 placeholderTextColor={colors.muted}
                 style={[s.input, { flex: 1 }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.toggle}>
-                <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
+                <Text style={s.toggleText}>{showPw ? t("auth.hide") : t("auth.show")}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={[s.label, { marginTop: spacing(3) }]}>BTrackS Score (cm)</Text>
+            <Text style={[s.label, { marginTop: spacing(3) }]}>{t("auth.btracks_label")}</Text>
             <TextInput
               value={btrackInput}
               onChangeText={setBtrackInput}
               keyboardType="decimal-pad"
-              placeholder="e.g. 25.4 (optional)"
+              placeholder={t("auth.btracks_placeholder")}
               placeholderTextColor={colors.muted}
               style={s.input}
             />
@@ -175,56 +177,56 @@ const switch_clearPages = async () => {
             {err ? <Text style={s.error}>{err}</Text> : null}
 
             <TouchableOpacity style={s.loginBtn} onPress={onCreate} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>Create Account</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>{t("auth.create_account")}</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => switch_clearPages()} style={s.switchWrap}>
-              <Text style={s.switchText}>Already have an account? Sign in</Text>
+              <Text style={s.switchText}>{t("auth.already_have_account")}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={s.form}>
-            <Text style={s.label}>Phone number</Text>
+            <Text style={s.label}>{t("auth.phone_label")}</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              placeholder="(555) 123-4567"
+              placeholder={t("auth.phone_placeholder")}
               placeholderTextColor={colors.muted}
               style={s.input}
               autoCapitalize="none"
               autoCorrect={false}
             />
 
-            <Text style={[s.label, { marginTop: spacing(3) }]}>Password</Text>
+            <Text style={[s.label, { marginTop: spacing(3) }]}>{t("auth.password_label")}</Text>
             <View style={s.row}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPw}
-                placeholder="Enter password"
+                placeholder={t("auth.enter_password_placeholder")}
                 placeholderTextColor={colors.muted}
                 style={[s.input, { flex: 1 }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.toggle}>
-                <Text style={s.toggleText}>{showPw ? "Hide" : "Show"}</Text>
+                <Text style={s.toggleText}>{showPw ? t("auth.hide") : t("auth.show")}</Text>
               </TouchableOpacity>
             </View>
 
             {err ? <Text style={s.error}>{err}</Text> : null}
 
-            <TouchableOpacity onPress={() => Alert.alert("Forgot Password", "That sucks... you got Alzheimer's or Dementia too or something? :(")}>
-              <Text style={s.link}>Forgot password?</Text>
+            <TouchableOpacity onPress={() => Alert.alert(t("auth.forgot_password_title"), t("auth.forgot_password_body"))}>
+              <Text style={s.link}>{t("auth.forgot_password")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={s.loginBtn} onPress={onLogin} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>Log In</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginTxt}>{t("auth.log_in")}</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => switch_clearPages()} style={s.switchWrap}>
-              <Text style={s.switchText}>Don&apos;t have an account? Create an account</Text>
+              <Text style={s.switchText}>{t("auth.no_account")}</Text>
             </TouchableOpacity>
           </View>
         )}

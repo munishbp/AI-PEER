@@ -25,6 +25,7 @@ import { usePrefs } from "../src/prefs-context";
 import { useLLM } from "@/src/llm";
 import { Conversation } from "@/src/llm/types";
 import { type ContrastPalette } from "../src/theme";
+import { useI18n } from "../src/i18n";
 
 export default function ChatHistoryScreen() {
   const router = useRouter();
@@ -38,6 +39,7 @@ export default function ChatHistoryScreen() {
   } = useLLM();
 
   const { scaled, colors } = usePrefs();
+  const { t } = useI18n();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Handle selecting a conversation
@@ -55,12 +57,12 @@ export default function ChatHistoryScreen() {
   // Handle delete with confirmation
   function handleDelete(id: string) {
     Alert.alert(
-      "Delete Conversation",
-      "Are you sure you want to delete this conversation?",
+      t("chatHistory.delete_title"),
+      t("chatHistory.delete_body"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => remove(id),
         },
@@ -81,9 +83,9 @@ export default function ChatHistoryScreen() {
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { fontSize: scaled.h3 }]}>Chat History</Text>
+          <Text style={[styles.title, { fontSize: scaled.h3 }]}>{t("chatHistory.title")}</Text>
           <Text style={[styles.subtitle, { fontSize: scaled.small }]}>
-            {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
+            {t("chatHistory.conversation_count", { count: conversations.length })}
           </Text>
         </View>
 
@@ -114,13 +116,13 @@ export default function ChatHistoryScreen() {
         {conversations.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="chatbubbles-outline" size={48} color={colors.muted} />
-            <Text style={[styles.emptyText, { fontSize: scaled.base }]}>No conversations yet</Text>
+            <Text style={[styles.emptyText, { fontSize: scaled.base }]}>{t("chatHistory.empty_title")}</Text>
             <TouchableOpacity
               onPress={handleNewConversation}
               style={styles.emptyButton}
               activeOpacity={0.8}
             >
-              <Text style={styles.emptyButtonText}>Start a Conversation</Text>
+              <Text style={styles.emptyButtonText}>{t("chatHistory.start_conversation")}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -155,7 +157,8 @@ function ConversationCard({
   colors: ContrastPalette;
 }) {
   // Format timestamp as relative time ("2 hours ago", "Yesterday", etc.)
-  const timeAgo = formatTimeAgo(conversation.lastMessageAt);
+  const { t } = useI18n();
+  const timeAgo = formatTimeAgo(conversation.lastMessageAt, t);
   const { scaled } = usePrefs();
 
 
@@ -188,7 +191,7 @@ function ConversationCard({
           <Text style={[styles.cardTime, { fontSize: scaled.base*0.75 }]}>{timeAgo}</Text>
           <Text style={[styles.cardDot, { fontSize: scaled.base * 0.75 }]}>|</Text>
           <Text style={[styles.cardCount, { fontSize: scaled.base*0.75 }]}>
-            {messageCount} message{messageCount !== 1 ? "s" : ""}
+            {t("chatHistory.message_count", { count: messageCount })}
           </Text>
         </View>
       </View>
@@ -212,7 +215,10 @@ function ConversationCard({
  * This function takes a timestamp (milliseconds since 1970) and returns
  * a human-readable string like "Just now", "5 minutes ago", "2 hours ago"
  */
-function formatTimeAgo(timestamp: number): string {
+function formatTimeAgo(
+  timestamp: number,
+  t: ReturnType<typeof useI18n>["t"]
+): string {
   const now = Date.now();
   const diffMs = now - timestamp;
 
@@ -223,15 +229,15 @@ function formatTimeAgo(timestamp: number): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSeconds < 60) {
-    return "Just now";
+    return t("time.just_now");
   } else if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
+    return t("time.minute_ago", { count: diffMinutes });
   } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+    return t("time.hour_ago", { count: diffHours });
   } else if (diffDays === 1) {
-    return "Yesterday";
+    return t("time.yesterday");
   } else {
-    return `${diffDays} days ago`;
+    return t("time.day_ago", { count: diffDays });
   }
 }
 

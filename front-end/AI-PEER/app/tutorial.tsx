@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { usePrefs } from "../src/prefs-context";
 import { type ContrastPalette, radii, spacing } from "../src/theme";
+import { useI18n } from "../src/i18n";
 
 type Step = {
   title: string;
@@ -11,33 +12,34 @@ type Step = {
   imageNote: string;
 };
 
-const steps: Step[] = [
-  {
-    title: "Home Dashboard",
-    description:
-      "See your latest fall-risk summary, questionnaire access, and activity overview in one place.",
-    imageNote: "Demo image placeholder: Home dashboard screenshot",
-  },
-  {
-    title: "Questionnaire",
-    description:
-      "Answer the fall concern questionnaire to keep your FRA matrix aligned with your latest responses.",
-    imageNote: "Demo image placeholder: Questionnaire flow screenshot",
-  },
-  {
-    title: "Exercise And Chat",
-    description:
-      "Start guided exercises and use AI Chat for reminders and fall-prevention tips.",
-    imageNote: "Demo image placeholder: Exercise and chat screenshot",
-  },
-];
-
 export default function Tutorial() {
   const router = useRouter();
   const { next } = useLocalSearchParams<{ next?: string }>();
   const { scaled, colors } = usePrefs();
+  const { t } = useI18n();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [current, setCurrent] = useState(0);
+
+  const steps: Step[] = useMemo(
+    () => [
+      {
+        title: t("tutorial.step_1_title"),
+        description: t("tutorial.step_1_desc"),
+        imageNote: t("tutorial.step_1_note"),
+      },
+      {
+        title: t("tutorial.step_2_title"),
+        description: t("tutorial.step_2_desc"),
+        imageNote: t("tutorial.step_2_note"),
+      },
+      {
+        title: t("tutorial.step_3_title"),
+        description: t("tutorial.step_3_desc"),
+        imageNote: t("tutorial.step_3_note"),
+      },
+    ],
+    [t]
+  );
 
   const isFirst = current === 0;
   const isLast = current === steps.length - 1;
@@ -64,9 +66,9 @@ export default function Tutorial() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={[styles.brand, { fontSize: scaled.h3 }]}>AI PEER</Text>
+        <Text style={[styles.brand, { fontSize: scaled.h3 }]}>{t("common.app_name")}</Text>
         <TouchableOpacity onPress={() => router.replace(destination)}>
-          <Text style={[styles.skipText, { fontSize: scaled.small }]}>Skip</Text>
+          <Text style={[styles.skipText, { fontSize: scaled.small }]}>{t("tutorial.skip")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -77,7 +79,7 @@ export default function Tutorial() {
         </Text>
 
         <View style={styles.imageFrame}>
-        <View style={styles.imagePlaceholder}>
+          <View style={styles.imagePlaceholder}>
             <Ionicons name="image-outline" size={38} color={colors.muted} />
             <Text style={[styles.imageNote, { fontSize: scaled.small }]}>
               {step.imageNote}
@@ -90,7 +92,7 @@ export default function Tutorial() {
               disabled={isFirst}
               style={[styles.navBtn, isFirst && styles.navBtnDisabled]}
             >
-              <Text style={[styles.navText, { fontSize: scaled.base }]}>Prev</Text>
+              <Text style={[styles.navText, { fontSize: scaled.base }]}>{t("tutorial.prev")}</Text>
             </TouchableOpacity>
 
             <View style={styles.dots}>
@@ -104,7 +106,7 @@ export default function Tutorial() {
 
             <TouchableOpacity onPress={onNext} style={styles.navBtnPrimary}>
               <Text style={[styles.navTextPrimary, { fontSize: scaled.base }]}>
-                {isLast ? "Finish" : "Next"}
+                {isLast ? t("tutorial.finish") : t("tutorial.next")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -153,9 +155,9 @@ const createStyles = (colors: ContrastPalette) => StyleSheet.create({
     marginTop: spacing(1),
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "#E6D4C6",
+    borderColor: colors.background,
     overflow: "hidden",
-    backgroundColor: "#FFF9F5",
+    backgroundColor: colors.background,
   },
   imagePlaceholder: {
     height: 260,
@@ -171,7 +173,7 @@ const createStyles = (colors: ContrastPalette) => StyleSheet.create({
   },
   bottomNav: {
     borderTopWidth: 1,
-    borderTopColor: "#E6D4C6",
+    borderTopColor: colors.background,
     backgroundColor: colors.background,
     paddingHorizontal: spacing(3),
     paddingVertical: spacing(3),
@@ -182,7 +184,7 @@ const createStyles = (colors: ContrastPalette) => StyleSheet.create({
   navBtn: {
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "#D6C4B5",
+    borderColor: colors.muted,
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(4),
     minWidth: 80,
@@ -218,7 +220,7 @@ const createStyles = (colors: ContrastPalette) => StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 999,
-    backgroundColor: "#D8C7B8",
+    backgroundColor: colors.bgTile,
   },
   dotActive: {
     backgroundColor: colors.accent,
