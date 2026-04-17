@@ -108,6 +108,19 @@ npm run android
 
 Or open `android/` directly in Android Studio.
 
+## Dev Loop
+
+**iOS canonical workflow:**
+
+1. Start Metro bundler: `npx expo start`
+2. Open the Xcode workspace: `open ios/AIPEER.xcworkspace` (or `npm run ios`, which does the same)
+3. Select a connected device or simulator in the Xcode toolbar
+4. Cmd+R to build and run
+
+Do NOT use `npx expo run:ios`. This is a bare workflow project — the native side must be built through Xcode for reliable native dependency compilation (Swift plugins, CocoaPods, C++ flags). `npx expo run:ios` can silently skip post-install Podfile hooks and miss the `CLANG_CXX_LANGUAGE_STANDARD = c++20` injection that the VisionCamera plugin requires.
+
+JS-only changes hot-reload via Metro without a rebuild. Only Swift / Objective-C / Podfile changes require a fresh Xcode build.
+
 ## Features
 
 - Fall risk assessment with FRA matrix visualization and FES-I questionnaire
@@ -133,9 +146,8 @@ Or open `android/` directly in Android Studio.
 app/                              # Expo Router screens
   _layout.tsx                     # Root layout (providers: Auth, LLM, Vision, Prefs)
   index.tsx                       # Login/Register
-  verify.tsx                      # SMS code verification
+  verify.tsx                      # SMS code verification — routes to /welcome (new user) or /(tabs) (returning user)
   welcome.tsx                     # Onboarding
-  tutorial.tsx                    # App tutorial
   questionnaire.tsx               # FES-I fall risk questionnaire
   chat-history.tsx                # Conversation history list
   (tabs)/
@@ -234,6 +246,30 @@ Configuration in `src/llm/config.ts`:
 - Temperature: 0.7
 - Conversation TTL: 24 hours
 
+## i18n and TTS
+
+**Supported locales.** The app ships with three languages: English (`en`), Spanish (`es`), and Haitian Creole (`ht`). Translation files live at `src/locales/{en,es,ht}/translation.json`, each containing a single top-level JSON object whose keys mirror the English file.
+
+**Initialization.** `src/i18n.ts` imports all three JSON files and passes them to `i18next` via `initReactI18next`. The initial language is `en`; the fallback is also `en`. The instance is exported as the default export and is also consumed directly by `src/tts.ts`.
+
+**Persisting the active language.** `src/prefs-context.tsx` stores the active language inside the `Prefs` object (`language: "en" | "es" | "ht"`) which is serialized to AsyncStorage under the key `accessibility_prefs_v1`. When `prefs.language` changes, a `useEffect` in `PrefsProvider` calls `i18n.changeLanguage(prefs.language)` so the i18next instance stays in sync. The language selector in `app/(tabs)/settings.tsx` calls `updatePrefs("language", lang)`, which triggers the effect.
+
+**TTS.** `src/tts.ts` exports two functions:
+- `speak(text, opts?)` — calls `expo-speech`'s `Speech.speak` with the correct `language` option derived from the active locale at call-time.
+- `stopSpeech()` — calls `Speech.stop()`.
+
+The locale-to-voice mapping in `ttsLanguage()` is: `en` → `en-US`, `es` → `es-ES`, `ht` → `fr-FR`. The Haitian Creole fallback to French (`fr-FR`) is intentional — iOS ships no native Creole voice.
+
+Every `Speech.speak` call in the codebase must go through `src/tts.ts:speak` (never call `Speech.speak` directly). This ensures locale changes in settings are automatically honored without any call-site changes.
+
+**Adding a new locale.** To add a new language:
+
+1. Create `src/locales/<lang>/translation.json` mirroring all keys from `src/locales/en/translation.json`.
+2. Import and register it in `src/i18n.ts` (add to the `resources` object).
+3. Extend the `Prefs["language"]` union in `src/prefs-context.tsx` to include the new code.
+4. Extend `ttsLanguage()` in `src/tts.ts` with a new `if (lang.startsWith("<lang>")) return "<BCP-47-voice>";` branch.
+5. Add a new language button to the language selector in `app/(tabs)/settings.tsx` (the `["en", "es", "ht"]` array and the corresponding `languages` label array).
+
 ## Vision Pipeline
 
 Real-time exercise form monitoring AND open-palm gesture-confirm start flow, both running on the same single-call native plugin.
@@ -255,6 +291,16 @@ Real-time exercise form monitoring AND open-palm gesture-confirm start flow, bot
 **Native plugin lifecycle differences.** iOS uses constructor-time GPU init (the plugin is instantiated once when VisionCamera registers it). Android uses lazy thread-affine init in the first `callback()` call — MediaPipe's GPU delegate has thread affinity, and the constructor runs on the wrong thread, so we defer init to the videoQueue thread where `callback()` runs. Both platforms hold the landmarkers in process-wide singletons so React Native fast-refresh / HMR doesn't leak instances across reloads.
 
 **Build dependency note.** The custom Swift plugin only compiles because `react-native-worklets-core` is declared as a direct npm dependency in `package.json`. VisionCamera's frame processor support is gated on this package — without it, VisionCamera does not expose `FrameProcessorPlugin.h` and `PoseLandmarkerPlugin.swift` fails to compile.
+
+### How to add a new exercise
+
+See `VISION_PIPELINE.md` (repo root) for the complete specification. The high-level steps are:
+
+- Create a new rule file in the appropriate subdirectory under `src/vision/exercises/` (e.g., `src/vision/exercises/balance/myExercise.ts`). Export a rule object conforming to the `ExerciseRule` type defined in `src/vision/exercises/types.ts`.
+- Register the new rule in the subdirectory's `index.ts` and in the top-level `src/vision/exercises/index.ts`. The exercise ID must be unique across all categories.
+- Add any assets: a demo video (uploaded to GCS and mapped in `src/video.ts`) and a thumbnail image if needed.
+- Optionally add a translation key under the `exercise.*` namespace in each of the three locale files (`src/locales/{en,es,ht}/translation.json`) for the exercise display name and any coaching cues.
+- Test the rule end-to-end via `app/(tabs)/exercise-session.tsx` — select the exercise, trigger the gesture-confirm start flow, and confirm rep counting and form feedback behave as expected.
 
 ## Environment Variables
 

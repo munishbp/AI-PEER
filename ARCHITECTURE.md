@@ -6,6 +6,14 @@ AI-PEER is a HIPAA-compliant mobile application for fall risk assessment and exe
 
 The core design principle is that all ML inference stays on-device. The LLM (Qwen3.5-2B, finetuned on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice), Apache 2.0) and pose estimation model (MediaPipe Pose Landmarker) both run locally on the phone. No patient conversation data or video frames leave the device.
 
+### i18n + TTS Subsystem
+
+The app supports three locales: English (`en`), Spanish (`es`), and Haitian Creole (`ht`). Translation files live at `front-end/AI-PEER/src/locales/{en,es,ht}/translation.json` and are bundled at build time. Locale initialization is in `src/i18n.ts`, which uses `i18next` + `react-i18next` with `fallbackLng: "en"` and `compatibilityJSON: "v4"`.
+
+The user's chosen language is stored as part of the `Prefs` object under AsyncStorage key `accessibility_prefs_v1` (`src/prefs-context.tsx:15`). `PrefsProvider` loads preferences on mount and calls `i18n.changeLanguage(prefs.language)` whenever the `language` field changes (`src/prefs-context.tsx:72`). The full preferences object (font scale, contrast, language, sound alerts) is written back to AsyncStorage on every change (`src/prefs-context.tsx:62`).
+
+Text-to-speech is provided by `expo-speech` via the helper `src/tts.ts`. `ttsLanguage()` maps `i18n.language` to an expo-speech `language` option: `en` → `"en-US"`, `es` → `"es-ES"`, `ht` → `"fr-FR"` (`src/tts.ts:7-10`). The French voice is used for Haitian Creole because iOS ships no native Creole voice; this is a known approximation. All TTS call sites use `speak()` from `src/tts.ts` rather than calling `expo-speech` directly, so the language mapping is applied uniformly.
+
 ## System Diagram
 
 ```
@@ -45,13 +53,16 @@ The core design principle is that all ML inference stays on-device. The LLM (Qwe
 3. Backend validates credentials (bcrypt comparison for login, or creates new user for registration).
 4. Backend calls Google Identity Platform to send an SMS with a 6-digit code.
 5. Rate limiting enforced: 60-second cooldown between codes, max 5 per hour per phone.
-6. User enters the SMS code. App calls `POST /auth/verify`.
-7. Backend verifies code with Identity Platform, then generates a Firebase custom token and a refresh token (30-day expiry, stored in Firestore `refreshTokens` collection).
-8. Client calls `signInWithCustomToken()` with the Firebase JS SDK and stores the refresh token in AsyncStorage.
-9. On subsequent app launches, the client calls `POST /auth/refresh` with the stored refresh token to get a new custom token without re-entering credentials. This is the **two-token persistence** path: refresh token → custom token → ID token (extracted from the User object via `getIdToken()`).
-10. All protected API calls include the Firebase ID token as a Bearer token in the Authorization header.
-11. **Per-request token freshness:** the ID token in `AuthContext` state is captured at restore/login time and never auto-refreshes — Firebase ID tokens expire after ~1 hour. For protected calls that may run mid-session (e.g., `submitActivityToBackend`), callers should invoke `auth.currentUser?.getIdToken(true)` inline to force a refresh against Firebase's internal refresh token (which is separate from the app's `/auth/refresh` cold-start path). The two refresh systems coexist orthogonally.
-12. **`req.user` injection on the backend:** the auth middleware (`API/middleware/authMiddleware.js`) verifies the Bearer token AND attaches the decoded token to `req.user` so downstream controllers can read `req.user.uid` directly. New controllers should ALWAYS use `req.user.uid` for the user identity — taking the user id from the request body would let any authenticated caller pass another user's id (a real authorization gap). The activities controller demonstrates the correct pattern.
+6. User enters the SMS code. App calls `POST /auth/verify` (`app/verify.tsx`).
+7. Backend verifies code with Identity Platform, then generates a Firebase custom token and a UUID refresh token (30-day expiry, stored in Firestore `refreshTokens` collection).
+8. Client calls `signInWithCustomToken()` with the Firebase JS SDK and stores the refresh token in AsyncStorage under key `"refreshToken"` (`app/verify.tsx:41-43`).
+9. Post-2FA routing: new users (`res.isNewUser || mode === 'create'`) are sent to `/welcome`; returning users go directly to `/(tabs)` (`app/verify.tsx:46-50`). There is no `tutorial.tsx` screen in this path.
+10. On subsequent cold starts, `AuthContext.restoreSession` reads the refresh token from AsyncStorage and calls `POST /auth/refresh` to obtain a new Firebase custom token, then calls `signInWithCustomToken()` to re-establish the Firebase session (`src/auth/AuthContext.tsx:27-61`). This is the **cold-start token restore** path.
+11. All protected API calls include the Firebase ID token as a Bearer token in the Authorization header.
+12. **Dual-token auth model:** Two orthogonal refresh mechanisms coexist:
+    - **Custom UUID refresh tokens** (30-day expiry, stored in Firestore `refreshTokens` and AsyncStorage): used exclusively for cold-start session restore via `AuthContext.restoreSession`. They exchange for a new Firebase custom token via `POST /auth/refresh`.
+    - **Firebase internal refresh tokens** (managed by the Firebase JS SDK): used for per-request ID token freshness during an active session. For protected calls that may run mid-session (e.g., `submitActivityToBackend`), callers invoke `auth.currentUser?.getIdToken(true)` inline to force a fresh ID token directly from Firebase's token endpoint without involving the app's `/auth/refresh` route (`src/exercise-activity-storage.ts:260`). This prevents the silent 401-after-1-hour failure that would occur if the ID token captured at login time were reused across the session.
+13. **`req.user` injection on the backend:** the auth middleware (`API/middleware/authMiddleware.js`) verifies the Bearer token AND attaches the decoded token to `req.user` so downstream controllers can read `req.user.uid` directly. New controllers should ALWAYS use `req.user.uid` for the user identity — taking the user id from the request body would let any authenticated caller pass another user's id (a real authorization gap). The activities controller demonstrates the correct pattern.
 
 ## Data Flow: Exercise Videos
 
@@ -118,6 +129,10 @@ idle ──[start]──> waiting_for_gesture ──[hand held 1000ms]──> co
 - **Android:** lazy thread-affine init in the first `callback()` invocation. MediaPipe's GPU delegate has thread affinity, and the constructor runs on the wrong thread (the JS/worklets thread rather than VisionCamera's videoQueue thread). The lazy init runs on the videoQueue thread where it'll be used. GPU→CPU fallback is per-landmarker independently.
 - **Both platforms:** hold the landmarkers in process-wide singletons (Swift `private var` + Kotlin `@Volatile companion object`) so React Native fast-refresh / HMR doesn't leak instances across reloads.
 
+### Post-session feedback summary
+
+After the user completes all sets and the session ends, the app navigates to `app/(tabs)/exercise-summary.tsx`, passing the completed activity's `id` via the `recordId` route parameter. The screen loads the record from AsyncStorage via `getExerciseActivityRecords()`, extracts `record.feedbackEvents`, and sorts them by severity weight (severe → error → moderate → warning → mild) then by descending occurrence count. The top three events are displayed with a severity-coded dot and occurrence count (`×N`). If no feedback events were recorded and `avgScore >= 80`, an encouraging message is shown instead. The `FeedbackEvent` type is defined in `src/exercise-activity-storage.ts:32-41` as `{ message, severity, count, firstAt, lastAt }` where `firstAt`/`lastAt` are milliseconds since session start. These events are populated by the form analyzer during the `tracking` phase and carried through `submitCompletedActivity` into both AsyncStorage and the Firestore activity record.
+
 ### On-device only
 
 All processing runs on-device. No frame data, no landmark data, and no derived form metrics ever leave the phone. The activity record persisted to Firestore contains only aggregate stats (rep counts, durations, angle summaries, feedback events) — never raw video or full landmark dumps.
@@ -158,6 +173,47 @@ When an exercise session completes (final set submitted), the app writes a singl
 | avgScore | number \| null | scores accumulator | Mean per-frame form score (0-100). null if no frames |
 | framesAnalyzed | number | scores accumulator | Total frames pose-analyzed across all sets |
 | notes | string? | optional | Free-form note (e.g., assessment band labels) |
+
+## Data Flow: Questionnaire to Firestore Activity Record
+
+The FES-I (Falls Efficacy Scale – International) questionnaire is a 7-item instrument where each item is scored 1–4. The flow from user submission to Firestore is:
+
+1. `app/questionnaire.tsx` collects answers and calls `submitQuestionnaireResult(result)` from `src/fra-storage.ts` (`src/fra-storage.ts:22`).
+2. **Local write (always):** `submitQuestionnaireResult` immediately serializes the result (FES-I total, per-question answers, ISO timestamp) to AsyncStorage under key `fra_questionnaire_result_v1` (`src/fra-storage.ts:7,18-20`). This write runs unconditionally before any validation.
+3. **Validation gate:** answers are valid only when all 7 questions are answered and every score is an integer in [1, 4] (`src/fra-storage.ts:27-31`). If validation fails, the function returns early and no activity record is submitted.
+4. **Activity record construction:** when all 7 answers pass validation, `submitQuestionnaireResult` builds a questionnaire-shaped `ExerciseCompletionRecord` (`src/fra-storage.ts:34-53`):
+   - `category: "assessment"`, `exerciseId: "fes_i_questionnaire"`
+   - `fesI`: the computed total FES-I score
+   - `questionnaireAnswers`: the full `Record<number, number>` answer map
+   - `repCount`, `totalReps`, `durationSec` are all `0`; `setsCompleted` and `setsTarget` are both `1`
+   - `id` is `fesi_${Date.now()}_${random6}` for idempotency
+5. **Backend write (fire-and-forget):** `void submitActivityToBackend(record)` is called (`src/fra-storage.ts:55`), which forces a fresh Firebase ID token via `auth.currentUser?.getIdToken(true)` and POSTs the record to `POST /activities/complete` (`src/exercise-activity-storage.ts:256-293`).
+6. **Backend persistence:** `API/controllers/activitiesController.js:submitActivity` reads `req.user.uid` from the verified token, validates required fields, and delegates to `activityService.writeUserActivity(userId, record)` (`API/controllers/activitiesController.js:50`).
+7. **Firestore write:** `API/services/firestore-functions.js:writeUserActivity` extracts the `YYYY-MM-DD` date from `completedAt` and writes to `users/{uid}/activities/{YYYY-MM-DD}` with `{ merge: true }`, storing the record under `entries.<activityId>` (`API/services/firestore-functions.js:81-95`). A retry with the same `id` is idempotent because it overwrites the same map key.
+
+```
+app/questionnaire.tsx
+        |
+        v
+src/fra-storage.ts:submitQuestionnaireResult
+        |
+        +---> AsyncStorage["fra_questionnaire_result_v1"]   (always, immediate)
+        |
+        +--[valid 7 answers, scores 1-4?]---> build ExerciseCompletionRecord
+                                                    |
+                                                    +---> submitActivityToBackend (fire-and-forget)
+                                                                |
+                                                         POST /activities/complete
+                                                                |
+                                                     activitiesController.submitActivity
+                                                                |
+                                                     firestore-functions.writeUserActivity
+                                                                |
+                                                    users/{uid}/activities/{YYYY-MM-DD}
+                                                     entries.fesi_<timestamp>_<rand>
+```
+
+Note: the questionnaire record is **not** written to `AsyncStorage["exercise_activity_records_v1"]` — only the remote write path is used after the local `fra_questionnaire_result_v1` save. The questionnaire result is its own local key; the general activity history (`exercise_activity_records_v1`) holds exercise session records written by `submitCompletedActivity`.
 
 ## Data Flow: REDCap Sync
 

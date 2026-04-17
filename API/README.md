@@ -32,6 +32,177 @@ Health check: `GET http://localhost:3000/health`
 | PORT | Server port (default: 3000) |
 | NODE_ENV | `development` or `production` |
 
+## Auth Model
+
+`server.js` mounts routes in this order:
+
+```
+app.use('/auth', authRoutes)   // PUBLIC — no token required
+app.use(verification)          // middleware: verifies Bearer token, attaches req.user
+app.use('/video', videoRoutes) // protected
+app.use('/model', modelRoutes) // protected
+app.use('/users', userRoutes)  // protected
+app.use('/activities', activitiesRoutes) // protected
+```
+
+Any route mounted **after** `app.use(verification)` requires `Authorization: Bearer <firebaseIdToken>`. The middleware (`middleware/authMiddleware.js`) calls `admin.auth().verifyIdToken(token)` and attaches the decoded token to `req.user`, so downstream controllers read `req.user.uid` directly without re-verifying or trusting body params.
+
+**Public routes** (no token required): `/health`, `/auth/register`, `/auth/login`, `/auth/send-code`, `/auth/verify`, `/auth/refresh`.
+
+**Protected route families**: `/video/*`, `/model/*`, `/users/*`, `/activities/*`.
+
+Authorization gap to avoid: never read a user ID from the request body on protected routes. Any authenticated caller could pass another user's ID and read or write their data. Always use `req.user.uid` from the verified token. The activities controller demonstrates the correct pattern.
+
+## Token-Freshness Note
+
+Firebase ID tokens expire after approximately 1 hour. Clients must call `auth.currentUser?.getIdToken(true)` immediately before each authenticated POST to force a fresh token against Firebase's internal refresh token — do not rely on a token cached in component state, which silently expires and causes 401s.
+
+Reference implementation: `front-end/AI-PEER/src/exercise-activity-storage.ts`, function `submitActivityToBackend`:
+
+```typescript
+const freshToken = await auth.currentUser?.getIdToken(true);
+// then pass as Authorization: Bearer ${freshToken}
+```
+
+This is independent of the app's custom `/auth/refresh` cold-start path (which restores a session from AsyncStorage on app open). The two systems coexist without interfering.
+
+## Error Response Shapes
+
+All error responses follow a two-field JSON shape. The `error` field is a stable machine-readable label; `message` contains detail.
+
+**400 — validation failure** (from `activitiesController.submitActivity`):
+
+```json
+{
+  "error": "Invalid activity record",
+  "message": "id is required (string)"
+}
+```
+
+The `message` is the first failing field from `validateActivityRecord`. Other possible values: `"exerciseId is required"`, `"exerciseName is required"`, `"category is required"`, `"completedAt is required (ISO string)"`, `"setsCompleted is required (number)"`, `"setsTarget is required (number)"`, `"durationSec is required (number)"`, `"totalReps is required (number)"`, `"repsPerSet must be an array"`, `"unilateral must be a boolean"`.
+
+**401 — missing or invalid Bearer token** (from `middleware/authMiddleware.js`):
+
+```json
+{
+  "error": "Verification failed",
+  "message": "Invalid or expired token"
+}
+```
+
+Returned when no `Authorization` header is present or the token fails `admin.auth().verifyIdToken()`. The `message` is always `"Invalid or expired token"` (normalized in `Auth_Service.verification`).
+
+**401 — token valid but `req.user` not populated** (from `activitiesController`):
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "No verified user on request"
+}
+```
+
+Defensive check inside the activities controller. Should not fire in normal operation if the middleware ran correctly.
+
+**500 — internal error** (from `activitiesController.submitActivity`):
+
+```json
+{
+  "error": "Failed to submit activity",
+  "message": "<error.message>"
+}
+```
+
+Other 500 shapes from `activitiesController.getActivities`: `"error": "Failed to fetch activities"`. From `videoController`: `"error": "Failed to retrieve video"`. From `modelController`: `"error": "Failed to retrieve model URL"`.
+
+## Quick curl Examples
+
+Replace `$TOKEN` with a valid Firebase ID token (obtain via `auth.currentUser?.getIdToken(true)` on the client, or via the Firebase REST API).
+
+**POST /auth/register** (public):
+
+```bash
+curl -X POST https://aipeer-api-596437694331.us-central1.run.app/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "5551234567", "password": "secret123"}'
+```
+
+**POST /auth/verify** (public — exchange SMS code for tokens):
+
+```bash
+curl -X POST https://aipeer-api-596437694331.us-central1.run.app/auth/verify \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "5551234567", "code": "123456"}'
+```
+
+Response: `{ "success": true, "customToken": "...", "refreshToken": "...", "userId": "...", "isNewUser": false }`
+
+**POST /auth/refresh** (public — exchange refresh token for new custom token):
+
+```bash
+curl -X POST https://aipeer-api-596437694331.us-central1.run.app/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "<uuid-from-verify>"}'
+```
+
+Response: `{ "success": true, "customToken": "...", "userId": "..." }`
+
+**GET /users/get** (authenticated):
+
+```bash
+curl "https://aipeer-api-596437694331.us-central1.run.app/users/get?id=<userId>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**POST /activities/complete** (authenticated):
+
+```bash
+curl -X POST https://aipeer-api-596437694331.us-central1.run.app/activities/complete \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "1713398400000_abc123",
+    "exerciseId": "strength-1",
+    "exerciseName": "Knee Extensor",
+    "category": "strength",
+    "completedAt": "2026-04-17T12:00:00.000Z",
+    "setsCompleted": 3,
+    "setsTarget": 3,
+    "durationSec": 180,
+    "totalReps": 30,
+    "repsPerSet": [10, 10, 10],
+    "unilateral": true
+  }'
+```
+
+Response (201): `{ "success": true, "activityId": "1713398400000_abc123" }`
+
+**GET /activities/list** (authenticated):
+
+```bash
+curl https://aipeer-api-596437694331.us-central1.run.app/activities/list \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response: `{ "activities": [ ... ] }` ordered by `completedAt` desc.
+
+**GET /video/getTugURL** (authenticated — returns signed GCS URL):
+
+```bash
+curl https://aipeer-api-596437694331.us-central1.run.app/video/getTugURL \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response: `{ "videoId": "Assessment Videos/Test1_Tug.mp4", "videoUrl": "https://storage.googleapis.com/...", "title": "Timed Up and Go", "duration": 120, "expiresIn": 3600 }`
+
+**GET /model/getModelURL** (authenticated — returns signed LLM model URL):
+
+```bash
+curl https://aipeer-api-596437694331.us-central1.run.app/model/getModelURL \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response: `{ "modelUrl": "https://storage.googleapis.com/...", "filename": "Qwen3.5-2B-aipeer-Q4_K_M.gguf", "expiresIn": 3600 }`
+
 ## API Endpoints
 
 ### Public (no auth)
@@ -143,8 +314,8 @@ gcloud run deploy aipeer-api \
   --source . \
   --region us-central1 \
   --no-invoker-iam-check \
-  --service-account "munish@research-ai-peer-dev.iam.gserviceaccount.com" \
-  --set-env-vars "GCS_PROJECT_ID=research-ai-peer-dev,GCS_BUCKET_NAME=aipeer_videos,GCS_MODEL_BUCKET=qwenfinetune,GCS_CLIENT_EMAIL=munish@research-ai-peer-dev.iam.gserviceaccount.com,IDENTITY_PLATFORM_API_KEY=..."
+  --service-account "<service-account-email>" \
+  --set-env-vars "GCS_PROJECT_ID=research-ai-peer-dev,GCS_BUCKET_NAME=aipeer_videos,GCS_MODEL_BUCKET=qwenfinetune,GCS_CLIENT_EMAIL=<service-account-email>,IDENTITY_PLATFORM_API_KEY=..."
 ```
 
 | Flag | Purpose |

@@ -2,6 +2,15 @@
 
 UCF Senior Design Project 2025-2026. CS students collaborating with UCF College of Medicine to build a HIPAA-compliant mobile app that assesses fall risk and guides patients through exercise interventions using the Otago program.
 
+## What's new (April 2026)
+
+- **FES-I questionnaire upload** — results are written to Firestore as `category="assessment"` activity records once all 7 items are answered; partial responses are not saved.
+- **Streamlined onboarding** — the first-run tutorial walkthrough has been removed. After SMS verification the app routes directly to `/welcome` or `/(tabs)`.
+- **Full i18n** — English, Spanish, and Haitian Creole are supported throughout the UI. Text-to-speech voice selection matches the chosen language; Haitian Creole falls back to `fr-FR` because iOS does not ship a native Creole voice.
+- **Chair Rise + Timed Up and Go tests** — both clinical balance assessments are live in the app (`chair-rise-test.tsx`, `tug-test.tsx`).
+- **Post-exercise feedback screen** — a summary of form-check events and rep quality is shown at the end of each exercise session.
+- **Dual-token auth** — Firebase custom tokens are used for access; UUID refresh tokens stored in Firestore provide 30-day session persistence, replacing the previous AsyncStorage-only approach.
+
 ## Project Structure
 
 ```
@@ -173,9 +182,16 @@ UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
 
 ## Documentation
 
-- [Architecture](ARCHITECTURE.md) -- system diagram, data flows, Firestore schema, design decisions
-- [File Map](FILE_MAP.md) -- complete source file listing with descriptions
-- [API Reference](API/README.md) -- endpoints, environment variables, deployment
-- [Frontend](front-end/AI-PEER/README.md) -- setup, features, project structure
-- [Cloud Functions](functions/README.md) -- REDCap sync schedule, logic, field mapping
-- [Training Pipeline](Training/slm/TRAINING_PLAN.md) -- LLM finetuning methodology, dataset, hardware setup, run stats
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System diagram, data flows, Firestore schema, and design decisions |
+| [FILE_MAP.md](FILE_MAP.md) | Complete source file listing with one-line descriptions of every file |
+| [SETUP.md](SETUP.md) | Step-by-step environment setup for a new machine (Node, JDK, Xcode, CocoaPods, env vars) |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Runbook for common build and runtime failures across iOS, Android, and Cloud Run |
+| [GLOSSARY.md](GLOSSARY.md) | Plain-English definitions of clinical and technical terms for sponsors and non-developers |
+| [VISION_PIPELINE.md](VISION_PIPELINE.md) | Deep dive on the MediaPipe pose estimation → form-check → rep-counting loop |
+| [LLM_PIPELINE.md](LLM_PIPELINE.md) | Deep dive on the on-device llama.rn chat pipeline: model download, inference, system prompt, chat history |
+| [API/README.md](API/README.md) | Backend routes, auth middleware, environment variables, and deployment |
+| [functions/README.md](functions/README.md) | REDCap sync Cloud Function: schedule, logic, and field mapping |
+| [front-end/AI-PEER/README.md](front-end/AI-PEER/README.md) | Frontend build, run, iOS/Android troubleshooting, and project structure |
+| [Training/slm/TRAINING_PLAN.md](Training/slm/TRAINING_PLAN.md) | LLM fine-tune pipeline: dataset, methodology, hardware setup, and run stats |
