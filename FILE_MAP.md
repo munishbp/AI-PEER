@@ -1,212 +1,238 @@
 # File Map
 
-Complete source file listing for the AI-PEER repository. UCF Senior Design 2025-2026.
+Complete source file guide for the AI-PEER repository. UCF Senior Design 2025-2026.
+React Native 0.81.5 bare workflow. Answers the question "where does X live?"
 
-## API/ -- Express Backend (Cloud Run)
+---
 
-| File | Purpose |
-|------|---------|
-| server.js | Express entry point. Mounts routes, applies CORS, JSON parsing, auth middleware. |
-| .env.example | Template for GCS, Identity Platform, and server configuration. |
-| config/firebaseConfig.js | Firebase Admin SDK initialization. Uses env vars locally, ADC on Cloud Run. Connects to the named `ai-peer` Firestore database (not the default). |
-| middleware/authMiddleware.js | Verifies Firebase ID token from Authorization Bearer header AND attaches `req.user = decoded` so downstream controllers can read `req.user.uid` instead of trusting body params. |
-| routes/authRoutes.js | /auth -- register, login, send-code (SMS 2FA), verify, refresh. |
-| routes/userRoutes.js | /users -- register, get, update, delete. |
-| routes/videosRoutes.js | /video -- 23 exercise video signed URL endpoints (the 4-stage balance test endpoint `/video/getBalanceURL` is still listed but the UI route was removed). |
-| routes/modelRoutes.js | /model -- GET /getModelURL for LLM GGUF download. |
-| routes/activitiesRoutes.js | /activities -- POST /complete (write), GET /list (read user history). Both require Bearer auth. |
-| controllers/userController.js | User CRUD request handlers. |
-| controllers/videoController.js | Per-exercise signed URL generation (23 active exercises). |
-| controllers/modelController.js | Signed URL for Qwen3.5-2B GGUF in qwenfinetune bucket. |
-| controllers/activitiesController.js | Per-user activity record submission and retrieval. Uses `req.user.uid` (never body params). Validates required schema fields before writing. |
-| services/Auth_Service.js | Firebase custom token creation, Identity Platform SMS send/verify. |
-| services/GCS_Service.js | V4 signed URL generation. Supports override bucket param. Uses IAM signBlob on Cloud Run. |
-| services/firestore-functions.js | Firestore CRUD helpers for the `users` collection AND the new `users/{uid}/activities/{activityId}` subcollection (writeUserActivity, getUserActivities). |
+## 1. Repository Layout
 
-## front-end/AI-PEER/ -- React Native Mobile App
+- **API/** — Express.js backend, deployed to Google Cloud Run.
+- **front-end/AI-PEER/** — React Native bare app (Expo 54, RN 0.81.5).
+- **functions/** — Firebase Functions (Cloud Functions v2); scheduled jobs only.
+- **Training/slm/** — Fine-tuning scripts for the on-device Qwen3.5-2B model.
+- **firebase.json** — Firebase deploy config (functions, Firestore, hosting rules).
 
-### Screens (app/)
+---
 
-| File | Purpose |
-|------|---------|
-| _layout.tsx | Root layout. Wraps app in AuthProvider, LLMProvider, VisionProvider, PrefsProvider. |
-| index.tsx | Login/Register screen. Phone + password input, routes to verify. |
-| verify.tsx | SMS 6-digit code verification screen. |
-| welcome.tsx | Post-registration accessibility onboarding. |
-| tutorial.tsx | App tutorial walkthrough after first login. |
-| questionnaire.tsx | FES-I fall risk questionnaire (16 questions). |
-| chat-history.tsx | Conversation history list with 24-hour auto-archive. |
-| (tabs)/_layout.tsx | Bottom tab navigator (Home, AI Chat, Activity, Contacts, Settings). |
-| (tabs)/index.tsx | Home tab. FRA matrix card, BTrack score, activity summary. |
-| (tabs)/ai-chat.tsx | AI chat interface. Model download modal on first use, message input, typing indicator. |
-| (tabs)/exercise.tsx | Exercise category selector (warmup, strength, balance, assessment). |
-| (tabs)/exercise-session.tsx | Multi-set exercise session. Camera + skeleton + open-palm gesture-confirm start flow + 5-second countdown + rep counter + per-set summary. Persists completed activities locally and to backend on final-set submit. |
-| (tabs)/activity.tsx | Activity tracking. Today's progress, weekly breakdown, monthly compliance heatmap. |
-| (tabs)/balance-test.tsx | Fall-risk assessment landing page with two clinical tests (Chair Rise, Timed Up and Go). |
-| (tabs)/chair-rise-test.tsx | 30-second sit-to-stand assessment. Camera + open-palm start flow + 30s timer + rep counter + fall-risk band classification. |
-| (tabs)/tug-test.tsx | Timed Up and Go assessment. Camera + open-palm start flow + state machine (waiting_for_stand → walking → waiting_for_final_sit) using 3D knee angle from MediaPipe. |
-| (tabs)/video-confirm.tsx | Video playback confirmation before starting exercise. |
-| (tabs)/contacts.tsx | Emergency contacts management (Firestore-backed). |
-| (tabs)/settings.tsx | User preferences (font scaling, high contrast, logout). |
+## 2. Frontend App Routes
 
-### Core Modules (src/)
+Files under `front-end/AI-PEER/app/`. These are Expo Router stack screens.
 
-| File | Purpose |
-|------|---------|
-| api.ts | HTTP client. requestJSON helper, all API endpoint definitions (auth, users, model, video). |
-| firebaseClient.ts | Firebase client SDK initialization (Auth only — Firestore is server-side via the API). |
-| firebaseConfig.example.ts | Template for Firebase client config values. |
-| video.ts | Exercise ID to video endpoint mapping + fetchVideoUrl() helper. |
-| daily-workout.ts | Daily workout recommendation logic based on user progress. |
-| workout-combos.ts | Predefined exercise combinations by category and difficulty. |
-| exercise-activity-storage.ts | Dual-write persistence for completed exercise activity records: AsyncStorage (always, immediate) + POST /activities/complete (best-effort, calls auth.currentUser.getIdToken(true) for fresh ID token). Schema includes per-rep angle history, feedback events, set-by-set rep counts, and aggregate stats. |
-| fra-storage.ts | AsyncStorage persistence for FES-I questionnaire results. |
-| prefs-context.tsx | React Context for accessibility preferences (font scale, contrast). |
-| theme.ts | App-wide color palette, typography, and spacing constants. |
+- **app/_layout.tsx** — Root layout; wraps the entire app in `AuthProvider`, `LLMProvider`, `PrefsProvider`, `VisionProvider`; registers all stack routes; requests notification permissions on mount.
+- **app/(tabs)/_layout.tsx** — Tab bar layout; defines the five visible tabs (Home, AI Chat, Activity, Contacts, Settings) and registers the hidden tab routes (exercise, balance-test, etc.) so they keep the tab bar visible.
+- **app/index.tsx** — Login screen; phone + password form; entry point for unauthenticated users.
+- **app/login.tsx** — Re-exports `app/index.tsx` (alias route for `/login`).
+- **app/verify.tsx** — SMS verification screen; accepts the 6-digit OTP, exchanges it for a custom Firebase token, and stores the refresh token.
+- **app/welcome.tsx** — First-run accessibility onboarding screen; lets user pick font size, contrast, language, and sound before entering the app.
+- **app/questionnaire.tsx** — FES-I fall-efficacy questionnaire (7 questions); saves result via `fra-storage.ts`.
+- **app/chat-history.tsx** — Conversation history list; tap to resume a past conversation, swipe/button to delete.
+- **app/modal.tsx** — Generic modal route from the Expo template (placeholder).
+- **app/+not-found.tsx** — 404 fallback screen.
+- **app/+html.tsx** — Web-only HTML shell (not used on native).
 
-### Auth Module (src/auth/)
+---
 
-| File | Purpose |
-|------|---------|
-| AuthContext.tsx | React Context provider. Two-token persistence: refresh token in AsyncStorage → POST /auth/refresh → custom token → signInWithCustomToken → ID token in state. The state token is NOT auto-refreshed; per-request callers should use `auth.currentUser?.getIdToken(true)` for guaranteed-fresh tokens. |
-| index.ts | Barrel export for AuthProvider and useAuth hook. |
+## 3. Frontend Tab Screens
 
-### LLM Module (src/llm/)
+Files under `front-end/AI-PEER/app/(tabs)/`.
 
-| File | Purpose |
-|------|---------|
-| LLMService.ts | Singleton llama.rn wrapper. Loads model, runs inference, releases memory. |
-| LLMContext.tsx | React Context for LLM state (download progress, model loaded, generating). Uses auth token for model download. |
-| modelDownloader.ts | Fetches signed URL from API, downloads GGUF with progress tracking, cleans up old model files. |
-| config.ts | Model filename, expected size (~1.2GB), inference params (512 tokens, temp 0.7, top_p 0.9, ctx 8192). |
-| systemPrompt.ts | PEER framework system prompt + ChatML prompt formatting function. |
-| types.ts | ChatMessage, Conversation, LLMState, InferenceConfig type definitions. |
-| useLLM.ts | React hook exposing LLM state and actions (send, downloadAndInit, clear). |
-| index.ts | Barrel export for LLMProvider, useLLM, config values, downloader functions. |
+- **app/(tabs)/index.tsx** — Home screen; shows today's workout card, FRA matrix, and entry points to exercise and assessment flows.
+- **app/(tabs)/ai-chat.tsx** — On-device AI chat screen; wraps the Qwen3.5-2B LLM via `useLLM`; shows `ModelDownloadModal` on first use; 24-hour conversation TTL.
+- **app/(tabs)/activity.tsx** — Activity history screen; reads exercise completion records from `exercise-activity-storage.ts` and renders them with `LineGraph`.
+- **app/(tabs)/contacts.tsx** — Emergency contacts screen; lets users add/edit caregiver phone numbers stored in Firestore.
+- **app/(tabs)/settings.tsx** — Accessibility and reminder settings; font scale, contrast, language, sound toggle, and daily reminder scheduler.
+- **app/(tabs)/exercise.tsx** — Exercise catalog screen; lists warmup, strength, and balance exercises; navigates to `exercise-session` for a selected exercise.
+- **app/(tabs)/exercise-session.tsx** — Live exercise session screen; shows the video demo, runs the VisionCamera pose pipeline with `GestureCountdownOverlay`, `SkeletonOverlay`, and `GuideOverlay`; saves a completion record on finish.
+- **app/(tabs)/exercise-summary.tsx** — Post-session summary screen; shows rep count, form score, and ROM data from the just-completed session.
+- **app/(tabs)/video-confirm.tsx** — Video playback confirmation screen; plays the GCS-signed exercise video and lets the user confirm they are ready before the live session begins.
+- **app/(tabs)/balance-test.tsx** — Balance assessment screen (one-leg stand); pose-tracked, results saved to Firestore.
+- **app/(tabs)/chair-rise-test.tsx** — Chair-rise assessment screen (5x sit-to-stand); pose-tracked rep counter, results saved.
+- **app/(tabs)/tug-test.tsx** — Timed Up and Go (TUG) assessment screen; pose-tracked with looser palm-gesture thresholds for the greater filming distance.
 
-### Vision Module (src/vision/)
+---
 
-| File | Purpose |
-|------|---------|
-| VisionService.ts | Maps MediaPipe 33 pose landmarks to 17 COCO keypoints (mapMediaPipeToPose) AND 21 hand landmarks per detected hand to the Hand type (mapMediaPipeToHands). Handles iOS landscape→portrait coordinate rotation, Android Y-flip, and iOS L/R label swap for the pre-mirrored front camera. |
-| VisionContext.tsx | React Context for vision state. Owns the trackingMode state machine (idle → waiting_for_gesture → countdown → tracking), the open-palm detector with handedness-based palm-normal cross-product check (with Platform.OS branch for Android), the form-check 300ms smoothing, and the rep counter lifecycle. |
-| FormAnalyzer.ts | Per-frame check loop that evaluates the current pose against exercise rules (angle, alignment, position, distance). Supports rep-zone gating (skip checks while inside the rep's start/end zones) and severity gradation (mild/moderate/severe based on degrees outside the acceptable range). Returns binary 100/0 score; the smoother in VisionContext averages frames into a percentage. |
-| RepCounter.ts | Rep state machine (idle → in_start → in_end). 1.2s cooldown, 2-frame zone persistence, 15° minimum movement validation. Supports angle, distance, and 3D-angle modes plus bilateral keypoint averaging. Tracks per-rep angle history (start/end/peak/duration) for activity records. |
-| frameProcessor.ts | VisionCamera worklet bridge. Calls the native plugin once per frame, unpacks the {pose, hands} return shape, forwards both to mapMediaPipeToPose / mapMediaPipeToHands on the JS thread. |
-| config.ts | Vision module config: confidence thresholds, FPS settings. |
-| constants.ts | COCO keypoint names (17 points), skeleton connection pairs. |
-| types.ts | Keypoint, Pose, FormViolation (severity union: error / warning / mild / moderate / severe), FormFeedback type definitions. |
-| useVision.ts | React hook exposing vision state, the trackingMode + countdown countdown, startTracking / startGestureWatch / stopTracking actions, and the getRepHistory snapshot getter. |
-| index.ts | Barrel export for VisionProvider, useVision. |
+## 4. Frontend Components
 
-### Exercise Rules (src/vision/exercises/)
+Files under `front-end/AI-PEER/components/`.
 
-| File | Purpose |
-|------|---------|
-| types.ts | ExerciseRule, AngleCheck, AlignmentCheck, PositionCheck, DistanceCheck interfaces. |
-| utils.ts | Angle calculation between 3 keypoints, alignment and distance helpers. |
-| index.ts | Exercise registry. Maps exercise IDs to rule definitions. |
-| assessment/balanceTest.ts | 4-Stage Balance Test rules. **Parked stub** — UI route was removed in commit `c0345ad2`; the file and registry entry are kept to avoid breaking type assumptions but no screen reaches it. |
-| assessment/chairRise.ts | Chair Rise (30-second sit-to-stand) test rules. |
-| assessment/timedUpAndGo.ts | Timed Up and Go test rules. |
-| warmup/headMovements.ts | Head movement warmup rules. |
-| warmup/neckMovements.ts | Neck movement warmup rules. |
-| warmup/backMovements.ts | Back extension warmup rules. |
-| warmup/trunkMovements.ts | Trunk rotation warmup rules. |
-| warmup/ankleMovements.ts | Ankle movement warmup rules. |
-| strength/kneeExtensor.ts | Front knee strengthening rules. |
-| strength/kneeFlexor.ts | Back knee strengthening rules. |
-| strength/hipAbductor.ts | Side hip strengthening rules. |
-| strength/calfRaises.ts | Calf raise rules. |
-| strength/toeRaises.ts | Toe raise rules. |
-| balance/kneeBends.ts | Knee bend rules. |
-| balance/sitToStand.ts | Sit-to-stand rules. |
-| balance/sidewaysWalk.ts | Sideways walk rules. |
-| balance/backwardsWalk.ts | Backwards walk rules. |
-| balance/walkAndTurn.ts | Walk and turn rules. |
-| balance/oneLegStand.ts | One-leg stand rules. |
-| balance/heelToeStand.ts | Heel-toe stand rules. |
-| balance/heelToeWalk.ts | Heel-toe walk rules. |
-| balance/heelWalking.ts | Heel walking rules. |
-| balance/toeWalking.ts | Toe walking rules. |
-| balance/heelToeWalkBackwards.ts | Heel-toe walk backwards rules. |
+- **components/GestureCountdownOverlay.tsx** — Overlay rendered during the `waiting_for_gesture` and `countdown` VisionContext states; shows the arms-overhead prompt and the 5-4-3-2-1 countdown with TTS audio cues.
+- **components/FRAMatrixCard.tsx** — Fall-Risk Appraisal matrix card; plots the user in one of four quadrants (Rational/Irrational/Incongruent/Congruent) based on BTrackS and FES-I scores; allows inline BTrackS score editing.
+- **components/ModelDownloadModal.tsx** — Modal shown when the LLM model has not been downloaded; displays file-size warning, download button, progress bar, and error/retry states.
+- **components/graphs/FRAMatrixGraph.tsx** — SVG-based 2×2 risk matrix graph; takes a 0-100 risk percent and renders a quadrant dot.
+- **components/graphs/LineGraph.tsx** — Generic SVG line graph for activity history sparklines.
+- **components/themed-text.tsx** — Text component that reads color from `usePrefs`.
+- **components/themed-view.tsx** — View component that reads color from `usePrefs`.
+- **components/haptic-tab.tsx** — Tab bar button with haptic feedback on press.
+- **components/ui/icon-symbol.tsx** — Cross-platform icon wrapper (SF Symbols on iOS, Material on Android/web).
+- **components/ui/icon-symbol.ios.tsx** — iOS-specific SF Symbol icon wrapper.
 
-### Vision Components (src/vision/components/)
+---
 
-| File | Purpose |
-|------|---------|
-| GuideOverlay.tsx | Camera guide overlay showing positioning hints for the user. |
-| SkeletonOverlay.tsx | Renders detected skeleton keypoints and connections over the camera feed. |
-| skeletonUtils.ts | Helper functions for skeleton line drawing and keypoint rendering. |
+## 5. Frontend Src Services
 
-### Native Plugins (iOS)
+### Root-level services — `front-end/AI-PEER/src/`
 
-| File | Purpose |
-|------|---------|
-| ios/AIPEER/PoseLandmarkerPlugin.swift | Custom VisionCamera frame processor plugin. Runs MediaPipe **Pose Landmarker AND Hand Landmarker** in parallel on the same frame, returns `{pose: [...33], hands: [{landmarks: [...21], handedness}]}`. GPU-accelerated via Metal. |
-| ios/AIPEER/PoseLandmarkerPlugin.m | ObjC registration file for the Swift plugin (VISION_EXPORT_SWIFT_FRAME_PROCESSOR macro). |
-| ios/AIPEER/pose_landmarker_full.task | MediaPipe Pose Landmarker model (~9MB). Bundled in the iOS app. |
-| ios/AIPEER/hand_landmarker.task | MediaPipe Hand Landmarker model (~7MB). Bundled in the iOS app. |
+- **src/api.ts** — Typed HTTP client for the backend API; exports `api` (login, register, refresh) and `BASE` URL; reads `EXPO_PUBLIC_API_BASE_URL` from env with a Cloud Run fallback.
+- **src/firebaseClient.ts** — Initializes the Firebase app and exports `auth`; reads Firebase config from `EXPO_PUBLIC_FIREBASE_*` env vars.
+- **src/firebaseConfig.example.ts** — Example/template showing required Firebase env vars; not imported at runtime.
+- **src/prefs-context.tsx** — Global accessibility preferences context (`fontScale`, `contrast`, `language`, `soundAlerts`); persists to AsyncStorage; exposes `usePrefs()` hook.
+- **src/theme.ts** — Design-token file; exports `colors`, `darkColors`, `highContrastColors`, `colorsByContrast`, `scaleFontSizes`, `spacing`, `radii`, `fontSizes`.
+- **src/i18n.ts** — Initializes i18next with `react-i18next`; loads the three translation JSON bundles; exposes the configured `i18n` singleton.
+- **src/tts.ts** — TTS language helper; maps the app language preference (`en`/`es`/`ht`) to a system voice locale string (`en-US`/`es-ES`/`fr-FR`); exports `speak()` wrapper around `expo-speech`.
+- **src/reminder-notifications.ts** — Daily workout reminder scheduler; manages `expo-notifications` permission, schedules/cancels repeating local notifications, and serializes reminder config to AsyncStorage.
+- **src/fra-storage.ts** — FES-I questionnaire local save (AsyncStorage) and Firestore upload; exports `saveQuestionnaireResult` and `uploadQuestionnaireToFirestore`.
+- **src/exercise-activity-storage.ts** — Exercise completion record type (`ExerciseCompletionRecord`) and storage helpers; writes to AsyncStorage and POSTs to the `/activities` backend endpoint.
+- **src/video.ts** — Maps exercise IDs to their backend video endpoint paths; provides `fetchExerciseVideo()` to obtain a signed GCS URL.
+- **src/daily-workout.ts** — Selects today's daily workout (all warmups + all strength + 3 rotating balance exercises) based on exercise history.
+- **src/workout-combos.ts** — Defines the `WorkoutCombo` type (`warmup[]`, `strength[]`, `balance[]`).
 
-### Native Plugins (Android)
+### Auth — `src/auth/`
 
-| File | Purpose |
-|------|---------|
-| android/app/src/main/java/com/anonymous/aipeer/poselandmarker/PoseLandmarkerFrameProcessorPlugin.kt | Android port of the Swift plugin. Same dual-task contract: Pose + Hand from a single callback, returns `{pose, hands}`. Lazy thread-affine init with GPU→CPU fallback per landmarker. |
-| android/app/src/main/assets/pose_landmarker_full.task | MediaPipe Pose Landmarker model (Android copy). |
-| android/app/src/main/assets/hand_landmarker.task | MediaPipe Hand Landmarker model (Android copy). |
+- **src/auth/AuthContext.tsx** — Dual-token auth context; on mount restores session from a refresh token in AsyncStorage; exposes `useAuth()` with `user`, `token`, `login`, `register`, `logout`; Firebase custom-token sign-in.
+- **src/auth/index.ts** — Re-exports `AuthProvider` and `useAuth`.
 
-### Bundled Assets (assets/models/)
+### LLM — `src/llm/`
 
-| File | Purpose |
-|------|---------|
-| assets/models/pose_landmarker_full.task | Canonical Pose model file. Source of truth — copied to ios/AIPEER/ and android/app/src/main/assets/. |
-| assets/models/hand_landmarker.task | Canonical Hand model file. Same copy pattern. |
+- **src/llm/LLMContext.tsx** — React context managing download state, model initialization, and multi-conversation storage (24-hour TTL, persisted to AsyncStorage) for the on-device LLM.
+- **src/llm/LLMService.ts** — Singleton that holds the loaded `llama.rn` model instance; prevents duplicate loads; exposes `initialize()`, `generate()`, `isReady()`, `cleanup()`.
+- **src/llm/modelDownloader.ts** — Downloads the ~1.2 GB GGUF model from a backend-issued signed GCS URL with progress callbacks; handles resume, cleanup of old versions.
+- **src/llm/systemPrompt.ts** — PEER framework system prompt; constrains the model to fall-prevention coaching, enforces 3-sentence response limit, no PHI.
+- **src/llm/config.ts** — LLM configuration constants: model filename, size, inference parameters, conversation TTL, AsyncStorage keys.
+- **src/llm/types.ts** — TypeScript interfaces for `ChatMessage`, `Conversation`, `LLMState`, `InferenceConfig`.
+- **src/llm/useLLM.ts** — Simplified consumer hook; wraps `LLMContext` and exposes `isReady`, `needsDownload`, `messages`, `send`, multi-conversation helpers.
+- **src/llm/index.ts** — Public re-exports for the LLM module.
 
-### UI Components (components/)
+### Vision — `src/vision/`
 
-| File | Purpose |
-|------|---------|
-| ModelDownloadModal.tsx | Modal dialog for LLM model download with progress bar. |
-| FRAMatrixCard.tsx | Fall Risk Assessment matrix visualization card. |
-| GestureCountdownOverlay.tsx | Presentational overlay for the gesture-confirm start flow. Renders the "Hold up an open palm to start" prompt during waiting_for_gesture and the 5-4-3-2-1 number during countdown. Speaks the prompt + each tick via expo-speech. |
-| graphs/FRAMatrixGraph.tsx | FRA matrix chart component. |
-| graphs/LineGraph.tsx | Line graph for progress tracking. |
+- **src/vision/VisionContext.tsx** — Core vision state machine; manages `TrackingMode` (`idle` / `waiting_for_gesture` / `countdown` / `tracking`); runs the open-palm gesture detector, 5-second countdown ladder, rep counter, and 300ms violation smoother; exposes `useVisionContext()`.
+- **src/vision/frameProcessor.ts** — `useFrameProcessor` hook; calls the native `poseLandmarker` VisionCamera plugin per frame, parses both pose and hand landmarks, and calls `handlePoseResult` on the JS thread.
+- **src/vision/VisionService.ts** — Converts MediaPipe 33-landmark output to 17-keypoint COCO format; applies iOS portrait coordinate transform and front-camera mirror correction; parses hand landmarks.
+- **src/vision/FormAnalyzer.ts** — Evaluates a `Pose` against an exercise's `ExerciseRule` checks (angle, alignment, position) and returns a `FormFeedback` with violations.
+- **src/vision/RepCounter.ts** — Two-phase rep counter (`in_start` / `in_end`) driven by joint angle or normalized distance; records per-rep `RepHistoryEntry` (startAngle, peakAngle, ROM, duration).
+- **src/vision/useVision.ts** — Simplified consumer hook wrapping `VisionContext`.
+- **src/vision/config.ts** — Detection thresholds and performance settings for the MediaPipe pipeline.
+- **src/vision/constants.ts** — COCO 17 keypoint names and skeleton connection pairs for rendering.
+- **src/vision/types.ts** — TypeScript types: `Keypoint`, `Pose`, `FormViolation`, `FormFeedback`, `VisionState`, `VisionConfig`.
+- **src/vision/index.ts** — Public re-exports for the vision module.
 
-### Build Scripts (scripts/)
+#### Vision Components — `src/vision/components/`
 
-| File | Purpose |
-|------|---------|
-| scripts/ios-doctor.sh | iOS preflight diagnostic. Read-only. PASS/FAIL per check (Xcode version, Command Line Tools selection, Node version, CocoaPods, Pods/, .env, react-native-worklets-core). Run via `npm run ios:doctor`. |
-| scripts/ios-clean.sh | iOS recovery. Pod deintegrate + reinstall, wipe `~/Library/Developer/Xcode/DerivedData`, fresh install. Use when doctor passes but build still fails. Run via `npm run ios:clean`. |
-| scripts/android-doctor.sh | Android preflight diagnostic. Read-only. PASS/FAIL per check (JDK, Android SDK, Gradle, env vars, gradle.properties, daemons). Run via `npm run android:doctor`. |
-| scripts/android-clean.sh | Android recovery. Gradle clean + wipe build dirs and Gradle daemons. Run via `npm run android:clean`. |
-| scripts/reset-project.js | Reset Expo template state to a blank starting point. Rarely needed; ships with the Expo template. |
+- **src/vision/components/SkeletonOverlay.tsx** — SVG overlay rendering joints and bones color-coded by form quality (green/yellow/red) at ~5 Hz.
+- **src/vision/components/GuideOverlay.tsx** — SVG overlay rendering angle arcs and alignment lines showing where form corrections are needed; drawn behind the skeleton.
+- **src/vision/components/skeletonUtils.ts** — Shared geometry helpers for both overlays: screen-coordinate mapping, violation color lookup, SVG arc generation.
 
-## functions/ -- Firebase Cloud Functions
+#### Exercise Rules — `src/vision/exercises/`
 
-| File | Purpose |
-|------|---------|
-| index.js | redcapSync scheduled function. Runs daily at 2am EST. Pull REDCap -> Firestore, push Firestore -> REDCap. |
-| services/REDCap_Service.js | REDCap API wrapper. exportFromREDCap() and importToREDCap() with field mapping. |
-| services/firestore-readers.js | getUsersForSync() -- queries users with non-null scores for REDCap push. |
-| config/fieldMappings.js | Bidirectional field name mapping between Firestore and REDCap. |
+- **src/vision/exercises/types.ts** — `ExerciseRule`, `AngleCheck`, `AlignmentCheck`, `PositionCheck`, `RepConfig` type definitions.
+- **src/vision/exercises/utils.ts** — Geometry utilities: `calculateAngle`, `calculateAngle3D`, `angleFromVertical`, `angleFromHorizontal`, `isAbove`, `isBelow`, `isConfident`.
+- **src/vision/exercises/index.ts** — Registry that merges all exercise categories; exports `getExerciseRules(id)`, `getAllExerciseIds()`, `getExercisesByCategory()`.
+- **src/vision/exercises/assessment/balanceTest.ts** — One-leg-stand balance assessment rule.
+- **src/vision/exercises/assessment/chairRise.ts** — 5x chair-rise assessment rule.
+- **src/vision/exercises/assessment/timedUpAndGo.ts** — Timed Up and Go (TUG) assessment rule.
+- **src/vision/exercises/assessment/index.ts** — Re-exports assessment rules.
+- **src/vision/exercises/balance/oneLegStand.ts** — Left one-leg stand balance exercise rule.
+- **src/vision/exercises/balance/oneLegStandRight.ts** — Right one-leg stand balance exercise rule.
+- **src/vision/exercises/balance/heelToeStand.ts** — Heel-to-toe tandem stand rule.
+- **src/vision/exercises/balance/heelToeWalk.ts** — Heel-to-toe forward walk rule.
+- **src/vision/exercises/balance/heelToeWalkBackwards.ts** — Heel-to-toe backward walk rule.
+- **src/vision/exercises/balance/sidewaysWalk.ts** — Sideways walking rule.
+- **src/vision/exercises/balance/backwardsWalk.ts** — Backwards walking rule.
+- **src/vision/exercises/balance/heelWalking.ts** — Heel walking rule.
+- **src/vision/exercises/balance/toeWalking.ts** — Toe walking rule.
+- **src/vision/exercises/balance/kneeBends.ts** — Standing knee bends rule.
+- **src/vision/exercises/balance/sitToStand.ts** — Sit-to-stand balance rule.
+- **src/vision/exercises/balance/walkAndTurn.ts** — Walk-and-turn rule.
+- **src/vision/exercises/balance/index.ts** — Re-exports balance rules.
+- **src/vision/exercises/strength/kneeExtensor.ts** — Left knee extension (quad) rule.
+- **src/vision/exercises/strength/kneeExtensorRight.ts** — Right knee extension rule.
+- **src/vision/exercises/strength/kneeFlexor.ts** — Left knee flexion (hamstring) rule.
+- **src/vision/exercises/strength/kneeFlexorRight.ts** — Right knee flexion rule.
+- **src/vision/exercises/strength/hipAbductor.ts** — Left hip abduction rule.
+- **src/vision/exercises/strength/hipAbductorRight.ts** — Right hip abduction rule.
+- **src/vision/exercises/strength/calfRaises.ts** — Bilateral calf raise rule.
+- **src/vision/exercises/strength/toeRaises.ts** — Bilateral toe raise rule.
+- **src/vision/exercises/strength/index.ts** — Re-exports strength rules.
+- **src/vision/exercises/warmup/ankleMovements.ts** — Ankle circles/pumps warmup rule.
+- **src/vision/exercises/warmup/backMovements.ts** — Back rotation warmup rule.
+- **src/vision/exercises/warmup/headMovements.ts** — Head tilt/turn warmup rule.
+- **src/vision/exercises/warmup/neckMovements.ts** — Neck stretch warmup rule.
+- **src/vision/exercises/warmup/trunkMovements.ts** — Trunk side bend warmup rule.
+- **src/vision/exercises/warmup/index.ts** — Re-exports warmup rules.
 
-## Training/slm/ -- LLM Finetuning Pipeline
+#### Locales — `src/locales/`
 
-| File | Purpose |
-|------|---------|
-| finetune.py | SFT training script. Qwen/Qwen3.5-2B + LoRA (r=16) via unsloth on [YsK-dev/geriatric-health-advice](https://huggingface.co/datasets/YsK-dev/geriatric-health-advice) (Apache 2.0). Exports Q4_K_M GGUF via unsloth's `save_pretrained_gguf`. |
-| upload_to_gcs.py | Upload final GGUF model to the qwenfinetune GCS bucket. |
-| requirements.txt | Python dependencies (unsloth, torch, trl, transformers, google-cloud-storage). |
-| TRAINING_PLAN.md | End-to-end recipe: dataset citation, hardware requirements, Linux/vast.ai setup script with gotchas, reference run stats, shipping steps. |
+- **src/locales/en/translation.json** — English UI strings.
+- **src/locales/es/translation.json** — Spanish UI strings.
+- **src/locales/ht/translation.json** — Haitian Creole UI strings.
 
-## Root Files
+---
 
-| File | Purpose |
-|------|---------|
-| README.md | Project overview, quick start, tech stack, team info. |
-| ARCHITECTURE.md | System architecture, data flows, Firestore schema, design decisions. |
-| FILE_MAP.md | This file. Complete source listing. |
-| firebase.json | Firebase project config. Points to functions/ codebase for Cloud Functions deployment. |
-| Allowed BAA.txt | Reference list of Google Cloud services covered under BAA (HIPAA). |
+## 6. Backend API
+
+Files under `API/`. Deployed as a single Node.js service on Google Cloud Run.
+
+- **API/server.js** — Express entry point; mounts CORS, JSON body parser, and all route groups; applies `authMiddleware` after the `/auth` routes so public endpoints remain accessible.
+- **API/config/firebaseConfig.js** — Initializes Firebase Admin SDK; exports `admin`, `auth`, and `db` (Firestore) instances used by controllers and services.
+- **API/middleware/authMiddleware.js** — Verifies the Firebase ID token from the `Authorization: Bearer` header; attaches the decoded token to `req.user` so downstream handlers never trust body-supplied user IDs.
+- **API/routes/authRoutes.js** — `/auth` routes; handles register, login (phone/password), SMS OTP send/verify via Identity Platform, and refresh-token exchange; hashes passwords with bcrypt, issues custom Firebase tokens and long-lived refresh tokens.
+- **API/routes/userRoutes.js** — `/users` routes; CRUD for user profile documents in Firestore.
+- **API/routes/activitiesRoutes.js** — `/activities` routes; append and retrieve per-user exercise completion records.
+- **API/routes/videosRoutes.js** — `/video` routes; generates short-lived signed GCS URLs for exercise demo videos.
+- **API/routes/modelRoutes.js** — `/model` routes; generates a signed GCS URL for the finetuned GGUF model file.
+- **API/controllers/userController.js** — Handles register, read, update, delete user logic; delegates to `firestore-functions.js`.
+- **API/controllers/activitiesController.js** — Handles activity record append and retrieval; user ID always comes from `req.user.uid` (never from body params).
+- **API/controllers/videoController.js** — Calls `GCS_Service.generateSignedUrl` and returns the signed URL for a requested exercise video.
+- **API/controllers/modelController.js** — Returns a signed GCS URL for `models/Qwen3.5-2B-aipeer-Q4_K_M.gguf` from the private model bucket.
+- **API/services/Auth_Service.js** — Firebase Authentication utilities; wraps Identity Platform REST API for SMS OTP send/verify and Firebase Admin SDK for custom token minting and ID token verification.
+- **API/services/GCS_Service.js** — Google Cloud Storage helper; generates HIPAA-compliant short-lived signed URLs using IAM Credentials (service-account impersonation for Cloud Run).
+- **API/services/firestore-functions.js** — Firestore data access layer used by user and activity controllers; all reads and writes to the `ai-peer` Firestore database go through this file.
+
+---
+
+## 7. Firebase Functions
+
+- **functions/index.js** — Exports `redcapSync`, a Cloud Scheduler function that runs nightly at 2am ET; pulls assessment scores from REDCap into Firestore and pushes in-app compliance metrics back to REDCap.
+- **functions/services/REDCap_Service.js** — REDCap REST API client; `exportFromREDCap()` pulls records, `importToREDCap()` pushes records.
+- **functions/services/firestore-readers.js** — Firestore read helpers for the sync function; `getUsersForSync()` fetches all user documents that need REDCap reconciliation.
+- **functions/config/fieldMappings.js** — Bidirectional Firestore-to-REDCap field-name mapping table; edit this file when field names change.
+
+---
+
+## 8. Training
+
+- **Training/slm/finetune.py** — Fine-tunes Qwen/Qwen3.5-2B on `YsK-dev/geriatric-health-advice` using LoRA via Unsloth; exports a merged GGUF for on-device inference.
+- **Training/slm/upload_to_gcs.py** — Uploads the exported GGUF model file to the private GCS model bucket after fine-tuning.
+- **Training/slm/TRAINING_PLAN.md** — Documents the fine-tuning rationale, dataset choice, hyperparameters, and evaluation plan.
+- **Training/slm/requirements.txt** — Python package requirements for the training environment.
+
+---
+
+## 9. Native iOS Layer
+
+Files under `front-end/AI-PEER/ios/`.
+
+- **ios/Podfile** — CocoaPods manifest; enables the New Architecture, sets the deployment target, and links all RN and Expo native dependencies.
+- **ios/Podfile.lock** — Locked CocoaPods dependency versions; commit this to keep builds reproducible.
+- **ios/AIPEER.xcworkspace** — Xcode workspace; open this (not the `.xcodeproj`) to build — do not open the project file directly.
+- **ios/AIPEER/AppDelegate.swift** — Expo/RN app delegate; bootstraps the React Native factory and the Expo module system.
+- **ios/AIPEER/PoseLandmarkerPlugin.swift** — Custom VisionCamera frame processor plugin; wraps MediaPipe Pose Landmarker in `.video` (synchronous) mode; returns 33 pose landmarks and up to two hand-landmark arrays per frame to JS.
+- **ios/AIPEER/PoseLandmarkerPlugin.m** — Objective-C stub that registers `PoseLandmarkerPlugin.swift` with VisionCamera via `VISION_EXPORT_SWIFT_FRAME_PROCESSOR`.
+- **ios/AIPEER/AIPEER-Bridging-Header.h** — Swift/Objective-C bridging header.
+- **ios/AIPEER/Info.plist** — App metadata: bundle ID, display name, camera/microphone usage descriptions.
+- **ios/AIPEER/PrivacyInfo.xcprivacy** — Apple privacy manifest declaring camera, microphone, and local-storage API usage reasons.
+- **ios/AIPEER/pose_landmarker_full.task** — Bundled MediaPipe Pose Landmarker model file (full variant) used by `PoseLandmarkerPlugin`.
+- **ios/AIPEER/hand_landmarker.task** — Bundled MediaPipe Hand Landmarker model file used by `PoseLandmarkerPlugin` to return hand landmarks.
+
+---
+
+## 10. Build and Tooling Config
+
+Files under `front-end/AI-PEER/`.
+
+- **package.json** — App dependencies and scripts: `start` (Expo dev server), `ios` (opens Xcode workspace), `android` (Expo run), `lint`, `typecheck`, `ios:doctor`, `ios:clean`, `android:doctor`, `android:clean`.
+- **metro.config.js** — Metro bundler config; adds `.tflite` to asset extensions; resolves the `@/` path alias from `tsconfig.json`.
+- **tsconfig.json** — TypeScript config; extends `expo/tsconfig.base`; maps `@/*` to the project root for absolute imports.
+- **eslint.config.js** — ESLint flat config; extends `eslint-config-expo`.
+- **app.json** — Expo app manifest; defines app name, slug, iOS bundle ID, Android package, and plugin list.
+- **expo-env.d.ts** — Ambient type declarations generated by Expo for environment variables.
