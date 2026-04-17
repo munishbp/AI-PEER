@@ -195,3 +195,4 @@ UCF Senior Design 2025-2026 | Computer Science | UCF College of Medicine
 | [functions/README.md](functions/README.md) | REDCap sync Cloud Function: schedule, logic, and field mapping |
 | [front-end/AI-PEER/README.md](front-end/AI-PEER/README.md) | Frontend build, run, iOS/Android troubleshooting, and project structure |
 | [Training/slm/TRAINING_PLAN.md](Training/slm/TRAINING_PLAN.md) | LLM fine-tune pipeline: dataset, methodology, hardware setup, and run stats |
+| [docs/tutorial/pdf/](docs/tutorial/pdf/) | Patient tutorial PDFs in English, Spanish, and Haitian Creole (print-ready for the clinic packet) |
