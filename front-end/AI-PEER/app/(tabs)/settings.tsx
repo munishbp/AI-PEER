@@ -190,16 +190,6 @@ export default function SettingsScreen() {
               <Text style={[styles.subtitle, { fontSize: scaled.h2 / 2 }]}>{t("settings.title")}</Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <TouchableOpacity
-              onPress={() => router.replace("/tutorial?next=tabs")}
-              accessibilityLabel={t("settings.help")}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={styles.segmentOuter}>
@@ -275,7 +265,7 @@ function AccessibilityTab({
   const { t } = useTranslation();
   const fontSizesLabels = t("settings.fontSizes", { returnObjects: true }) as string[];
   const contrastOptions = t("settings.contrastModes", { returnObjects: true }) as string[];
-  const languages = ["English", "Español", "Kreyòl Ayisyen"];
+  const languages = t("settings.languageLabels", { returnObjects: true }) as string[];
 
   return (
     <>
@@ -506,7 +496,7 @@ function NotificationsTab({
                     placeholderTextColor="#999"
                   />
 
-                  <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>HH (1-12)</Text>
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small }]}>{t("settings.hourLabel")}</Text>
                   <TextInput
                     style={[styles.input, { fontSize: scaled.base, width: 120 }]}
                     value={hour}
@@ -516,7 +506,7 @@ function NotificationsTab({
                     placeholder="HH"
                   />
 
-                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>MM (00-59)</Text>
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>{t("settings.minuteLabel")}</Text>
                   <TextInput
                     style={[styles.input, { fontSize: scaled.base, width: 120 }]}
                     value={minute}
@@ -526,7 +516,7 @@ function NotificationsTab({
                     placeholder="MM"
                   />
 
-                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>AM / PM</Text>
+                  <Text style={[styles.fieldLabel, { fontSize: scaled.small, marginTop: 8 }]}>{t("settings.amPmLabel")}</Text>
                   <View style={{ flexDirection: "row", justifyContent: "flex-start", marginTop: 6, gap: 12 }}>
                     <TouchableOpacity
                       style={[styles.ampmButtons, ampm === "AM" && styles.optionButtonActive, { width: 100 }]}

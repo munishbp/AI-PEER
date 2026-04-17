@@ -17,8 +17,9 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
+import { speak, stopSpeech } from "@/src/tts";
 import { useVision } from "@/src/vision";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
 import { SkeletonOverlay } from "@/src/vision/components/SkeletonOverlay";
@@ -42,15 +43,20 @@ const EXERCISE_NAME = "Chair Rise";
  * The CDC publishes age- and gender-stratified norms; this is a simplified
  * starting threshold per the plan and should be refined later.
  */
-function fallRiskBand(reps: number, accent: string): { label: string; color: string } {
-  if (reps >= 12) return { label: "Above Average", color: "#1E7A3A" };
-  if (reps >= 8) return { label: "Normal", color: "#B8860B" };
-  return { label: "Below Average — Increased Fall Risk", color: accent };
+function fallRiskBand(
+  reps: number,
+  accent: string,
+  t: (key: string) => string
+): { label: string; color: string } {
+  if (reps >= 12) return { label: t("chair-rise-test.bandAboveAverage"), color: "#1E7A3A" };
+  if (reps >= 8) return { label: t("chair-rise-test.bandNormal"), color: "#B8860B" };
+  return { label: t("chair-rise-test.bandBelowAverage"), color: accent };
 }
 
 export default function ChairRiseTestPage() {
   const router = useRouter();
   const { colors } = usePrefs();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const warmRed = colors.accent;
 
@@ -164,8 +170,8 @@ export default function ChairRiseTestPage() {
     if (prevRepCountRef.current !== null && repCount > prevRepCountRef.current) {
       setRepFlash(true);
       setTimeout(() => setRepFlash(false), 800);
-      Speech.stop();
-      Speech.speak(String(repCount));
+      stopSpeech();
+      speak(String(repCount));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {}
       );
@@ -226,10 +232,15 @@ export default function ChairRiseTestPage() {
     stopTracking();
 
     // announce the result
-    const band = fallRiskBand(finalRepCount, warmRed);
-    Speech.stop();
-    Speech.speak(`Test complete. ${finalRepCount} reps. ${band.label}.`);
-  }, [clearTimer, stopTracking, getRepHistory]);
+    const band = fallRiskBand(finalRepCount, warmRed, t);
+    stopSpeech();
+    speak(
+      t("chair-rise-test.ttsComplete", {
+        reps: finalRepCount,
+        band: band.label,
+      })
+    );
+  }, [clearTimer, stopTracking, getRepHistory, t]);
 
   const handleStart = useCallback(async () => {
     if (!hasPermission) {
@@ -266,11 +277,9 @@ export default function ChairRiseTestPage() {
       });
     }, 1000);
 
-    Speech.stop();
-    Speech.speak(
-      "Cross your arms. Stand up and sit down as many times as you can. Go."
-    );
-  }, [trackingMode]);
+    stopSpeech();
+    speak(t("chair-rise-test.ttsStart"));
+  }, [trackingMode, t]);
 
   // auto-stop when the timer hits zero
   useEffect(() => {
@@ -286,7 +295,7 @@ export default function ChairRiseTestPage() {
       repCountRef.current = 0;
       clearTimer();
       stopTracking();
-      Speech.stop();
+      stopSpeech();
     };
   }, [stopTracking, clearTimer]);
 
@@ -295,7 +304,7 @@ export default function ChairRiseTestPage() {
   const cameraActive =
     trackingMode !== "idle" && hasPermission && !!device;
   const currentScore = currentFeedback?.score ?? null;
-  const band = fallRiskBand(finalReps, warmRed);
+  const band = fallRiskBand(finalReps, warmRed, t);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -311,22 +320,22 @@ export default function ChairRiseTestPage() {
               repCountRef.current = 0;
               clearTimer();
               stopTracking();
-              Speech.stop();
+              stopSpeech();
               router.replace("/(tabs)/balance-test");
             }}
             style={styles.backBtn}
             activeOpacity={0.85}
           >
             <Ionicons name="chevron-back" size={18} color="#3D2F27" />
-            <Text style={styles.backText}>Back</Text>
+            <Text style={styles.backText}>{t("chair-rise-test.back")}</Text>
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
           <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
-        <Text style={styles.pageTitle}>Chair Rise Test</Text>
-        <Text style={styles.pageSub}>30-Second Sit-to-Stand</Text>
+        <Text style={styles.pageTitle}>{t("chair-rise-test.pageTitle")}</Text>
+        <Text style={styles.pageSub}>{t("chair-rise-test.pageSub")}</Text>
 
         {/* Camera area */}
         <View style={styles.cameraContainer} onLayout={handleCameraLayout}>
@@ -343,18 +352,18 @@ export default function ChairRiseTestPage() {
               {!hasPermission ? (
                 <>
                   <Ionicons name="camera-outline" size={40} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Camera access needed</Text>
+                  <Text style={styles.cameraHint}>{t("chair-rise-test.cameraAccessNeeded")}</Text>
                   <Text style={styles.cameraSmall}>
-                    Tap Start Test to enable the camera.
+                    {t("chair-rise-test.cameraPromptStart")}
                   </Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="camera-outline" size={40} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Ready to test</Text>
+                  <Text style={styles.cameraHint}>{t("chair-rise-test.readyToTest")}</Text>
                   <Text style={styles.cameraSmall}>
                     {exerciseRule?.cameraPrompt ??
-                      "Sit in a chair facing the camera with your arms crossed across your chest."}
+                      t("chair-rise-test.defaultCameraPrompt")}
                   </Text>
                 </>
               )}
@@ -453,10 +462,12 @@ export default function ChairRiseTestPage() {
         {/* summary card after the test ends */}
         {showSummary && !isTracking && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Test Complete</Text>
+            <Text style={styles.cardTitle}>{t("chair-rise-test.testComplete")}</Text>
             <View style={styles.scoreRow}>
               <Text style={styles.scoreNumber}>{finalReps}</Text>
-              <Text style={styles.scoreUnit}>reps in {finalDurationSec}s</Text>
+              <Text style={styles.scoreUnit}>
+                {t("chair-rise-test.repsInDuration", { duration: finalDurationSec })}
+              </Text>
             </View>
             <View
               style={[styles.bandBox, { borderColor: band.color }]}
@@ -466,8 +477,7 @@ export default function ChairRiseTestPage() {
               </Text>
             </View>
             <Text style={styles.cardFootnote}>
-              Compared to a generic elderly threshold. Age- and gender-specific
-              norms can be more accurate.
+              {t("chair-rise-test.footnote")}
             </Text>
           </View>
         )}
@@ -475,14 +485,14 @@ export default function ChairRiseTestPage() {
         {/* tips card when truly idle (no gesture flow running) */}
         {trackingMode === "idle" && !showSummary && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>How to do this test</Text>
+            <Text style={styles.cardTitle}>{t("chair-rise-test.howToTitle")}</Text>
             <View style={styles.tipBox}>
               <Text style={styles.tipText}>
-                {"\u2022"} Sit upright in a sturdy chair without armrests{"\n"}
-                {"\u2022"} Cross your arms across your chest{"\n"}
-                {"\u2022"} Stand up fully and sit back down — repeat{"\n"}
-                {"\u2022"} As many full reps as you can in 30 seconds{"\n"}
-                {"\u2022"} The phone announces each rep aloud
+                {"\u2022"} {t("chair-rise-test.tip1")}{"\n"}
+                {"\u2022"} {t("chair-rise-test.tip2")}{"\n"}
+                {"\u2022"} {t("chair-rise-test.tip3")}{"\n"}
+                {"\u2022"} {t("chair-rise-test.tip4")}{"\n"}
+                {"\u2022"} {t("chair-rise-test.tip5")}
               </Text>
             </View>
           </View>
@@ -497,7 +507,7 @@ export default function ChairRiseTestPage() {
               onPress={handleStop}
             >
               <Ionicons name="square" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Stop Early</Text>
+              <Text style={styles.primaryText}>{t("chair-rise-test.stopEarly")}</Text>
             </TouchableOpacity>
           ) : trackingMode === "waiting_for_gesture" ||
             trackingMode === "countdown" ? (
@@ -506,11 +516,11 @@ export default function ChairRiseTestPage() {
               activeOpacity={0.9}
               onPress={() => {
                 stopTracking();
-                Speech.stop();
+                stopSpeech();
               }}
             >
               <Ionicons name="close" size={16} color="#5B4636" />
-              <Text style={styles.secondaryText}>Cancel</Text>
+              <Text style={styles.secondaryText}>{t("chair-rise-test.cancel")}</Text>
             </TouchableOpacity>
           ) : showSummary ? (
             <>
@@ -520,7 +530,7 @@ export default function ChairRiseTestPage() {
                 onPress={() => router.replace("/(tabs)/balance-test")}
               >
                 <Ionicons name="arrow-back" size={16} color="#5B4636" />
-                <Text style={styles.secondaryText}>Back to Tests</Text>
+                <Text style={styles.secondaryText}>{t("chair-rise-test.backToTests")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.primaryBtn}
@@ -528,7 +538,7 @@ export default function ChairRiseTestPage() {
                 onPress={handleStart}
               >
                 <Ionicons name="refresh" size={16} color="#FFF" />
-                <Text style={styles.primaryText}>Try Again</Text>
+                <Text style={styles.primaryText}>{t("chair-rise-test.tryAgain")}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -538,7 +548,7 @@ export default function ChairRiseTestPage() {
               onPress={handleStart}
             >
               <Ionicons name="play" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Start Test</Text>
+              <Text style={styles.primaryText}>{t("chair-rise-test.startTest")}</Text>
             </TouchableOpacity>
           )}
         </View>

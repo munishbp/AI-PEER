@@ -16,8 +16,9 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
-import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
+import { speak, stopSpeech } from "@/src/tts";
 import { useVision } from "@/src/vision";
 import { setPalmThresholds, resetPalmThresholds } from "@/src/vision/VisionContext";
 import { useVisionFrameProcessor } from "@/src/vision/frameProcessor";
@@ -67,29 +68,34 @@ type TugState =
   | "waiting_for_final_sit"
   | "done";
 
-function tugFallRiskBand(seconds: number, accent: string): { label: string; color: string } {
-  if (seconds < 12) return { label: "Normal", color: "#1E7A3A" };
-  return { label: "Increased Fall Risk", color: accent };
+function tugFallRiskBand(
+  seconds: number,
+  accent: string,
+  t: (key: string) => string
+): { label: string; color: string } {
+  if (seconds < 12) return { label: t("tug-test.bandNormal"), color: "#1E7A3A" };
+  return { label: t("tug-test.bandIncreasedRisk"), color: accent };
 }
 
-function stateLabel(state: TugState): string {
+function stateLabel(state: TugState, t: (key: string) => string): string {
   switch (state) {
     case "idle":
-      return "Ready when you are";
+      return t("tug-test.stateIdle");
     case "waiting_for_stand":
-      return "Stand up to start the test";
+      return t("tug-test.stateWaitingForStand");
     case "walking":
-      return "Walking — go to the marker and back";
+      return t("tug-test.stateWalking");
     case "waiting_for_final_sit":
-      return "Sit down to finish";
+      return t("tug-test.stateWaitingForFinalSit");
     case "done":
-      return "Test complete";
+      return t("tug-test.stateDone");
   }
 }
 
 export default function TugTestPage() {
   const router = useRouter();
   const { colors } = usePrefs();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const warmRed = colors.accent;
 
@@ -311,12 +317,10 @@ export default function TugTestPage() {
     framesInTargetRef.current = 0;
     sittingShoulderYRef.current = null; // will be captured from the first
                                         // confident shoulder reading below
-    Speech.stop();
-    Speech.speak(
-      "Stand up, walk to the marker, turn around, and come back to sit."
-    );
+    stopSpeech();
+    speak(t("tug-test.ttsStart"));
     setTugState("waiting_for_stand");
-  }, [trackingMode, tugState]);
+  }, [trackingMode, tugState, t]);
 
   const finishTest = useCallback(
     (elapsedSeconds: number) => {
@@ -344,10 +348,13 @@ export default function TugTestPage() {
         console.error("[TugTest] Failed to save activity record:", error);
       });
 
-      const band = tugFallRiskBand(elapsedSeconds, warmRed);
-      Speech.stop();
-      Speech.speak(
-        `Test complete. ${elapsedSeconds} seconds. ${band.label}.`
+      const band = tugFallRiskBand(elapsedSeconds, warmRed, t);
+      stopSpeech();
+      speak(
+        t("tug-test.ttsComplete", {
+          seconds: elapsedSeconds,
+          band: band.label,
+        })
       );
       Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Success
@@ -355,7 +362,7 @@ export default function TugTestPage() {
 
       stopTracking();
     },
-    [stopTracking]
+    [stopTracking, t, warmRed]
   );
 
   const handleStart = useCallback(async () => {
@@ -380,7 +387,7 @@ export default function TugTestPage() {
 
   const handleAbort = useCallback(() => {
     stopTracking();
-    Speech.stop();
+    stopSpeech();
     setTugState("idle");
     startTimeRef.current = null;
     setWalkSec(0);
@@ -391,14 +398,14 @@ export default function TugTestPage() {
     return () => {
       startTimeRef.current = null;
       stopTracking();
-      Speech.stop();
+      stopSpeech();
     };
   }, [stopTracking]);
 
   // camera renders during gesture wait + countdown + tracking
   const cameraActive =
     trackingMode !== "idle" && hasPermission && !!device;
-  const band = tugFallRiskBand(finalElapsed, warmRed);
+  const band = tugFallRiskBand(finalElapsed, warmRed, t);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -417,15 +424,15 @@ export default function TugTestPage() {
             activeOpacity={0.85}
           >
             <Ionicons name="chevron-back" size={18} color="#3D2F27" />
-            <Text style={styles.backText}>Back</Text>
+            <Text style={styles.backText}>{t("tug-test.back")}</Text>
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
           <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
         </View>
 
-        <Text style={styles.pageTitle}>Timed Up and Go</Text>
-        <Text style={styles.pageSub}>{stateLabel(tugState)}</Text>
+        <Text style={styles.pageTitle}>{t("tug-test.pageTitle")}</Text>
+        <Text style={styles.pageSub}>{stateLabel(tugState, t)}</Text>
 
         {/* Camera area */}
         <View style={styles.cameraContainer} onLayout={handleCameraLayout}>
@@ -442,18 +449,18 @@ export default function TugTestPage() {
               {!hasPermission ? (
                 <>
                   <Ionicons name="camera-outline" size={40} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Camera access needed</Text>
+                  <Text style={styles.cameraHint}>{t("tug-test.cameraAccessNeeded")}</Text>
                   <Text style={styles.cameraSmall}>
-                    Tap Start Test to enable the camera.
+                    {t("tug-test.cameraPromptStart")}
                   </Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="camera-outline" size={40} color="#8C7A6C" />
-                  <Text style={styles.cameraHint}>Ready to test</Text>
+                  <Text style={styles.cameraHint}>{t("tug-test.readyToTest")}</Text>
                   <Text style={styles.cameraSmall}>
                     {exerciseRule?.cameraPrompt ??
-                      "Sit in a chair facing the camera with 8-10 feet of clear floor space ahead."}
+                      t("tug-test.defaultCameraPrompt")}
                   </Text>
                 </>
               )}
@@ -519,10 +526,10 @@ export default function TugTestPage() {
         {/* summary card after the test ends */}
         {tugState === "done" && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Test Complete</Text>
+            <Text style={styles.cardTitle}>{t("tug-test.testComplete")}</Text>
             <View style={styles.scoreRow}>
               <Text style={styles.scoreNumber}>{finalElapsed}</Text>
-              <Text style={styles.scoreUnit}>seconds</Text>
+              <Text style={styles.scoreUnit}>{t("tug-test.seconds")}</Text>
             </View>
             <View style={[styles.bandBox, { borderColor: band.color }]}>
               <Text style={[styles.bandText, { color: band.color }]}>
@@ -530,8 +537,7 @@ export default function TugTestPage() {
               </Text>
             </View>
             <Text style={styles.cardFootnote}>
-              CDC threshold: under 12 seconds is considered normal; 12 seconds
-              or more indicates increased fall risk.
+              {t("tug-test.cdcFootnote")}
             </Text>
           </View>
         )}
@@ -539,15 +545,15 @@ export default function TugTestPage() {
         {/* tips card when idle */}
         {tugState === "idle" && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>How to do this test</Text>
+            <Text style={styles.cardTitle}>{t("tug-test.howToTitle")}</Text>
             <View style={styles.tipBox}>
               <Text style={styles.tipText}>
-                {"\u2022"} Sit in a sturdy chair facing the camera{"\n"}
-                {"\u2022"} Place a marker about 3 meters (10 feet) away{"\n"}
-                {"\u2022"} On the cue, stand up{"\n"}
-                {"\u2022"} Walk to the marker, turn around, walk back{"\n"}
-                {"\u2022"} Sit down — the test ends automatically{"\n"}
-                {"\u2022"} Raise both arms overhead to start when ready
+                {"\u2022"} {t("tug-test.tip1")}{"\n"}
+                {"\u2022"} {t("tug-test.tip2")}{"\n"}
+                {"\u2022"} {t("tug-test.tip3")}{"\n"}
+                {"\u2022"} {t("tug-test.tip4")}{"\n"}
+                {"\u2022"} {t("tug-test.tip5")}{"\n"}
+                {"\u2022"} {t("tug-test.tip6")}
               </Text>
             </View>
           </View>
@@ -562,7 +568,7 @@ export default function TugTestPage() {
               onPress={handleStart}
             >
               <Ionicons name="play" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Start Test</Text>
+              <Text style={styles.primaryText}>{t("tug-test.startTest")}</Text>
             </TouchableOpacity>
           ) : tugState === "idle" &&
             (trackingMode === "waiting_for_gesture" ||
@@ -575,7 +581,7 @@ export default function TugTestPage() {
               }}
             >
               <Ionicons name="close" size={16} color="#5B4636" />
-              <Text style={styles.secondaryText}>Cancel</Text>
+              <Text style={styles.secondaryText}>{t("tug-test.cancel")}</Text>
             </TouchableOpacity>
           ) : tugState === "done" ? (
             <>
@@ -585,7 +591,7 @@ export default function TugTestPage() {
                 onPress={() => router.replace("/(tabs)/balance-test")}
               >
                 <Ionicons name="arrow-back" size={16} color="#5B4636" />
-                <Text style={styles.secondaryText}>Back to Tests</Text>
+                <Text style={styles.secondaryText}>{t("tug-test.backToTests")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.primaryBtn}
@@ -593,7 +599,7 @@ export default function TugTestPage() {
                 onPress={handleStart}
               >
                 <Ionicons name="refresh" size={16} color="#FFF" />
-                <Text style={styles.primaryText}>Try Again</Text>
+                <Text style={styles.primaryText}>{t("tug-test.tryAgain")}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -603,7 +609,7 @@ export default function TugTestPage() {
               onPress={handleAbort}
             >
               <Ionicons name="square" size={16} color="#FFF" />
-              <Text style={styles.primaryText}>Cancel</Text>
+              <Text style={styles.primaryText}>{t("tug-test.cancel")}</Text>
             </TouchableOpacity>
           )}
         </View>

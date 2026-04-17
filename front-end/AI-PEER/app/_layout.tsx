@@ -48,9 +48,6 @@ function RootStack() {
       {/* Verify - 2FA */}
       <Stack.Screen name="verify" options={{ headerShown: false }} />
 
-      {/* Tutorial - post-2FA walkthrough */}
-      <Stack.Screen name="tutorial" options={{ headerShown: false }} />
-
       {/* Tabs group (Home/AI Chat/Activity/Contacts/Settings) */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 

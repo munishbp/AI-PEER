@@ -75,6 +75,10 @@ export type ExerciseCompletionRecord = {
   framesAnalyzed: number;
   /** Optional free-form note (e.g., assessment band labels). */
   notes?: string;
+  /** FES-I total score, present only for questionnaire assessment records. */
+  fesI?: number;
+  /** FES-I per-question answers {questionId: score}, questionnaire records only. */
+  questionnaireAnswers?: Record<number, number>;
 };
 
 /** Input shape for submitCompletedActivity — id and completedAt are auto-generated if missing. */
@@ -147,6 +151,15 @@ function sanitizeRecord(
     avgScore: raw.avgScore ?? null,
     framesAnalyzed: raw.framesAnalyzed,
     notes: typeof raw.notes === "string" ? raw.notes : undefined,
+    fesI: typeof raw.fesI === "number" ? raw.fesI : undefined,
+    questionnaireAnswers:
+      raw.questionnaireAnswers &&
+      typeof raw.questionnaireAnswers === "object" &&
+      Object.values(raw.questionnaireAnswers).every(
+        (v) => typeof v === "number"
+      )
+        ? (raw.questionnaireAnswers as Record<number, number>)
+        : undefined,
   };
 }
 
@@ -224,6 +237,8 @@ function buildRecord(input: NewActivityInput): ExerciseCompletionRecord {
         : Math.round(input.avgScore),
     framesAnalyzed: Math.max(0, Math.round(input.framesAnalyzed)),
     notes: input.notes,
+    fesI: input.fesI,
+    questionnaireAnswers: input.questionnaireAnswers,
   };
 }
 
