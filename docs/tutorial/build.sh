@@ -33,10 +33,22 @@ else
 fi
 
 HEADER_INCLUDE="${SCRIPT_DIR}/.pandoc-header.tex"
+# Pure-LaTeX heading size overrides. No extra packages required, so the build
+# works in pandoc/latex (the Docker image used by the GitHub Action) and in
+# minimal local TeX installs like BasicTeX or Tectonic.
 cat > "${HEADER_INCLUDE}" <<'EOF'
-\usepackage{sectsty}
-\sectionfont{\fontsize{22pt}{26pt}\selectfont}
-\subsectionfont{\fontsize{17pt}{21pt}\selectfont}
+\makeatletter
+\renewcommand\section{\@startsection
+  {section}{1}{0pt}%
+  {-1.5ex plus -.5ex minus -.2ex}%
+  {1ex plus .2ex}%
+  {\normalfont\fontsize{22pt}{26pt}\bfseries}}
+\renewcommand\subsection{\@startsection
+  {subsection}{2}{0pt}%
+  {-1.2ex plus -.5ex minus -.2ex}%
+  {.8ex plus .2ex}%
+  {\normalfont\fontsize{17pt}{21pt}\bfseries}}
+\makeatother
 \setlength{\parskip}{0.6em}
 \setlength{\parindent}{0pt}
 EOF
