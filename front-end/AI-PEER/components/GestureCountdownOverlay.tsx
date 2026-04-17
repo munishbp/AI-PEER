@@ -16,7 +16,8 @@
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Speech from "expo-speech";
+import { useTranslation } from "react-i18next";
+import { speak, stopSpeech } from "@/src/tts";
 
 type Props = {
   trackingMode: "idle" | "waiting_for_gesture" | "countdown" | "tracking";
@@ -27,21 +28,23 @@ export function GestureCountdownOverlay({
   trackingMode,
   countdownSecondsLeft,
 }: Props) {
+  const { t } = useTranslation();
+
   // speak the prompt once when entering waiting_for_gesture
   useEffect(() => {
     if (trackingMode === "waiting_for_gesture") {
-      Speech.stop();
-      Speech.speak("Hold up an open palm to start.");
+      stopSpeech();
+      speak(t("gesture-overlay.ttsPrompt"));
     }
-  }, [trackingMode]);
+  }, [trackingMode, t]);
 
   // speak each countdown tick. cancel any in-flight speech first so the
   // newer number always wins (otherwise "five" can still be playing while
   // we want to say "four").
   useEffect(() => {
     if (trackingMode === "countdown" && countdownSecondsLeft !== null) {
-      Speech.stop();
-      Speech.speak(String(countdownSecondsLeft));
+      stopSpeech();
+      speak(String(countdownSecondsLeft));
     }
   }, [trackingMode, countdownSecondsLeft]);
 
@@ -55,10 +58,10 @@ export function GestureCountdownOverlay({
         <View style={styles.gestureBox}>
           <Ionicons name="hand-left-outline" size={48} color="#FFF" />
           <Text style={styles.gestureTitle}>
-            Hold up an open palm to start
+            {t("gesture-overlay.promptTitle")}
           </Text>
           <Text style={styles.gestureSub}>
-            Show your palm to the camera for half a second
+            {t("gesture-overlay.promptSub")}
           </Text>
         </View>
       )}
@@ -66,7 +69,7 @@ export function GestureCountdownOverlay({
       {trackingMode === "countdown" && countdownSecondsLeft !== null && (
         <View style={styles.countdownBox}>
           <Text style={styles.countdownNumber}>{countdownSecondsLeft}</Text>
-          <Text style={styles.countdownLabel}>Get ready</Text>
+          <Text style={styles.countdownLabel}>{t("gesture-overlay.getReady")}</Text>
         </View>
       )}
     </View>

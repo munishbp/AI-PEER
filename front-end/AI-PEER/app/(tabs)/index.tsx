@@ -93,16 +93,6 @@ export default function Home() {
               <Text style={[styles.subtitle, { fontSize: scaled.h2/2 }]}>{t("home.subtitle")}</Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <TouchableOpacity
-              onPress={() => router.replace("/tutorial?next=tabs")}
-              accessibilityLabel={t("settings.help")}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="help-circle-outline" size={20} color={colors.muted} />
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Segmented (Overview | Exercise) */}

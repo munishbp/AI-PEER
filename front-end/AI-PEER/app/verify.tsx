@@ -44,9 +44,9 @@ export default function Verify() {
 
       // Navigate based on mode
       if (res.isNewUser || mode === 'create') {
-        router.replace("/tutorial?next=welcome");
+        router.replace("/welcome");
       } else {
-        router.replace("/tutorial?next=tabs");
+        router.replace("/(tabs)");
       }
     } catch (e: any) {
       setErr(e.message || t("verify.invalidCode"));

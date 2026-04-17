@@ -26,38 +26,34 @@ type Test = {
   nextRoute: string; // session screen route after preview
 };
 
-const TESTS: Test[] = [
-  {
-    id: "assessment-1",
-    name: "Chair Rise",
-    shortDesc:
-      "Stand up and sit down as many times as possible in 30 seconds, with your arms crossed over your chest.",
-    purpose:
-      "Measures lower-body strength and endurance — a key fall-risk indicator.",
-    icon: "barbell-outline",
-    iconBg: "#F0E9FF",
-    videoLabel: "Chair Rise (30-Second Sit-to-Stand)",
-    nextRoute: "/(tabs)/chair-rise-test",
-  },
-  {
-    id: "assessment-3",
-    name: "Timed Up and Go",
-    shortDesc:
-      "Stand up from a chair, walk to a marker, turn around, walk back, and sit down — as quickly as you safely can.",
-    purpose:
-      "Measures functional mobility — completing in 12 seconds or less is considered normal.",
-    icon: "walk-outline",
-    iconBg: "#E8F0FF",
-    videoLabel: "Timed Up and Go (TUG)",
-    nextRoute: "/(tabs)/tug-test",
-  },
-];
-
 export default function BalanceTestPage() {
   const router = useRouter();
   const { scaled, colors } = usePrefs();
   const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const TESTS: Test[] = [
+    {
+      id: "assessment-1",
+      name: t("balance-test.test1Name"),
+      shortDesc: t("balance-test.test1Desc"),
+      purpose: t("balance-test.test1Purpose"),
+      icon: "barbell-outline",
+      iconBg: "#F0E9FF",
+      videoLabel: t("balance-test.test1VideoLabel"),
+      nextRoute: "/(tabs)/chair-rise-test",
+    },
+    {
+      id: "assessment-3",
+      name: t("balance-test.test2Name"),
+      shortDesc: t("balance-test.test2Desc"),
+      purpose: t("balance-test.test2Purpose"),
+      icon: "walk-outline",
+      iconBg: "#E8F0FF",
+      videoLabel: t("balance-test.test2VideoLabel"),
+      nextRoute: "/(tabs)/tug-test",
+    },
+  ];
 
   const startTest = (test: Test) => {
     router.replace({
@@ -116,7 +112,7 @@ export default function BalanceTestPage() {
         <View style={styles.centerHead}>
           <Text style={styles.centerTitle}>{t("home.subtitle")}</Text>
           <Text style={styles.centerSub}>
-            Two clinical tests to assess your balance and mobility
+            {t("balance-test.centerSub")}
           </Text>
         </View>
 
@@ -155,7 +151,7 @@ export default function BalanceTestPage() {
                 onPress={() => startTest(test)}
               >
                 <Ionicons name="play" size={16} color="#FFF" />
-                <Text style={styles.startBtnText}>Start Test</Text>
+                <Text style={styles.startBtnText}>{t("balance-test.startTest")}</Text>
               </TouchableOpacity>
             </View>
           ))}

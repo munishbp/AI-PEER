@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { fontSizes, type ContrastPalette } from "../src/theme";
 import { usePrefs } from "../src/prefs-context";
-import { saveQuestionnaireResult } from "../src/fra-storage";
+import { submitQuestionnaireResult } from "../src/fra-storage";
 
 interface Question {
   id: number;
@@ -386,7 +386,7 @@ export default function Questionnaire() {
               style={styles.primaryButton}
               onPress={async () => {
                 try {
-                  await saveQuestionnaireResult({
+                  await submitQuestionnaireResult({
                     fesI: score,
                     answers,
                     completedAt: new Date().toISOString(),

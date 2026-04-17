@@ -13,8 +13,8 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
+import { speak, stopSpeech } from "@/src/tts";
 import {
   Camera,
   useCameraDevice,
@@ -493,8 +493,8 @@ export default function ExerciseSessionPage() {
         setRepFlash(true);
         setTimeout(() => setRepFlash(false), 800);
         // cancel any in-flight speech so the user always hears the latest count
-        Speech.stop();
-        Speech.speak(String(repCount));
+        stopSpeech();
+        speak(String(repCount));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       }
       prevRepCountRef.current = repCount;
