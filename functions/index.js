@@ -1,4 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { getFirestore } = require("firebase-admin/firestore");
 const { importToREDCap, exportFromREDCap } = require("./services/REDCap_Service");
@@ -11,13 +12,22 @@ if (!admin.apps.length) {
 
 const db = getFirestore("ai-peer");
 
+// REDCap credentials live in Secret Manager. set them once with:
+//   firebase functions:secrets:set REDCAP_API_URL
+//   firebase functions:secrets:set REDCAP_API_TOKEN
+// binding them here both scopes the secrets to this one function and
+// grants the runtime service account secretmanager.secretAccessor at deploy.
+const REDCAP_API_URL   = defineSecret("REDCAP_API_URL");
+const REDCAP_API_TOKEN = defineSecret("REDCAP_API_TOKEN");
+
 exports.redcapSync = onSchedule(
     {
         schedule: "0 2 * * *",       // 2am daily
         timeZone: "America/New_York",
         timeoutSeconds: 300,         // 5 min timeout for ~50 users
         retryCount: 3,                // retry up to 3 times on failure
-        serviceAccount: "munish@research-ai-peer-dev.iam.gserviceaccount.com"
+        serviceAccount: "munish@research-ai-peer-dev.iam.gserviceaccount.com",
+        secrets: [REDCAP_API_URL, REDCAP_API_TOKEN]
     },
     async (event) => {
         console.log("[SYNC] Starting REDCap sync...");

@@ -9,6 +9,7 @@ require('dotenv').config();
 const express=require('express');
 const cors=require('cors');
 const verification=require('./middleware/authMiddleware');
+const requestLogger=require('./middleware/requestLogger');
 
 
 const authRoutes = require('./routes/authRoutes');
@@ -24,6 +25,10 @@ const app=express();
 //json parser to convert text to objects
 app.use(cors());
 app.use(express.json());
+
+// mounted above the routes so every hit (auth + protected + /health) lands
+// in Cloud Logging with uid / method / path / status / duration
+app.use(requestLogger);
 
 app.get('/health',(req,res)=>{
     res.json({status:'OK',message:'AI PEER API is running'});

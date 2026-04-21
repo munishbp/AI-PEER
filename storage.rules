@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// all GCS access runs through the Cloud Run API, which issues short-lived
+// v4 signed URLs via the IAM signBlob API. no client should ever hit
+// Firebase Storage directly, so deny all client-SDK traffic.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

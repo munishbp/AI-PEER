@@ -10,6 +10,11 @@
  * - Model initialization state
  * - Generation state (for loading indicators)
  * - Multiple conversation management with 24-hour TTL
+ *
+ * PHI INVARIANT: conversations live in AsyncStorage on THIS device only.
+ * Do NOT upload to Firestore, GCS, the API, or any other backend.
+ * 24h max on-device retention — enforced at load, on every save, every 15
+ * minutes, and on app foreground. See filterExpiredConversations below.
  */
 
 import React, {
@@ -20,6 +25,7 @@ import React, {
   useCallback,
   ReactNode,
 } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LLMState, ChatMessage, Conversation } from './types';
 import { STORAGE_KEYS, CONVERSATION_TTL_MS } from './config';
@@ -157,15 +163,39 @@ export function LLMProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  // Save conversations whenever they change
+  // Save conversations whenever they change. filter expired entries before
+  // persisting so a conversation that aged past 24h in memory never gets
+  // re-written to disk — the load-time filter alone isn't enough once state
+  // has been hydrated.
   useEffect(() => {
     if (allConversations.length > 0) {
+      const toPersist = filterExpiredConversations(allConversations);
       AsyncStorage.setItem(
         STORAGE_KEYS.conversations,
-        JSON.stringify(allConversations)
+        JSON.stringify(toPersist)
       ).catch(console.error);
     }
   }, [allConversations]);
+
+  // Continuous sweep: every 15 minutes and whenever the app returns to the
+  // foreground, drop any conversation that has aged past the TTL. updating
+  // state triggers the save effect above, which rewrites AsyncStorage.
+  useEffect(() => {
+    const sweep = () => {
+      setAllConversations((prev) => {
+        const alive = filterExpiredConversations(prev);
+        return alive.length === prev.length ? prev : alive;
+      });
+    };
+    const interval = setInterval(sweep, 15 * 60 * 1000);
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') sweep();
+    });
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
+  }, []);
 
   // Save current conversation ID whenever it changes
   useEffect(() => {

@@ -4,9 +4,9 @@ import { View, Text, TextInput, Keyboard, KeyboardAvoidingView, Platform, Toucha
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { signInWithCustomToken } from "firebase/auth";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../src/firebaseClient";
 import { api } from "../src/api";
+import { setRefreshToken } from "../src/auth/tokenStore";
 import { usePrefs } from "../src/prefs-context";
 import { type ContrastPalette, scaleFontSizes, spacing, radii } from "../src/theme";
 
@@ -38,8 +38,9 @@ export default function Verify() {
 
       // Sign in with the custom token from the backend
       await signInWithCustomToken(auth, res.customToken);
-      // Store refresh token for persistent login (30-day session)
-      await AsyncStorage.setItem("refreshToken", res.refreshToken);
+      // Store refresh token for persistent login (30-day session). Lands in
+      // Keychain (iOS) / EncryptedSharedPreferences (Android), not AsyncStorage.
+      await setRefreshToken(res.refreshToken);
       console.log('[Auth] Refresh token stored after 2FA verification');
 
       // Navigate based on mode

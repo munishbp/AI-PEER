@@ -35,30 +35,33 @@ defined in `config/fieldMappings.js`.
 
 ## Config & secrets
 
-REDCap credentials are stored as fields inside a Firestore document, **not** in
-environment variables or Secret Manager.
+REDCap credentials live in **Google Cloud Secret Manager**, declared to the
+function via `defineSecret()` in `index.js`. The Functions runtime injects the
+values into `process.env` only while a scheduled run is executing.
 
-| Firestore path | Field | Description |
+| Secret name | Env var (at invocation) | Description |
 |---|---|---|
-| `config/redcap` (in the `ai-peer` database) | `apiToken` | REDCap API authentication token |
-| `config/redcap` | `apiUrl` | REDCap API endpoint URL |
+| `REDCAP_API_URL` | `process.env.REDCAP_API_URL` | REDCap API endpoint URL (must be HTTPS) |
+| `REDCAP_API_TOKEN` | `process.env.REDCAP_API_TOKEN` | REDCap API token for the service user |
 
-**To view the current token** (requires Firestore read access in the
-`research-ai-peer-dev` project):
+**To set or rotate a secret:**
 
 ```bash
-firebase firestore:get config/redcap --project research-ai-peer-dev
+firebase functions:secrets:set REDCAP_API_URL
+firebase functions:secrets:set REDCAP_API_TOKEN
 ```
 
-**To rotate the token**, update the document directly in the Firebase console
-or via the Admin SDK. The function caches the config in the `cachedConfig`
-module-level variable, so a rotation takes effect on the next cold start (next
-invocation after the current instance is recycled). If you need it to take
-effect immediately, redeploy the function to force a cold start:
+Each command prompts for the value. Rotation takes effect on the next deploy —
+`defineSecret()` pins the function to a specific secret version at deploy
+time, so redeploy after setting a new value:
 
 ```bash
 firebase deploy --only functions:redcapSync
 ```
+
+**Never commit credentials to Git or put them in `.env`**. `firebase deploy`
+grants the function's runtime service account `roles/secretmanager.secretAccessor`
+on each declared secret automatically.
 
 ---
 
@@ -123,19 +126,14 @@ firebase emulators:start --only functions
    emulator's HTTP trigger endpoint. From the Firebase emulator UI
    (`http://127.0.0.1:4000`), navigate to Functions and use the "Call" option.
 
-4. The function reads REDCap credentials from the `config/redcap` document in
-   the `ai-peer` Firestore database. When using the Firestore emulator, seed
-   that document before invoking:
+4. The function reads REDCap credentials from `process.env.REDCAP_API_URL` and
+   `process.env.REDCAP_API_TOKEN`, which are injected from Secret Manager at
+   invocation in production. For local emulator runs, export them yourself:
 
-```js
-// seed-config.js (run once against the emulator)
-const admin = require("firebase-admin");
-admin.initializeApp({ projectId: "research-ai-peer-dev" });
-const db = admin.firestore();
-db.collection("config").doc("redcap").set({
-  apiToken: "YOUR_TEST_TOKEN",
-  apiUrl: "https://your-redcap-instance/api/"
-});
+```bash
+export REDCAP_API_URL=https://your-redcap-instance/api/
+export REDCAP_API_TOKEN=YOUR_TEST_TOKEN
+firebase emulators:start --only functions
 ```
 
 5. Set `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` and
@@ -187,9 +185,10 @@ The deployed function handle is `redcapSync` (camelCase in code, normalized to
   document in `users` with no limit or cursor. This will time out or incur
   significant cost if the collection grows large.
 
-- **Config caching across retries**: `cachedConfig` is module-scoped. On a
-  warm retry within the same Cloud Run instance, a rotated API token will not
-  be picked up until a cold start.
+- **Secret rotation latency**: `defineSecret()` pins the function to a
+  specific secret version at deploy time. `firebase functions:secrets:set`
+  creates a new version but does NOT retarget running deployments — redeploy
+  (`firebase deploy --only functions:redcapSync`) to pick up the new value.
 
 - **No push notification on failure**: if all three retries are exhausted,
   there is no alerting beyond Cloud Logging. Consider adding a Cloud Monitoring

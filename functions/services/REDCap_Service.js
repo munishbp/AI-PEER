@@ -1,41 +1,24 @@
 const fetch = require("node-fetch");
-const admin = require("firebase-admin");
-const { getFirestore } = require("firebase-admin/firestore");
 const { FIELD_MAPPINGS } = require("../config/fieldMappings");
 
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
+// REDCap credentials come from Secret Manager via defineSecret() in index.js.
+// the Functions runtime injects them into process.env at invocation time —
+// they are not present when the module first loads, so read them lazily on
+// each call (not at top-level). previously these lived in Firestore at
+// config/redcap, which meant anyone with Firestore read access could grab
+// a token that has full project-level REDCap rights.
+async function loadREDCapConfig() {
+    const apiUrl = process.env.REDCAP_API_URL;
+    const apiToken = process.env.REDCAP_API_TOKEN;
 
-const db = getFirestore("ai-peer");
-
-let cachedConfig = null;
-
-async function loadREDCapConfig(){
-    if (cachedConfig)
-    {
-        return cachedConfig;
+    if (!apiUrl || !apiToken) {
+        throw new Error("REDCap secrets not injected — check defineSecret() binding on redcapSync");
+    }
+    if (!apiUrl.startsWith("https://")) {
+        throw new Error("REDCap apiUrl must be HTTPS");
     }
 
-    const docRef = db.doc("config/redcap");
-    const snap = await docRef.get();
-
-    if (!snap.exists)
-    {
-        throw new Error("REDCap config document not found in Firestore");
-    }
-
-    const {apiToken, apiUrl} = snap.data();
-    if (!apiUrl||!apiToken)
-    {
-        throw new Error("REDCap config is missing token or url");
-    }
-
-    cachedConfig={
-        apiUrl,
-        apiToken
-    };
-    return cachedConfig;
+    return { apiUrl, apiToken };
 }
 
 function buildREDCapRecord({userID, phonenum, btrack_score, fear_falling_score, compliance_days_active, compliance_rate})

@@ -95,7 +95,7 @@ export default function ContactsScreen() {
 
     (async () => {
       try {
-        const res = await api.getUser(userId, authToken);
+        const res = await api.getUser(authToken);
         if (res.user?.contacts) {
           setContacts({
             emergency: res.user.contacts.emergency ?? [],
@@ -116,7 +116,7 @@ export default function ContactsScreen() {
       if (!userId || !authToken) return;
       setContacts(updated);
       try {
-        await api.updateUser(userId, { contacts: updated }, authToken);
+        await api.updateUser({ contacts: updated }, authToken);
       } catch (e) {
         console.log("[Contacts] Failed to save:", e);
       }

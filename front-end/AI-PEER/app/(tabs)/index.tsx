@@ -47,7 +47,7 @@ export default function Home() {
         // Load btrack score from backend
         if (userId && authToken) {
           try {
-            const res = await api.getUser(userId, authToken);
+            const res = await api.getUser(authToken);
             if (isMounted && typeof res.user?.btrack_score === "number") {
               setBtrackScore(res.user.btrack_score);
             }
@@ -68,7 +68,7 @@ export default function Home() {
     setBtrackScore(newScore);
     if (userId && authToken) {
       try {
-        await api.updateUser(userId, { btrack_score: newScore }, authToken);
+        await api.updateUser({ btrack_score: newScore }, authToken);
       } catch (e) {
         console.log("[Home] Failed to save btrack:", e);
       }
