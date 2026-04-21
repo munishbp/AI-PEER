@@ -210,7 +210,7 @@ export default function ActivityScreen() {
     if (lastSyncedRate.current === complianceStats.rate) return;
     lastSyncedRate.current = complianceStats.rate;
 
-    api.updateUser(user.uid, {
+    api.updateUser({
       compliance_days_active: complianceStats.daysActive,
       compliance_rate: complianceStats.rate,
       compliance_updated_at: new Date().toISOString(),

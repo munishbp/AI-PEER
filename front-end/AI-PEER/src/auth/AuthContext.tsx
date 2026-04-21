@@ -1,8 +1,8 @@
 import {createContext, useContext, useEffect, useState} from "react";
 import {User, signOut, signInWithCustomToken, onAuthStateChanged} from "firebase/auth";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {auth} from '../firebaseClient';
 import {api} from '../api';
+import {getRefreshToken, clearRefreshToken} from './tokenStore';
 
 type AuthContextType = {
     user: User | null;
@@ -25,9 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let cancelled = false;
 
         const restoreSession = async () => {
-            console.log('[Auth] Checking AsyncStorage for refresh token...');
+            console.log('[Auth] Checking secure store for refresh token...');
             try {
-                const refreshToken = await AsyncStorage.getItem("refreshToken");
+                // reads from SecureStore, migrating any legacy AsyncStorage
+                // value on first run after the upgrade (see tokenStore.ts)
+                const refreshToken = await getRefreshToken();
 
                 if (!refreshToken) {
                     console.log('[Auth] No refresh token found, showing login screen');
@@ -50,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch (e: any) {
                 console.log('[Auth] Refresh failed:', e.message || e);
                 // Token expired or invalid — clear it
-                await AsyncStorage.removeItem("refreshToken");
+                await clearRefreshToken();
                 if (!cancelled) {
                     setUser(null);
                     setToken(null);
@@ -92,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async (): Promise<void> => {
         console.log('[Auth] Logging out, clearing refresh token...');
-        await AsyncStorage.removeItem("refreshToken");
+        await clearRefreshToken();
         await signOut(auth);
     };
 

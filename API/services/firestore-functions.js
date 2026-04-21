@@ -12,22 +12,8 @@ module.exports = {
 
   //if changing more than one data field just overwrite with register
 
-  //new user account add duplicate check later
-  async registerUser(data){
-    //check for dup by calling seperate function checking if
-
-    try {
-      const res = await db.collection('users').add(data);
-
-      return res;
-    }
-    catch(error){
-      console.error("Firestore registerUser Error:", error);
-      throw error;
-    }
-  },
-
-  //update user info
+  // update user info. id always comes from the verified token in the
+  // controller — never from a client-supplied field.
   async updateUser(id,data){
 
     try {
@@ -40,19 +26,6 @@ module.exports = {
       throw error;
     }
 
-  },
-
-  async deleteUser(id){
-
-    try {
-    const res = await db.collection('users').doc(id).delete();
-
-    return res;
-    }
-    catch(error){
-    console.error("Firestore DeleteUser Error:", error);
-    throw error;
-    }
   },
 
   async readId(id){

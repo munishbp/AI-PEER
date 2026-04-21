@@ -67,17 +67,19 @@ export const api = {
       { method: "POST", body: JSON.stringify({ refreshToken }) }
     ),
 
-  getUser: (id: string, token: string) =>
-    requestJSON<{ message: string; user: Record<string, any> }>(`/users/get?id=${id}`, {
+  // user identity comes from the bearer token on the server side, so no id
+  // is sent from the client. passing one would be ignored.
+  getUser: (token: string) =>
+    requestJSON<{ message: string; user: Record<string, any> }>("/users/get", {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  updateUser: (id: string, data: Record<string, any>, token: string) =>
+  updateUser: (data: Record<string, any>, token: string) =>
     requestJSON<{ message: string }>("/users/update", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id, ...data }),
+      body: JSON.stringify(data),
     }),
 
   getModelURL: (token: string) =>

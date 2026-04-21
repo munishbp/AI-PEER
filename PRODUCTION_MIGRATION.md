@@ -197,9 +197,8 @@ Collections the code writes to (from `API/services/firestore-functions.js` and `
 - `users/{uid}/activities/{YYYY-MM-DD}`: subcollection with `entries.<activityId>` map (daily-aggregated session records).
 - `verificationSessions/{phone}`: SMS cooldown and rate-limit state.
 - `refreshTokens/{uuid}`: 30-day session tokens issued after successful SMS verify.
-- `config/redcap`: single document holding REDCap API credentials (consumed by the scheduled function only).
 
-Firestore security rules for this project are currently permissive because every write path goes through the Express API under the Admin SDK. Before go-live, commit a `firestore.rules` file that denies all client-side access (all reads/writes from outside the Admin SDK must fail) and deploy with `firebase deploy --only firestore:rules --project prod`.
+Firestore and Cloud Storage security rules are now version-controlled in the repo (`firestore.rules` and `storage.rules`, wired into `firebase.json`). Both are deny-all: every write path goes through the Express API under the Admin SDK, which bypasses rules, so client-SDK traffic must fail. Deploy them with `firebase deploy --only firestore:rules,storage --project prod`.
 
 Enable daily Firestore backups via the console or `gcloud firestore backups schedules create`. Recommended retention: 30 days. If CoM requires point-in-time recovery, Firestore PITR is a separate opt-in and adds cost.
 
@@ -269,7 +268,15 @@ gcloud secrets add-iam-policy-binding identity-platform-api-key \
   --project=research-ai-peer-prod
 ```
 
-The dev project currently stores REDCap credentials inside the Firestore document `config/redcap`. Production should keep that pattern at launch to avoid code churn, but the REDCap token value written into that document should originate from Secret Manager so it can be rotated without touching Firestore.
+REDCap credentials are wired through `defineSecret()` in `functions/index.js`, which injects them into `process.env.REDCAP_API_URL` and `process.env.REDCAP_API_TOKEN` only while the scheduled run is executing. For production, name the secrets exactly `REDCAP_API_URL` and `REDCAP_API_TOKEN` (case-sensitive) so they match the `defineSecret()` calls without a code change:
+
+```bash
+# use firebase CLI so secretmanager.secretAccessor is granted automatically
+firebase functions:secrets:set REDCAP_API_URL --project research-ai-peer-prod
+firebase functions:secrets:set REDCAP_API_TOKEN --project research-ai-peer-prod
+```
+
+(If CoM prefers the `gcloud secrets create` / IAM-binding pattern used for the Identity Platform key above, the secret names in the table can stay kebab-case — but you must then rename the `defineSecret()` arguments in `functions/index.js` to match.)
 
 **Important key-rotation note:** the current dev Cloud Run config exposes the Identity Platform API key as a plaintext env var value. During migration, rotate this key in the Firebase console (regenerate a new one specifically for production) and store the rotated value in Secret Manager. Do not reuse the dev key in production.
 
@@ -303,7 +310,7 @@ The Cloud Run API service reads the following env vars (confirmed by `gcloud run
 | `NODE_ENV` | `development` | `production` | `--set-env-vars` on deploy |
 | `PORT` | unset (Cloud Run injects 8080) | unset | n/a |
 
-The Functions service reads REDCap credentials from Firestore, so no additional env vars are required beyond what Firebase Functions injects automatically.
+The Functions service reads REDCap credentials from Secret Manager via `defineSecret()` — no env vars to set on deploy. The Firebase Functions runtime injects the values into `process.env.REDCAP_API_URL` / `REDCAP_API_TOKEN` at invocation. Just run `firebase functions:secrets:set` once per secret (see section 7.3) before `firebase deploy --only functions:redcapSync`.
 
 ### 8.3 `.firebaserc` update
 
@@ -345,7 +352,12 @@ Notes:
 
 ## 10. Phase 6: Deploy the scheduled Functions
 
+Before the first deploy, populate the REDCap secrets (see section 7.3). `defineSecret()` in `functions/index.js` expects them to exist, and `firebase deploy` grants the runtime SA `secretmanager.secretAccessor` automatically:
+
 ```bash
+firebase functions:secrets:set REDCAP_API_URL --project prod
+firebase functions:secrets:set REDCAP_API_TOKEN --project prod
+
 cd functions
 firebase deploy --only functions --project prod
 ```
@@ -388,8 +400,10 @@ Run from a staff phone against a TestFlight / Internal Testing build before any 
 2. Take the FES-I questionnaire end-to-end. Confirm the activity record lands in `users/{uid}/activities/<today>/entries.fesi_*`.
 3. Run a Chair Rise test. Confirm the activity record lands with `category: "assessment"` and `exerciseId: "assessment-1"`.
 4. Trigger the AI Chat model download. Confirm the signed URL returns HTTP 200 and the GGUF downloads.
-5. Wait for 0200 ET or manually trigger `redcapsync`. Confirm the sync completes without error in Cloud Logging.
-6. Generate Cloud Logging alert policies for API 5xx rates and Functions failure rates, owned by the CoM IT on-call rotation.
+5. Wait for 0200 ET or manually trigger `redcapsync`. Confirm the sync completes without error in Cloud Logging and that no read against `config/redcap` shows up — credentials should come from Secret Manager only.
+6. Hit `/health` and one protected endpoint. Confirm Cloud Logging shows the structured JSON lines from the new request logger (`{timestamp, userId, method, path, status, durationMs}`), with `userId: "anonymous"` on `/health` and a Firebase uid on protected endpoints.
+7. Confirm Firestore and Storage rules report `PERMISSION_DENIED` to any non-Admin-SDK client via the Firebase console Rules Playground.
+8. Generate Cloud Logging alert policies for API 5xx rates and Functions failure rates, owned by the CoM IT on-call rotation.
 
 Patient rollout happens only after these six checks pass.
 
@@ -423,7 +437,7 @@ Once the production environment is live and has served successful smoke-test tra
 | SA | When it runs | Needs to read | Needs to write | Acts-as |
 |---|---|---|---|---|
 | `aipeer-api` | every API request | Firestore (all five collections), both GCS buckets, Identity Platform REST, Secret Manager for `identity-platform-api-key` | Firestore (users, verificationSessions, refreshTokens, activities subcollection), Firebase Auth (create custom tokens, verify ID tokens) | itself (for `signBlob`) |
-| `aipeer-redcap-sync` | 0200 ET daily | Firestore `config/redcap`, Firestore `users/*`, Secret Manager for `redcap-api-token` and `redcap-api-url` | Firestore `users/*` (score updates) | n/a |
+| `aipeer-redcap-sync` | 0200 ET daily | Firestore `users/*`, Secret Manager for `REDCAP_API_URL` and `REDCAP_API_TOKEN` (bound via `defineSecret()` in `functions/index.js`) | Firestore `users/*` (score updates) | n/a |
 | `aipeer-deployer` | on CI deploys only | Artifact Registry, Cloud Build | Cloud Run service definitions, Cloud Functions definitions, Artifact Registry images | `aipeer-api`, `aipeer-redcap-sync` |
 
 ## 17. Appendix B: open questions for CoM IT

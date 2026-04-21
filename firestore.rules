@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// all mobile and admin access to user data goes through the Cloud Run API,
+// which authenticates with the Firebase Admin SDK (bypasses these rules).
+// no client should ever read or write Firestore directly — so deny all
+// client-SDK traffic at the rules layer.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
