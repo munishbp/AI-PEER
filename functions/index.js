@@ -44,41 +44,27 @@ exports.redcapSync = onSchedule(
             let redcapUpdateCount = 0;
 
             for (const record of redcapRecords) {
-                // REDCap participant doesn't exist in Firestore yet — create them
-                if (!record.phonenum) {
-                    console.log(`[SYNC] Skipping REDCap record ${record.userID} — no phone number`);
-                    continue;
-                }
                 // Match REDCap record to Firestore user by phone number
                 const snapshot = await db.collection("users")
                     .where("phoneNumber", "==", record.phonenum)
                     .limit(1)
                     .get();
 
-                if (snapshot.empty) {
-                    const newUserRef = db.collection("users").doc();
-                    batch.set(newUserRef, {
-                        phoneNumber: record.phonenum,
-                        btrack_score: record.btrack_score ?? null,
-                        fear_falling_score: record.fear_falling_score ?? null,
-                        phoneVerified: false,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        source: "redcap"                    // marks this user as REDCap-originated
-                    });
-                    redcapUpdateCount++;
-                    console.log(`[SYNC] Created new Firestore user from REDCap record ${record.userID}`);
-                    continue;
-                }
+                if (snapshot.empty) continue;
 
                 const userRef = snapshot.docs[0].ref;
                 const userData = snapshot.docs[0].data();
-                batch.update(userRef, {
-                    [REDCAP_TO_FIRESTORE.b_track_score]: record.btrack_score ?? userData.btrack_score,
-                    [REDCAP_TO_FIRESTORE.ff_score]: userData.fear_falling_score === null ? record.fear_falling_score:userData.fear_falling_score,
-                    updatedAt: new Date().toISOString()
-                });
-                redcapUpdateCount++;
+
+                // Only update if Firestore still has null (don't overwrite
+                // a score the user submitted in-app with a stale REDCap value)
+                if (userData.btrack_score === null || userData.fear_falling_score === null) {
+                    batch.update(userRef, {
+                        [REDCAP_TO_FIRESTORE.b_track_score]: record.btrack_score ?? userData.btrack_score,
+                        [REDCAP_TO_FIRESTORE.ff_score]: record.fear_falling_score ?? userData.fear_falling_score,
+                        updatedAt: new Date().toISOString()
+                    });
+                    redcapUpdateCount++;
+                }
             }
 
             await batch.commit();
